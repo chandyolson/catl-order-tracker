@@ -879,16 +879,17 @@ export default function EditOrder() {
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
     for (const item of selectedOptionsList) {
       const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
+      const dn = option.display_name || option.name;
       let label: string;
       if (pt) {
         const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
-        label = [getOptionDisplayName(option.name), typeLabel, ps].filter(Boolean).join(" · ");
+        label = [dn, typeLabel, ps].filter(Boolean).join(" · ");
       } else if (left > 0 || right > 0) {
-        label = formatOptionPillLabel(option.name, left, right);
+        label = formatOptionPillLabel(dn, left, right);
       } else if (quantity > 1) {
-        label = `${getOptionDisplayName(option.name)} ×${quantity}`;
+        label = `${dn} ×${quantity}`;
       } else {
-        label = getOptionDisplayName(option.name);
+        label = dn;
       }
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }
