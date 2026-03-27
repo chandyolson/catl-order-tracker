@@ -702,13 +702,8 @@ export default function EditOrder() {
     [optionsQuery.data]
   );
 
-  const controlsSelectedId = pickOneSelections.get("Controls") || null;
-  const selectedControlOpt = useMemo(() => {
-    if (!controlsSelectedId) return null;
-    return optionsQuery.data?.find((o) => o.id === controlsSelectedId) ?? null;
-  }, [controlsSelectedId, optionsQuery.data]);
-  const isPivotSelected = selectedControlOpt?.short_code === "PC" || selectedControlOpt?.short_code === "PC-FB";
-  const derivedPivotType = selectedControlOpt?.short_code === "PC" ? "side_to_side" : selectedControlOpt?.short_code === "PC-FB" ? "front_to_back" : "";
+  const isPivotSelected = pivotChecked;
+  const derivedPivotType = pivotType;
 
   // ─── Render helpers (same as NewOrder) ─────────────────
 
