@@ -38,3 +38,28 @@ export function formatOptionPillLabel(name: string, left: number, right: number)
   if (sides) label += ` · ${sides}`;
   return label;
 }
+
+// Format pill label from saved JSONB option (handles pivot_type, side, sides fields)
+export function formatSavedOptionPill(opt: any): string {
+  const name = getOptionDisplayName(opt.name || opt.short_code || "Option");
+  // Standard controls (included) — don't show
+  if (opt.name?.toLowerCase().includes("standard") && opt.is_included) return "";
+  // Pivot controls
+  if (opt.pivot_type) {
+    const typeLabel = opt.pivot_type === "side_to_side" ? "Side-to-Side" : opt.pivot_type === "front_to_back" ? "Front-to-Back" : "";
+    const parts = [name];
+    if (typeLabel) parts.push(typeLabel);
+    if (opt.side) parts.push(opt.side);
+    return parts.join(" · ");
+  }
+  // Side-based options
+  if (opt.left > 0 || opt.right > 0) {
+    const sides = formatSides(opt.left || 0, opt.right || 0);
+    return sides ? `${name} · ${sides}` : name;
+  }
+  // If sides string is stored
+  if (opt.sides) {
+    return `${name} · ${opt.sides}`;
+  }
+  return name;
+}
