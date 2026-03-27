@@ -186,17 +186,75 @@ export type Database = {
         }
         Relationships: []
       }
+      email_log: {
+        Row: {
+          error_message: string | null
+          estimate_id: string | null
+          id: string
+          order_id: string | null
+          recipient_email: string
+          recipient_name: string | null
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          error_message?: string | null
+          estimate_id?: string | null
+          id?: string
+          order_id?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status: string
+          subject: string
+        }
+        Update: {
+          error_message?: string | null
+          estimate_id?: string | null
+          id?: string
+          order_id?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           approved_date: string | null
           build_shorthand: string
           created_at: string | null
+          emailed_at: string | null
+          emailed_to: string | null
           id: string
           is_approved: boolean | null
           is_current: boolean | null
           line_items: Json
           notes: string | null
           order_id: string | null
+          qb_doc_number: string | null
+          qb_estimate_id: string | null
           signed: boolean | null
           signed_date: string | null
           total_price: number
@@ -206,12 +264,16 @@ export type Database = {
           approved_date?: string | null
           build_shorthand: string
           created_at?: string | null
+          emailed_at?: string | null
+          emailed_to?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
           line_items?: Json
           notes?: string | null
           order_id?: string | null
+          qb_doc_number?: string | null
+          qb_estimate_id?: string | null
           signed?: boolean | null
           signed_date?: string | null
           total_price: number
@@ -221,12 +283,16 @@ export type Database = {
           approved_date?: string | null
           build_shorthand?: string
           created_at?: string | null
+          emailed_at?: string | null
+          emailed_to?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
           line_items?: Json
           notes?: string | null
           order_id?: string | null
+          qb_doc_number?: string | null
+          qb_estimate_id?: string | null
           signed?: boolean | null
           signed_date?: string | null
           total_price?: number
@@ -701,6 +767,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      qb_tokens: {
+        Row: {
+          access_token: string
+          access_token_expires_at: string
+          id: string
+          realm_id: string
+          refresh_token: string
+          refresh_token_expires_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          access_token_expires_at: string
+          id?: string
+          realm_id: string
+          refresh_token: string
+          refresh_token_expires_at: string
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          access_token_expires_at?: string
+          id?: string
+          realm_id?: string
+          refresh_token?: string
+          refresh_token_expires_at?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       quick_builds: {
         Row: {

@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronLeft, ChevronDown, ChevronRight, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
-  Circle, AlertCircle, Mail, Phone, MoreVertical, Trash2, AlertTriangle,
+  Circle, AlertCircle, Mail, Phone, MoreVertical, Trash2, AlertTriangle, Send,
 } from "lucide-react";
+import SendEstimateModal from "@/components/SendEstimateModal";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
@@ -740,9 +741,12 @@ function DocSection({ title, docs, onComplete, pending }: { title: string; docs:
 // ═══════════════════════════════════════════════════════════════
 function EstimatesTab({ orderId, estimates, order, queryClient }: { orderId: string; estimates: any[]; order: any; queryClient: any }) {
   const [showForm, setShowForm] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [newShorthand, setNewShorthand] = useState(order.build_shorthand || "");
   const [newTotal, setNewTotal] = useState(String(order.customer_price || ""));
   const [newNotes, setNewNotes] = useState("");
+  const customer = order?.customers as any;
+  const currentEstimate = estimates.find((e) => e.is_current);
 
   const maxVersion = estimates.length > 0 ? Math.max(...estimates.map((e) => e.version_number)) : 0;
 
@@ -787,14 +791,27 @@ function EstimatesTab({ orderId, estimates, order, queryClient }: { orderId: str
 
   return (
     <div>
-      {!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 text-sm font-semibold text-catl-teal border border-catl-teal rounded-full px-4 py-2 mb-4 active:scale-[0.97] transition-transform"
-        >
-          <Plus size={14} /> New estimate version
-        </button>
-      ) : (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-catl-teal border border-catl-teal rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
+          >
+            <Plus size={14} /> New estimate version
+          </button>
+        )}
+        {currentEstimate && (
+          <button
+            onClick={() => setShowSendModal(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+            title={!customer?.email ? "Add customer email to send estimate" : undefined}
+          >
+            <Send size={14} /> Send Estimate
+          </button>
+        )}
+      </div>
+      {showForm && (
         <div className="bg-card border border-border rounded-xl p-3 mb-4 space-y-2">
           <input value={newShorthand} onChange={(e) => setNewShorthand(e.target.value)} placeholder="Build shorthand" className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
           <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden">
@@ -817,6 +834,16 @@ function EstimatesTab({ orderId, estimates, order, queryClient }: { orderId: str
             <EstimateCard key={est.id} estimate={est} />
           ))}
         </div>
+      )}
+
+      {currentEstimate && (
+        <SendEstimateModal
+          open={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          estimate={currentEstimate}
+          order={order}
+          customer={customer}
+        />
       )}
     </div>
   );

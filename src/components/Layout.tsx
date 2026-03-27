@@ -7,6 +7,7 @@ import {
   Factory,
   Users,
   Warehouse,
+  Settings,
   Plus,
   Menu,
   X,
@@ -21,6 +22,7 @@ const navItems = [
   { label: "Production", path: "/production", icon: Factory },
   { label: "Customers", path: "/customers", icon: Users },
   { label: "Inventory", path: "/inventory", icon: Warehouse },
+  { label: "Settings", path: "/settings", icon: Settings },
 ];
 
 function NavItem({
