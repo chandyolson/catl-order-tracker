@@ -458,13 +458,13 @@ export default function EditOrder() {
   function handleManufacturerChange(mid: string) {
     setManufacturerId(mid); setBaseModelId(""); setQuickBuildId("");
     setSelections(new Map()); setPickOneSelections(new Map());
-    setPivotSide("");
+    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
     setBuildShorthandManual(false);
   }
 
   function handleBaseModelChange(mid: string) {
     setBaseModelId(mid); setSelections(new Map()); setPickOneSelections(new Map());
-    setPivotSide(""); setQuickBuildId("");
+    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false); setQuickBuildId("");
     setBuildShorthandManual(false);
   }
 
@@ -546,10 +546,8 @@ export default function EditOrder() {
       if (optId) next.set(group, optId); else next.delete(group);
       return next;
     });
-    if (group === "Controls") {
-      const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (!opt || (opt.short_code !== "PC" && opt.short_code !== "PC-FB")) { setPivotSide(""); }
-    }
+    // Controls handled separately
+    setBuildShorthandManual(false);
   }
 
   // Customer
@@ -586,12 +584,9 @@ export default function EditOrder() {
     if (!buildShorthand.trim()) e.buildShorthand = "Required";
     if (customerPrice <= 0) e.customerPrice = "Must be > 0";
     if (ourCost <= 0) e.ourCost = "Must be > 0";
-    const controlsSelId = pickOneSelections.get("Controls");
-    if (controlsSelId) {
-      const copt = optionsQuery.data?.find((o) => o.id === controlsSelId);
-      if (copt?.short_code === "PC" || copt?.short_code === "PC-FB") {
-        if (!pivotSide) e.pivotSide = copt.short_code === "PC" ? "Select dominant side" : "Select mounted side";
-      }
+    if (pivotChecked) {
+      if (!pivotType) e.pivotType = "Select pivot type";
+      if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
     }
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
