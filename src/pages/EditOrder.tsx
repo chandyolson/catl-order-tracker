@@ -151,6 +151,9 @@ export default function EditOrder() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
+  const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
+  const [dualChecked, setDualChecked] = useState(false);
+  const [pivotChecked, setPivotChecked] = useState(false);
 
   // Store original values for change detection
   const [originalStatus, setOriginalStatus] = useState("");

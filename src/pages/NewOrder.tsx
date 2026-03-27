@@ -187,6 +187,9 @@ export default function NewOrder() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
+  const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
+  const [dualChecked, setDualChecked] = useState(false);
+  const [pivotChecked, setPivotChecked] = useState(false);
 
   // Queries
   const manufacturersQuery = useQuery({
