@@ -753,11 +753,21 @@ export default function EditOrder() {
   }
 
   function renderSimpleOption(opt: FullOption) {
+    const isChecked = selections.get(opt.id)?.selected ?? false;
+    const conflictCodes: Record<string, string[]> = { "HR": ["DH"], "DH": ["HR"], "SCB": ["HDCB"], "HDCB": ["SCB"] };
+    const conflicting = conflictCodes[opt.short_code];
+    const isDisabled = conflicting?.some((code) => {
+      const conflictOpt = optionsQuery.data?.find((o) => o.short_code === code);
+      return conflictOpt && selections.get(conflictOpt.id)?.selected;
+    }) ?? false;
+    const priceDisplay = opt.retail_price === 0
+      ? <span className="text-xs flex-shrink-0 italic" style={{ color: "#717182" }}>TBD</span>
+      : <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>;
     return (
-      <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-        <input type="checkbox" checked={selections.get(opt.id)?.selected ?? false} onChange={() => toggleSimpleOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
+      <label key={opt.id} className={cn("flex items-center gap-2.5 py-1.5 px-2 rounded-md min-h-[32px]", isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-muted/50")}>
+        <input type="checkbox" checked={isChecked} onChange={() => { if (!isDisabled) toggleSimpleOption(opt.id); }} disabled={isDisabled} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
         <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
-        <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+        {priceDisplay}
       </label>
     );
   }
