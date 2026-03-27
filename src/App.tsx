@@ -14,6 +14,7 @@ import Paperwork from "./pages/Paperwork";
 import Production from "./pages/Production";
 import Customers from "./pages/Customers";
 import InventoryPage from "./pages/Inventory";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/production" element={<Production />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
