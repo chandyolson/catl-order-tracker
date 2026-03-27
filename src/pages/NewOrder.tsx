@@ -532,7 +532,7 @@ export default function NewOrder() {
     setQuickBuildId("");
     setSelections(new Map());
     setPickOneSelections(new Map());
-    setPivotSide("");
+    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
     setBuildShorthandManual(false);
   }
 
@@ -540,7 +540,7 @@ export default function NewOrder() {
     setBaseModelId(id);
     setSelections(new Map());
     setPickOneSelections(new Map());
-    setPivotSide("");
+    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
     setQuickBuildId("");
     setBuildShorthandManual(false);
   }
@@ -652,12 +652,7 @@ export default function NewOrder() {
       else next.delete(group);
       return next;
     });
-    if (group === "Controls") {
-      const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (!opt || (opt.short_code !== "PC" && opt.short_code !== "PC-FB")) {
-        setPivotSide("");
-      }
-    }
+    // Controls are handled separately via dualChecked/pivotChecked, not pickOneSelections
     setBuildShorthandManual(false);
   }
 
@@ -702,12 +697,9 @@ export default function NewOrder() {
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
     if (customerPrice <= 0) e.customerPrice = "Customer price must be greater than 0";
     if (ourCost <= 0) e.ourCost = "Our cost must be greater than 0";
-    const controlsSelId = pickOneSelections.get("Controls");
-    if (controlsSelId) {
-      const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
-      if (controlsOpt?.short_code === "PC" || controlsOpt?.short_code === "PC-FB") {
-        if (!pivotSide) e.pivotSide = controlsOpt.short_code === "PC" ? "Select dominant side" : "Select mounted side";
-      }
+    if (pivotChecked) {
+      if (!pivotType) e.pivotType = "Select pivot type";
+      if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
     }
     // Validate side options: if checked but no side selected
     for (const [optId, sel] of selections) {
@@ -823,12 +815,8 @@ export default function NewOrder() {
   );
 
   const controlsSelectedId = pickOneSelections.get("Controls") || null;
-  const selectedControlOpt = useMemo(() => {
-    if (!controlsSelectedId) return null;
-    return optionsQuery.data?.find((o) => o.id === controlsSelectedId) ?? null;
-  }, [controlsSelectedId, optionsQuery.data]);
-  const isPivotSelected = selectedControlOpt?.short_code === "PC" || selectedControlOpt?.short_code === "PC-FB";
-  const derivedPivotType = selectedControlOpt?.short_code === "PC" ? "side_to_side" : selectedControlOpt?.short_code === "PC-FB" ? "front_to_back" : "";
+  const isPivotSelected = pivotChecked;
+  const derivedPivotType = pivotType;
 
   // --- Render helpers ---
 
