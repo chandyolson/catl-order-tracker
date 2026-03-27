@@ -113,6 +113,19 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               </span>
             </div>
 
+            {/* Convert to Order button */}
+            {isEstimate && (
+              <button
+                onClick={() => convertToOrderMutation.mutate()}
+                disabled={convertToOrderMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
+                style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+              >
+                <ArrowRightCircle size={16} />
+                {convertToOrderMutation.isPending ? "Converting…" : "Convert to Order"}
+              </button>
+            )}
+
             {/* Base model */}
             {baseModel && (
               <div>
