@@ -505,8 +505,6 @@ export default function NewOrder() {
     setPickOneSelections(new Map());
     setPivotType("");
     setPivotSide("");
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -517,8 +515,6 @@ export default function NewOrder() {
     setPivotType("");
     setPivotSide("");
     setQuickBuildId("");
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -538,8 +534,6 @@ export default function NewOrder() {
       }
       setSelections(newSel);
       setPickOneSelections(new Map());
-      setCustomerPriceManual(false);
-      setOurCostManual(false);
       setBuildShorthandManual(false);
     }
   }
@@ -555,8 +549,6 @@ export default function NewOrder() {
       }
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -571,8 +563,6 @@ export default function NewOrder() {
       }
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -585,8 +575,6 @@ export default function NewOrder() {
       }
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -603,8 +591,6 @@ export default function NewOrder() {
       }
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -618,8 +604,6 @@ export default function NewOrder() {
       next.set(optId, updated);
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -631,8 +615,6 @@ export default function NewOrder() {
       next.set(optId, updated);
       return next;
     });
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -650,8 +632,6 @@ export default function NewOrder() {
         setPivotSide("");
       }
     }
-    setCustomerPriceManual(false);
-    setOurCostManual(false);
     setBuildShorthandManual(false);
   }
 
@@ -1264,11 +1244,9 @@ export default function NewOrder() {
         <SectionHeader title="Pricing" />
 
         <FormRow label="Cust. Price" error={errors.customerPrice}>
-          <CurrencyInput value={customerPrice} onChange={(v) => { setCustomerPrice(v); setCustomerPriceManual(true); }} />
         </FormRow>
 
         <FormRow label="Our Cost" error={errors.ourCost}>
-          <CurrencyInput value={ourCost} onChange={(v) => { setOurCost(v); setOurCostManual(true); }} />
         </FormRow>
 
         <FormRow label="Margin">
