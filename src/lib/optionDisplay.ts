@@ -19,9 +19,7 @@ export function formatSavedOptionPill(opt: any): string {
   if (opt.name?.toLowerCase().includes("standard") && opt.is_included) return "";
   // Pivot controls
   if (opt.pivot_type) {
-    const typeLabel = opt.pivot_type === "side_to_side" ? "Side-to-Side" : opt.pivot_type === "front_to_back" ? "Front-to-Back" : "";
     const parts = [name];
-    if (typeLabel) parts.push(typeLabel);
     if (opt.side) parts.push(opt.side);
     return parts.join(" · ");
   }

@@ -508,7 +508,6 @@ export type Database = {
           id: string
           inventory_location: string | null
           invoiced_date: string | null
-          linked_estimate_id: string | null
           linked_order_id: string | null
           manufacturer_id: string | null
           margin_amount: number | null
@@ -554,7 +553,6 @@ export type Database = {
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
-          linked_estimate_id?: string | null
           linked_order_id?: string | null
           manufacturer_id?: string | null
           margin_amount?: number | null
@@ -600,7 +598,6 @@ export type Database = {
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
-          linked_estimate_id?: string | null
           linked_order_id?: string | null
           manufacturer_id?: string | null
           margin_amount?: number | null
@@ -637,13 +634,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_linked_estimate_id_fkey"
-            columns: ["linked_estimate_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {
