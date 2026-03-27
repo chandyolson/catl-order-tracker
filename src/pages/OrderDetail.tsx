@@ -10,7 +10,7 @@ import { format, differenceInDays } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatOptionPillLabel, getOptionDisplayName } from "@/lib/optionDisplay";
+import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 
 const DOC_NAMES: Record<string, string> = {
