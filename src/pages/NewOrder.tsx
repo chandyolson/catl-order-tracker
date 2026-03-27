@@ -687,8 +687,8 @@ export default function NewOrder() {
     if (!manufacturerId) e.manufacturer = "Manufacturer is required";
     if (!baseModelId) e.baseModel = "Base model is required";
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
-    if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Customer price must be greater than 0";
-    if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Our cost must be greater than 0";
+    if (customerPrice <= 0) e.customerPrice = "Customer price must be greater than 0";
+    if (ourCost <= 0) e.ourCost = "Our cost must be greater than 0";
     const controlsSelId = pickOneSelections.get("Controls");
     if (controlsSelId) {
       const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
