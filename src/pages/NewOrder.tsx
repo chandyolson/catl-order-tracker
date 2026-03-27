@@ -1433,6 +1433,8 @@ export default function NewOrder() {
             </div>
           </div>
         )}
+        </>
+        )}
 
         {/* INVENTORY */}
         <button
