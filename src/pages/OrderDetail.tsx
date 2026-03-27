@@ -356,6 +356,36 @@ export default function OrderDetail() {
           <Phone size={16} /> Call Customer
         </button>
       </div>
+
+      {/* ─── DELETE CONFIRMATION DIALOG ──────────────────── */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="max-w-sm rounded-xl p-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: "rgba(212,24,61,0.1)" }}>
+              <AlertTriangle size={24} style={{ color: "#D4183D" }} />
+            </div>
+            <AlertDialogHeader className="sm:text-center">
+              <AlertDialogTitle className="text-base font-semibold" style={{ color: "#1A1A1A" }}>
+                Delete this order?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-[13px] mt-1" style={{ color: "#717182" }}>
+                This will permanently delete order {order.order_number} and all associated paperwork, timeline events, estimates, and change orders. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="mt-4 flex-row gap-2">
+            <AlertDialogCancel className="flex-1 mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteOrderMutation.mutate()}
+              className="flex-1 active:scale-[0.97] transition-transform"
+              style={{ backgroundColor: "#D4183D", color: "#fff" }}
+              disabled={deleteOrderMutation.isPending}
+            >
+              {deleteOrderMutation.isPending ? "Deleting…" : "Delete order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
