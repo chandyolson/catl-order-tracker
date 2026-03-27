@@ -648,10 +648,10 @@ export default function EditOrder() {
         });
       }
 
-      if (customerPrice !== originalPrice || ourCost !== originalCost) {
+      if (String(customerPrice) !== originalPrice || String(ourCost) !== originalCost) {
         const parts: string[] = [];
-        if (customerPrice !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${priceNum.toLocaleString()}`);
-        if (ourCost !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${costNum.toLocaleString()}`);
+        if (String(customerPrice) !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${priceNum.toLocaleString()}`);
+        if (String(ourCost) !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${costNum.toLocaleString()}`);
         timelineInserts.push({
           order_id: id, event_type: "note",
           title: "Pricing updated", description: parts.join(". "),
