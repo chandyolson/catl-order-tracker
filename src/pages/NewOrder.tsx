@@ -745,6 +745,7 @@ export default function NewOrder() {
         const isPivot = s.pivotType != null;
         return {
           option_id: s.option.id,
+          display_name: s.option.display_name || s.option.name,
           name: s.option.name,
           short_code: s.option.short_code,
           cost_price_each: s.option.cost_price,
