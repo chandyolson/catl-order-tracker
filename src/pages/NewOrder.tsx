@@ -46,37 +46,36 @@ type OptionSelection = {
   left: number;
   right: number;
   selected: boolean;
-  quantity: number; // for non-side quantity options like Neckbar
+  quantity: number;
 };
+
+/* ─── Shared sub-components ──────────────────────────────────── */
 
 function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
   return (
     <div className="overflow-hidden">
       <div className="flex items-start gap-2">
-        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>
+        <label className="text-[13px] font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>
           {label}
         </label>
         <div className={cn("flex-1 min-w-0", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
       </div>
-      {error && <p className="text-xs mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
+      {error && <p className="text-[11px] mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
     </div>
   );
 }
 
 function CurrencyInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold md:max-w-[200px]">
+    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold" style={{ maxWidth: 140 }}>
       <span className="pl-3 text-muted-foreground text-sm font-medium">$</span>
       <input
         type="text"
         inputMode="decimal"
         value={value}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/[^0-9.]/g, "");
-          onChange(raw);
-        }}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
         placeholder={placeholder}
-        className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0"
+        className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0 text-[16px]"
       />
     </div>
   );
@@ -118,7 +117,6 @@ function SidePill({ label, active, disabled, onClick }: { label: string; active:
   );
 }
 
-// Quantity stepper component
 function QtyStepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-1">
@@ -127,31 +125,25 @@ function QtyStepper({ value, min, max, onChange }: { value: number; min: number;
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
         className="flex items-center justify-center border rounded-md transition-colors"
-        style={{
-          width: 28, height: 28,
-          borderColor: "#D4D4D0",
-          opacity: value <= min ? 0.3 : 1,
-        }}
+        style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value <= min ? "#D4D4D0" : "#1A1A1A" }}
       >
         <Minus size={14} />
       </button>
-      <span className="text-center font-semibold text-sm" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
+      <span className="text-center text-sm font-semibold" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
         className="flex items-center justify-center border rounded-md transition-colors"
-        style={{
-          width: 28, height: 28,
-          borderColor: "#D4D4D0",
-          opacity: value >= max ? 0.3 : 1,
-        }}
+        style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value >= max ? "#D4D4D0" : "#1A1A1A" }}
       >
         <Plus size={14} />
       </button>
     </div>
   );
 }
+
+/* ─── Main Component ─────────────────────────────────────────── */
 
 export default function NewOrder() {
   const navigate = useNavigate();
@@ -191,7 +183,8 @@ export default function NewOrder() {
   const [dualChecked, setDualChecked] = useState(false);
   const [pivotChecked, setPivotChecked] = useState(false);
 
-  // Queries
+  /* ─── Queries ──────────────────────────────────────────────── */
+
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
     queryFn: async () => {
@@ -253,7 +246,8 @@ export default function NewOrder() {
     },
   });
 
-  // Default manufacturer
+  /* ─── Derived state ────────────────────────────────────────── */
+
   useEffect(() => {
     if (manufacturersQuery.data && !manufacturerId) {
       const moly = manufacturersQuery.data.find(
@@ -264,6 +258,7 @@ export default function NewOrder() {
     }
   }, [manufacturersQuery.data]);
 
+  const selectedManufacturer = manufacturersQuery.data?.find((m) => m.id === manufacturerId);
   const selectedBaseModel = baseModelsQuery.data?.find((m) => m.id === baseModelId);
   const selectedQuickBuild = quickBuildsQuery.data?.find((q) => q.id === quickBuildId);
 
@@ -285,17 +280,14 @@ export default function NewOrder() {
     (isCarrierOption(opt) || isScalesOption(opt)) && !isExtendedVariant(opt);
   const isExtendedCarrierOrScales = (opt: FullOption) =>
     (isCarrierOption(opt) || isScalesOption(opt)) && isExtendedVariant(opt);
-
-  // Is this a neckbar-type option (quantity but no side)?
   const isQuantityOnlyOption = (opt: FullOption) =>
     opt.allows_quantity && opt.selection_type !== "side";
 
   const visibleOptions = useMemo(() => {
     if (!optionsQuery.data) return [];
-    const selectedModel = selectedBaseModel;
     return optionsQuery.data.filter((opt) => {
-      if (opt.model_restriction && opt.model_restriction.length > 0 && selectedModel) {
-        if (!opt.model_restriction.includes(selectedModel.short_name)) return false;
+      if (opt.model_restriction && opt.model_restriction.length > 0 && selectedBaseModel) {
+        if (!opt.model_restriction.includes(selectedBaseModel.short_name)) return false;
       }
       if (isExtendedSelected) {
         if (isStandardCarrierOrScales(opt)) return false;
@@ -304,15 +296,28 @@ export default function NewOrder() {
       }
       if (opt.requires_extended && !isExtendedSelected && !isCarrierOption(opt) && !isScalesOption(opt)) return false;
       if (opt.requires_options && opt.requires_options.length > 0) {
-        const allRequired = opt.requires_options.every((reqId) => {
-          const sel = selections.get(reqId);
-          return sel && (sel.selected || sel.left > 0 || sel.right > 0);
+        // OR logic: show if ANY required option is selected
+        const anySelected = opt.requires_options.some((reqCode) => {
+          // reqCode can be short_code or ID
+          const matchOpt = optionsQuery.data?.find((o) => o.short_code === reqCode || o.id === reqCode);
+          if (!matchOpt) return false;
+          const sel = selections.get(matchOpt.id);
+          if (sel && (sel.selected || sel.left > 0 || sel.right > 0)) return true;
+          // Check pickOne
+          for (const [, selId] of pickOneSelections) {
+            if (selId === matchOpt.id) return true;
+          }
+          // Check controls
+          if (matchOpt.short_code === "PC" && pivotChecked && pivotType === "side_to_side") return true;
+          if (matchOpt.short_code === "PC-FB" && pivotChecked && pivotType === "front_to_back") return true;
+          if (matchOpt.short_code === "DC" && dualChecked) return true;
+          return false;
         });
-        if (!allRequired) return false;
+        if (!anySelected) return false;
       }
       return true;
     });
-  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections]);
+  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections, pickOneSelections, pivotChecked, pivotType, dualChecked]);
 
   const groupedOptions = useMemo(() => {
     const groups = new Map<string, FullOption[]>();
@@ -338,17 +343,10 @@ export default function NewOrder() {
     return sel.selected || sel.left > 0 || sel.right > 0;
   }, [selections]);
 
-  const getOptionTotalQty = useCallback((optId: string): number => {
-    const sel = selections.get(optId);
-    if (!sel) return 0;
-    if (sel.selected && sel.left === 0 && sel.right === 0) return sel.quantity || 1;
-    return sel.left + sel.right;
-  }, [selections]);
-
   // All selected options for pricing/summary/submit
   const selectedOptionsList = useMemo(() => {
     const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
-    // Pick-one groups (exclude Controls — handled separately)
+    // Pick-one groups (exclude Controls)
     for (const [group, optId] of pickOneSelections) {
       if (group === "Controls") continue;
       const opt = optionsQuery.data?.find((o) => o.id === optId);
@@ -367,7 +365,7 @@ export default function NewOrder() {
       const pcOpt = optionsQuery.data?.find((o) => o.short_code === pcCode);
       if (pcOpt) result.push({ option: pcOpt, quantity: 1, left: 0, right: 0, pivotType: pivotType || undefined, pivotSide: pivotSide || undefined });
     }
-    // Selections map (side, simple, quantity)
+    // Selections map
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (!opt) continue;
@@ -394,23 +392,25 @@ export default function NewOrder() {
     const isSideExit = opt.short_code === "SE" || opt.short_code === "SSH" || opt.short_code === "HE" ||
       opt.name.toLowerCase().includes("side exit") || opt.name.toLowerCase().includes("slam shut") || opt.name.toLowerCase().includes("hydraulic exit");
 
-    if (isWTD && side === "right") {
+    if (isWTD) {
       const exits = optionsQuery.data?.filter((o) =>
         o.short_code === "SE" || o.short_code === "SSH" || o.short_code === "HE" ||
         o.name.toLowerCase().includes("side exit") || o.name.toLowerCase().includes("slam shut") || o.name.toLowerCase().includes("hydraulic exit")
       ) || [];
       for (const ex of exits) {
         const exSel = selections.get(ex.id);
-        if (exSel && exSel.right > 0) return `Right blocked — ${ex.name} on right`;
+        if (exSel && (side === "left" ? exSel.left : exSel.right) > 0)
+          return `${side === "left" ? "Left" : "Right"} blocked — ${ex.display_name || ex.name} on ${side} (non-extended)`;
       }
     }
-    if (isSideExit && side === "right") {
+    if (isSideExit) {
       const wtds = optionsQuery.data?.filter((o) =>
         o.short_code === "WD" || o.name.toLowerCase().includes("walk-through")
       ) || [];
       for (const w of wtds) {
         const wSel = selections.get(w.id);
-        if (wSel && wSel.right > 0) return `Right blocked — walk-through door on right`;
+        if (wSel && (side === "left" ? wSel.left : wSel.right) > 0)
+          return `${side === "left" ? "Left" : "Right"} blocked — walk-through door on ${side} (non-extended)`;
       }
     }
     return null;
@@ -452,7 +452,8 @@ export default function NewOrder() {
     }
   }, [isExtendedSelected]);
 
-  // Auto-calculate prices
+  /* ─── Pricing ──────────────────────────────────────────────── */
+
   const calcRetail = useMemo(() => {
     let total = selectedBaseModel?.retail_price || 0;
     for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
@@ -483,10 +484,11 @@ export default function NewOrder() {
   }, [customerPrice, ourCost]);
 
   const marginColor = margin
-    ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
+    ? margin.percent >= 15 ? "#55BAAA" : margin.percent >= 10 ? "#F3D12A" : "#E87461"
     : undefined;
 
-  // Auto-generate build shorthand
+  /* ─── Build shorthand ──────────────────────────────────────── */
+
   useEffect(() => {
     if (buildShorthandManual) return;
     if (!selectedBaseModel) { setBuildShorthand(""); return; }
@@ -525,33 +527,26 @@ export default function NewOrder() {
     setBuildShorthand(parts.join(", "));
   }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList, buildShorthandManual]);
 
-  // Handlers
+  /* ─── Handlers ─────────────────────────────────────────────── */
+
   function handleManufacturerChange(id: string) {
     setManufacturerId(id);
-    setBaseModelId("");
-    setQuickBuildId("");
-    setSelections(new Map());
-    setPickOneSelections(new Map());
+    setBaseModelId(""); setQuickBuildId("");
+    setSelections(new Map()); setPickOneSelections(new Map());
     setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
     setBuildShorthandManual(false);
   }
 
   function handleBaseModelChange(id: string) {
     setBaseModelId(id);
-    setSelections(new Map());
-    setPickOneSelections(new Map());
+    setSelections(new Map()); setPickOneSelections(new Map());
     setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
-    setQuickBuildId("");
-    setBuildShorthandManual(false);
+    setQuickBuildId(""); setBuildShorthandManual(false);
   }
 
   function handleQuickBuildChange(id: string) {
     setQuickBuildId(id);
-    if (!id) {
-      setSelections(new Map());
-      setPickOneSelections(new Map());
-      return;
-    }
+    if (!id) { setSelections(new Map()); setPickOneSelections(new Map()); return; }
     const qb = quickBuildsQuery.data?.find((q) => q.id === id);
     if (qb) {
       if (qb.base_model_id) setBaseModelId(qb.base_model_id);
@@ -568,12 +563,8 @@ export default function NewOrder() {
   function toggleSimpleOption(optId: string) {
     setSelections((prev) => {
       const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing?.selected) {
-        next.delete(optId);
-      } else {
-        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-      }
+      if (next.get(optId)?.selected) next.delete(optId);
+      else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
       return next;
     });
     setBuildShorthandManual(false);
@@ -582,12 +573,8 @@ export default function NewOrder() {
   function toggleQuantityOption(optId: string) {
     setSelections((prev) => {
       const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing?.selected) {
-        next.delete(optId);
-      } else {
-        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-      }
+      if (next.get(optId)?.selected) next.delete(optId);
+      else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
       return next;
     });
     setBuildShorthandManual(false);
@@ -597,9 +584,7 @@ export default function NewOrder() {
     setSelections((prev) => {
       const next = new Map(prev);
       const existing = next.get(optId);
-      if (existing) {
-        next.set(optId, { ...existing, quantity: qty });
-      }
+      if (existing) next.set(optId, { ...existing, quantity: qty });
       return next;
     });
     setBuildShorthandManual(false);
@@ -609,13 +594,9 @@ export default function NewOrder() {
     setSelections((prev) => {
       const next = new Map(prev);
       const existing = next.get(optId);
-      if (existing && (existing.left > 0 || existing.right > 0)) {
-        next.delete(optId);
-      } else if (!existing) {
-        next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 });
-      } else {
-        next.delete(optId);
-      }
+      if (existing && (existing.left > 0 || existing.right > 0)) next.delete(optId);
+      else if (!existing) next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 });
+      else next.delete(optId);
       return next;
     });
     setBuildShorthandManual(false);
@@ -626,9 +607,7 @@ export default function NewOrder() {
       const next = new Map(prev);
       const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
       const current = side === "left" ? existing.left : existing.right;
-      const newVal = current > 0 ? 0 : 1; // toggle on/off
-      const updated = { ...existing, [side]: newVal };
-      next.set(optId, updated);
+      next.set(optId, { ...existing, [side]: current > 0 ? 0 : 1 });
       return next;
     });
     setBuildShorthandManual(false);
@@ -638,8 +617,7 @@ export default function NewOrder() {
     setSelections((prev) => {
       const next = new Map(prev);
       const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
-      const updated = { ...existing, [side]: qty };
-      next.set(optId, updated);
+      next.set(optId, { ...existing, [side]: qty });
       return next;
     });
     setBuildShorthandManual(false);
@@ -648,16 +626,14 @@ export default function NewOrder() {
   function selectPickOne(group: string, optId: string | null) {
     setPickOneSelections((prev) => {
       const next = new Map(prev);
-      if (optId) next.set(group, optId);
-      else next.delete(group);
+      if (optId) next.set(group, optId); else next.delete(group);
       return next;
     });
-    // Controls are handled separately via dualChecked/pivotChecked, not pickOneSelections
     setBuildShorthandManual(false);
   }
 
+  /* ─── Customer ─────────────────────────────────────────────── */
 
-  // Customer
   const filteredCustomers = useMemo(() => {
     if (!customersQuery.data) return [];
     if (!customerSearch) return customersQuery.data;
@@ -690,18 +666,17 @@ export default function NewOrder() {
     },
   });
 
+  /* ─── Validation ───────────────────────────────────────────── */
+
   function validate() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Manufacturer is required";
     if (!baseModelId) e.baseModel = "Base model is required";
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
-    if (customerPrice <= 0) e.customerPrice = "Customer price must be greater than 0";
-    if (ourCost <= 0) e.ourCost = "Our cost must be greater than 0";
     if (pivotChecked) {
       if (!pivotType) e.pivotType = "Select pivot type";
       if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
     }
-    // Validate side options: if checked but no side selected
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected) {
@@ -712,15 +687,14 @@ export default function NewOrder() {
     return Object.keys(e).length === 0;
   }
 
+  /* ─── Submit ───────────────────────────────────────────────── */
+
   async function handleSubmit() {
     if (!validate()) return;
     setSubmitting(true);
     try {
       const { data: orderNumber, error: rpcError } = await supabase.rpc("generate_order_number");
       if (rpcError) throw rpcError;
-
-      const priceNum = customerPrice;
-      const costNum = ourCost;
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
@@ -744,6 +718,8 @@ export default function NewOrder() {
         };
       });
 
+      const subtotal = calcRetail;
+
       const { data: order, error: orderError } = await supabase.from("orders").insert({
         order_number: orderNumber,
         customer_id: isDirectOrder ? null : (customerId || null),
@@ -752,8 +728,9 @@ export default function NewOrder() {
         base_model: selectedBaseModel?.name || null,
         build_shorthand: buildShorthand,
         build_description: notes || null,
-        customer_price: priceNum,
-        our_cost: costNum,
+        subtotal,
+        customer_price: customerPrice,
+        our_cost: ourCost,
         discount_type: discountType,
         discount_amount: parseFloat(discountAmount) || 0,
         freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
@@ -776,15 +753,14 @@ export default function NewOrder() {
         ...selectedOptionsJson.map((o) => ({ type: "option", ...o })),
       ];
 
-      const { error: estError } = await supabase.from("estimates").insert({
+      await supabase.from("estimates").insert({
         order_id: order.id,
         version_number: 1,
         build_shorthand: buildShorthand,
-        total_price: priceNum,
+        total_price: customerPrice,
         is_current: true,
         line_items: lineItems,
       });
-      if (estError) throw estError;
 
       toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${orderNumber} created`);
       navigate(`/orders/${order.id}`);
@@ -795,6 +771,8 @@ export default function NewOrder() {
     }
   }
 
+  /* ─── Computed display values ──────────────────────────────── */
+
   const optionCount = selectedOptionsList.length;
   const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
 
@@ -803,10 +781,7 @@ export default function NewOrder() {
     const scalesOpts = opts.filter((o) =>
       o.option_group === "Scales" && o.name.toLowerCase().includes("overhead")
     );
-    return scalesOpts.some((o) => {
-      const groupSel = pickOneSelections.get("Scales");
-      return groupSel === o.id;
-    });
+    return scalesOpts.some((o) => pickOneSelections.get("Scales") === o.id);
   }, [optionsQuery.data, pickOneSelections]);
 
   const pivotOnScalesOption = useMemo(() =>
@@ -814,11 +789,32 @@ export default function NewOrder() {
     [optionsQuery.data]
   );
 
-  const controlsSelectedId = pickOneSelections.get("Controls") || null;
   const isPivotSelected = pivotChecked;
-  const derivedPivotType = pivotType;
 
-  // --- Render helpers ---
+  const summaryPills = useMemo(() => {
+    const pills: { label: string; variant: "base" | "standard" | "addon"; optionId?: string }[] = [];
+    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
+    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
+    for (const item of selectedOptionsList) {
+      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
+      const dn = option.display_name || option.name;
+      let label: string;
+      if (pt) {
+        const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
+        label = [dn, typeLabel, ps].filter(Boolean).join(" · ");
+      } else if (left > 0 || right > 0) {
+        label = formatOptionPillLabel(dn, left, right);
+      } else if (quantity > 1) {
+        label = `${dn} ×${quantity}`;
+      } else {
+        label = dn;
+      }
+      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon", optionId: option.id });
+    }
+    return pills;
+  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
+
+  /* ─── Render helpers ───────────────────────────────────────── */
 
   function renderPickOneGroup(group: string, options: FullOption[]) {
     if (group === "Controls") return renderControlsGroup(options);
@@ -853,24 +849,27 @@ export default function NewOrder() {
     const pcFbOpt = options.find((o) => o.short_code === "PC-FB");
     return (
       <div className="space-y-2">
-        {/* Dual Controls checkbox */}
         {dcOpt && (
-          <div>
-            <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={dualChecked} onChange={() => setDualChecked(!dualChecked)} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Dual Controls</span>
-                <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides.</p>
-              </div>
-              <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(dcOpt.retail_price)}</span>
-            </label>
-          </div>
+          <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+            <input type="checkbox" checked={dualChecked} onChange={() => setDualChecked(!dualChecked)} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Dual Controls</span>
+              <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides.</p>
+            </div>
+            <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(dcOpt.retail_price)}</span>
+          </label>
         )}
-        {/* Pivot Controls checkbox */}
         {(pcOpt || pcFbOpt) && (
           <div>
             <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={pivotChecked} onChange={() => { if (pivotChecked) { setPivotChecked(false); setPivotType(""); setPivotSide(""); /* uncheck POS */ if (pivotOnScalesOption) { setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; }); } } else { setPivotChecked(true); } }} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
+              <input type="checkbox" checked={pivotChecked} onChange={() => {
+                if (pivotChecked) {
+                  setPivotChecked(false); setPivotType(""); setPivotSide("");
+                  if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; });
+                } else {
+                  setPivotChecked(true);
+                }
+              }} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
               <div className="flex-1 min-w-0">
                 <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Pivot Controls</span>
                 <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Upgrades one side from stationary to pivot.</p>
@@ -909,7 +908,6 @@ export default function NewOrder() {
             )}
           </div>
         )}
-        {/* Pivot on Overhead Scales */}
         {isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && (
           <div className="border-t border-border pt-2">
             <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
@@ -924,7 +922,6 @@ export default function NewOrder() {
             </label>
           </div>
         )}
-        {/* Info text when neither is checked */}
         {!dualChecked && !pivotChecked && (
           <p className="text-[11px] px-2" style={{ color: "#717182" }}>Standard controls (included). One side, fixed position, no additional cost.</p>
         )}
@@ -932,10 +929,9 @@ export default function NewOrder() {
     );
   }
 
-  // Render side option with side pills + optional quantity steppers
   function renderSideOption(opt: FullOption) {
     const sel = selections.get(opt.id);
-    const isChecked = sel != null; // present in map = checked
+    const isChecked = sel != null;
     const hasAnySide = sel && (sel.left > 0 || sel.right > 0);
     const maxSide = opt.max_per_side || 1;
     const leftConflict = getSideConflicts(opt.id, "left");
@@ -946,75 +942,36 @@ export default function NewOrder() {
     return (
       <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => toggleSideOption(opt.id)}
-            className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
-          />
+          <input type="checkbox" checked={isChecked} onChange={() => toggleSideOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
             {(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")}
-            {" — "}
-            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
+          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
         </label>
         {isChecked && (
           <div className="ml-[26px] mt-1 mb-2 space-y-2 overflow-hidden">
-            {/* Side pills */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Sides:</span>
-              <SidePill
-                label="Left"
-                active={(sel?.left || 0) > 0}
-                disabled={!!leftConflict}
-                onClick={() => {
-                  if (leftConflict) return;
-                  toggleSide(opt.id, "left");
-                }}
-              />
-              <SidePill
-                label="Right"
-                active={(sel?.right || 0) > 0}
-                disabled={!!rightConflict}
-                onClick={() => {
-                  if (rightConflict) return;
-                  toggleSide(opt.id, "right");
-                }}
-              />
+              <SidePill label="Left" active={(sel?.left || 0) > 0} disabled={!!leftConflict} onClick={() => { if (!leftConflict) toggleSide(opt.id, "left"); }} />
+              <SidePill label="Right" active={(sel?.right || 0) > 0} disabled={!!rightConflict} onClick={() => { if (!rightConflict) toggleSide(opt.id, "right"); }} />
             </div>
-
-            {/* Quantity steppers per side (only if max_per_side > 1) */}
             {maxSide > 1 && (sel?.left || 0) > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Left:</span>
-                <QtyStepper
-                  value={sel?.left || 1}
-                  min={1}
-                  max={maxSide}
-                  onChange={(v) => setSideQty(opt.id, "left", v)}
-                />
+                <QtyStepper value={sel?.left || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "left", v)} />
               </div>
             )}
             {maxSide > 1 && (sel?.right || 0) > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Right:</span>
-                <QtyStepper
-                  value={sel?.right || 1}
-                  min={1}
-                  max={maxSide}
-                  onChange={(v) => setSideQty(opt.id, "right", v)}
-                />
+                <QtyStepper value={sel?.right || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "right", v)} />
               </div>
             )}
-
-            {!hasAnySide && (
-              <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>
-            )}
-            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
+            {!hasAnySide && <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>}
             {leftConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>}
+            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
             {totalQty > 0 && (
               <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>
-                Total: {totalQty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}
+                {totalQty > 1 ? `${totalQty} × $${fmtCurrency(opt.retail_price)} = $${fmtCurrency(totalPrice)}` : `$${fmtCurrency(totalPrice)}`}
               </p>
             )}
           </div>
@@ -1023,43 +980,31 @@ export default function NewOrder() {
     );
   }
 
-  // Render quantity-only option (like Neckbar)
   function renderQuantityOption(opt: FullOption) {
     const sel = selections.get(opt.id);
     const isChecked = sel?.selected ?? false;
     const qty = sel?.quantity || 1;
-    const maxQty = opt.max_per_side || 4; // use max_per_side as max qty for non-side options
+    const maxQty = opt.max_per_side || 4;
     const totalPrice = qty * opt.retail_price;
 
     return (
       <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => toggleQuantityOption(opt.id)}
-            className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
-          />
+          <input type="checkbox" checked={isChecked} onChange={() => toggleQuantityOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
             {opt.display_name || opt.name}
-            {" — "}
-            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
+          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
         </label>
         {isChecked && (
           <div className="ml-[26px] mt-1 mb-2 space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 28 }}>Qty:</span>
-              <QtyStepper
-                value={qty}
-                min={1}
-                max={maxQty}
-                onChange={(v) => setQuantityOptionQty(opt.id, v)}
-              />
+              <QtyStepper value={qty} min={1} max={maxQty} onChange={(v) => setQuantityOptionQty(opt.id, v)} />
             </div>
             {qty > 1 && (
               <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>
-                Total: {qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}
+                {qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}
               </p>
             )}
           </div>
@@ -1071,16 +1016,8 @@ export default function NewOrder() {
   function renderSimpleOption(opt: FullOption) {
     const isChecked = selections.get(opt.id)?.selected ?? false;
     return (
-      <label
-        key={opt.id}
-        className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]"
-      >
-        <input
-          type="checkbox"
-          checked={isChecked}
-          onChange={() => toggleSimpleOption(opt.id)}
-          className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
-        />
+      <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+        <input type="checkbox" checked={isChecked} onChange={() => toggleSimpleOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
         <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
         <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
       </label>
@@ -1090,13 +1027,12 @@ export default function NewOrder() {
   function renderGroupCard(group: string, options: FullOption[]) {
     const isPick = options.every((o) => o.selection_type === "pick_one");
 
-    // Scales sub-groups: platforms (pick_one) and indicators (simple)
     if (group === "Scales") {
       const platforms = options.filter((o) => o.selection_type === "pick_one");
       const indicators = options.filter((o) => o.selection_type !== "pick_one");
       return (
         <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
+          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
           {platforms.length > 0 && (
             <div className="mb-2">
               <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
@@ -1106,9 +1042,7 @@ export default function NewOrder() {
           {indicators.length > 0 && (
             <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
               <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
-              <div className="space-y-0.5">
-                {indicators.map((opt) => renderSimpleOption(opt))}
-              </div>
+              <div className="space-y-0.5">{indicators.map((opt) => renderSimpleOption(opt))}</div>
             </div>
           )}
         </div>
@@ -1117,10 +1051,8 @@ export default function NewOrder() {
 
     return (
       <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
-        {isPick ? (
-          renderPickOneGroup(group, options)
-        ) : (
+        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
+        {isPick ? renderPickOneGroup(group, options) : (
           <div className="space-y-0.5">
             {options.map((opt) => {
               if (opt.selection_type === "side") return renderSideOption(opt);
@@ -1134,112 +1066,137 @@ export default function NewOrder() {
     );
   }
 
-  // Build summary pills
-  const summaryPills = useMemo(() => {
-    const pills: { label: string; variant: "base" | "standard" | "addon" }[] = [];
-    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
-    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
-    for (const item of selectedOptionsList) {
-      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
-      const dn = option.display_name || option.name;
-      let label: string;
-      if (pt) {
-        const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
-        label = [dn, typeLabel, ps].filter(Boolean).join(" · ");
-      } else if (left > 0 || right > 0) {
-        label = formatOptionPillLabel(dn, left, right);
-      } else if (quantity > 1) {
-        label = `${dn} ×${quantity}`;
-      } else {
-        label = dn;
-      }
-      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
+  function handlePillClick(pill: { optionId?: string }) {
+    if (!pill.optionId) return;
+    // Find the option and remove it
+    const opt = optionsQuery.data?.find((o) => o.id === pill.optionId);
+    if (!opt) return;
+    if (opt.short_code === "DC") { setDualChecked(false); return; }
+    if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
+      setPivotChecked(false); setPivotType(""); setPivotSide("");
+      if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; });
+      return;
     }
-    return pills;
-  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
+    if (opt.selection_type === "pick_one") {
+      for (const [group, selId] of pickOneSelections) {
+        if (selId === pill.optionId) { selectPickOne(group, null); return; }
+      }
+    }
+    setSelections(prev => { const n = new Map(prev); n.delete(pill.optionId!); return n; });
+    setBuildShorthandManual(false);
+  }
+
+  // Status visibility for completion date
+  const showCompletionDate = ["ordered", "so_received", "in_production", "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed"].includes(status);
+
+  /* ─── RENDER ───────────────────────────────────────────────── */
+
+  const modelLabel = selectedBaseModel
+    ? `${selectedBaseModel.short_name} · ${selectedManufacturer?.short_name || ""}`
+    : "Select a model";
+
+  const discountDisplay = discountValue > 0
+    ? (discountType === "%" ? `−${parseFloat(discountAmount) || 0}%` : `−$${fmtCurrency(discountValue)}`)
+    : "—";
 
   return (
-    <div className="mx-auto pb-40 overflow-x-hidden max-w-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <button onClick={() => navigate(-1)} className="text-catl-teal p-1">
+    <div className="mx-auto pb-40 overflow-x-hidden max-w-full" style={{ background: "#F5F5F0" }}>
+      {/* ─── Sticky Navy Price Bar ──────────────────────────── */}
+      <div className="sticky top-0 z-10 md:max-w-[680px] md:mx-auto" style={{ background: "#0E2646", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
+        {/* Row 1 */}
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: "rgba(240,240,240,0.45)" }}>
+            {isDirectOrder ? "New order" : "New estimate"}
+          </span>
+          <span className="text-[11px] truncate ml-2" style={{ color: "rgba(240,240,240,0.45)" }}>
+            {modelLabel}
+          </span>
+        </div>
+        {/* Row 2 — Desktop */}
+        <div className="hidden sm:flex items-baseline justify-between gap-4">
+          <div className="flex items-baseline gap-4">
+            <div>
+              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p>
+              <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p>
+            </div>
+            <div>
+              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p>
+              <p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p>
+            </div>
+            <div>
+              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p>
+              <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p>
+            <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>
+              {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+            </p>
+          </div>
+        </div>
+        {/* Row 2 — Mobile */}
+        <div className="flex sm:hidden items-baseline justify-between">
+          <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
+          <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>
+            {margin ? `${margin.percent.toFixed(1)}%` : "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* ─── Page Header ────────────────────────────────────── */}
+      <div className="flex items-center gap-2 my-4 px-4 md:max-w-[680px] md:mx-auto">
+        <button onClick={() => navigate(-1)} className="p-1" style={{ color: "#55BAAA" }}>
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-[17px] font-bold text-foreground">{isDirectOrder ? "New order" : "New estimate"}</h1>
       </div>
 
-      {/* Form card */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto overflow-x-hidden">
+      {/* ─── Form Card ──────────────────────────────────────── */}
+      <div className="bg-white border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
-        {/* EQUIPMENT */}
+        {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <SectionHeader title="Equipment" />
 
         <FormRow label="Manufacturer" error={errors.manufacturer}>
-          <select
-            value={manufacturerId}
-            onChange={(e) => handleManufacturerChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-          >
+          <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
             <option value="">Select manufacturer</option>
-            {manufacturersQuery.data?.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
+            {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </FormRow>
 
         <FormRow label="Base Model" error={errors.baseModel}>
-          <select
-            value={baseModelId}
-            onChange={(e) => handleBaseModelChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-            disabled={!manufacturerId}
-          >
+          <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
             <option value="">Select base model</option>
-            {baseModelsQuery.data?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — ${m.retail_price.toLocaleString()}
-              </option>
-            ))}
+            {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
           </select>
         </FormRow>
 
         {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
           <FormRow label="Quick Build">
-            <select
-              value={quickBuildId}
-              onChange={(e) => handleQuickBuildChange(e.target.value)}
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-            >
+            <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
               <option value="">None — custom build</option>
-              {quickBuildsQuery.data.map((q) => (
-                <option key={q.id} value={q.id}>{q.name}</option>
-              ))}
+              {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
             </select>
           </FormRow>
         )}
 
-        {/* OPTIONS */}
+        {/* ── OPTIONS ────────────────────────────────────────── */}
         <SectionHeader
           title="Options"
           subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined}
         />
 
-        {/* Extended Chute toggle */}
         {extendedChuteOption && (
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
-            <input
-              type="checkbox"
-              checked={isExtendedSelected}
-              onChange={() => toggleSimpleOption(extendedChuteOption.id)}
-              className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
-            />
+            <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
             <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
             <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
 
         {groupedOptions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
             {groupedOptions.map(([group, opts]) => {
               const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
               if (filtered.length === 0) return null;
@@ -1248,20 +1205,33 @@ export default function NewOrder() {
           </div>
         )}
 
-        {/* BUILD SUMMARY */}
+        {/* ── BUILD SUMMARY ──────────────────────────────────── */}
         <SectionHeader title="Build Summary" />
+
+        {selectedBaseModel && (
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>
+              {selectedBaseModel.short_name}
+            </span>
+            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
-          {summaryPills.map((pill, i) => (
-            <span
+          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
+            <button
               key={i}
-              className="px-2.5 py-1 rounded-full text-xs font-semibold break-words"
+              type="button"
+              onClick={() => handlePillClick(pill)}
+              className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform"
               style={{
-                background: pill.variant === "base" ? "#0E2646" : pill.variant === "standard" ? "rgba(85,186,170,0.15)" : "rgba(243,209,42,0.2)",
-                color: pill.variant === "base" ? "#F0F0F0" : pill.variant === "standard" ? "#55BAAA" : "#8B7A1A",
+                background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
+                border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
+                color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
               }}
             >
               {pill.label}
-            </span>
+            </button>
           ))}
         </div>
 
@@ -1270,12 +1240,12 @@ export default function NewOrder() {
             value={buildShorthand}
             onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }}
             placeholder="Auto-generated from selections"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0"
-            style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }}
+            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+            style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }}
           />
         </FormRow>
 
-        {/* Pricing breakdown */}
+        {/* Pricing breakdown in build summary */}
         {selectedBaseModel && (
           <div className="mt-3 pt-3 space-y-2 overflow-hidden" style={{ borderTop: "1px solid #D4D4D0" }}>
             <div className="flex justify-between text-sm">
@@ -1292,164 +1262,157 @@ export default function NewOrder() {
               <span>Subtotal</span>
               <span>${fmtCurrency(calcRetail)}</span>
             </div>
-
-            {/* Discount */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-sm" style={{ color: "#1A1A1A" }}>Discount</span>
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as "$" | "%")}
-                  className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none"
-                  style={{ width: 60 }}
-                >
-                  <option value="$">$</option>
-                  <option value="%">%</option>
-                </select>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="0"
-                  className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none text-right"
-                  style={{ maxWidth: 120 }}
-                />
-              </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "#717182" }}>Our Cost</span>
+              <span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span>
             </div>
-
-            <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid #D4D4D0" }}>
-              <div className="flex justify-between">
-                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>Customer Price</span>
-                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: "#717182" }}>Our Cost</span>
-                <span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold">
-                <span style={{ color: marginColor || "#717182" }}>Margin</span>
-                <span style={{ color: marginColor || "#717182" }}>
-                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <span className="text-sm" style={{ color: "#717182" }}>Freight est.</span>
-                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
-              </div>
+            <div className="flex justify-between text-sm font-semibold">
+              <span style={{ color: marginColor || "#717182" }}>Margin</span>
+              <span style={{ color: marginColor || "#717182" }}>
+                {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+              </span>
             </div>
           </div>
         )}
 
-        {/* TRACKING */}
+        {/* ── DISCOUNT & FREIGHT ─────────────────────────────── */}
+        <SectionHeader title="Discount & Freight" />
+
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
+            <div className="flex items-center gap-1.5">
+              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ width: 60 }}>
+                <option value="$">$</option>
+                <option value="%">%</option>
+              </select>
+              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-right text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ maxWidth: 120 }} />
+            </div>
+          </div>
+          <div style={{ minWidth: 140 }}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight estimate</p>
+            <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
+          </div>
+        </div>
+
+        {/* ── TRACKING ───────────────────────────────────────── */}
         <SectionHeader title="Tracking" />
 
-        <FormRow label="CATL #">
-          <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
-        </FormRow>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="CATL #">
+              <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+            </FormRow>
+          </div>
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="Serial #">
+              <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+            </FormRow>
+          </div>
+        </div>
 
-        <FormRow label="Serial #">
-          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
-        </FormRow>
-
-        {/* STATUS */}
+        {/* ── STATUS ─────────────────────────────────────────── */}
         <SectionHeader title="Status" />
 
-        <FormRow label="Status">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize">
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-            ))}
-          </select>
-        </FormRow>
-
-        <FormRow label="Est. Date" narrow>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estimateDate && "text-muted-foreground")}>
-                {estimateDate ? format(estimateDate, "PPP") : "Pick a date"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-        </FormRow>
-
-        <FormRow label="Completion" narrow>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estCompletionDate && "text-muted-foreground")}>
-                {estCompletionDate ? format(estCompletionDate, "PPP") : "Pick a date"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-        </FormRow>
-
-        {/* CUSTOMER — hidden for direct orders */}
-        {!isDirectOrder && (
-        <>
-        <SectionHeader title="Customer" />
-        <p className="text-xs text-muted-foreground italic -mt-2 mb-3">Optional — can be assigned later</p>
-
-        <FormRow label="Customer">
-          <div className="relative">
-            <input
-              value={selectedCustomer ? selectedCustomer.name : customerSearch}
-              onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
-              onFocus={() => setShowCustomerDropdown(true)}
-              placeholder="Search customers..."
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0"
-            />
-            {showCustomerDropdown && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
-                {filteredCustomers.map((c) => (
-                  <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
-                    <span className="font-medium">{c.name}</span>
-                    {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="Status">
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              </select>
+            </FormRow>
+          </div>
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="Est. Date" narrow>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
+                    {estimateDate ? format(estimateDate, "PPP") : "Pick a date"}
                   </button>
-                ))}
-                <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold text-catl-teal flex items-center gap-1 border-t border-border">
-                  <Plus size={14} /> Add New Customer
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </FormRow>
+          </div>
+        </div>
+
+        {showCompletionDate && (
+          <FormRow label="Completion" narrow>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
+                  {estCompletionDate ? format(estCompletionDate, "PPP") : "Pick a date"}
                 </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </FormRow>
+        )}
+
+        {/* ── CUSTOMER ───────────────────────────────────────── */}
+        {!isDirectOrder && (
+          <>
+            <SectionHeader title="Customer" subtitle="Optional" />
+
+            <FormRow label="Customer">
+              <div className="relative">
+                <input
+                  value={selectedCustomer ? selectedCustomer.name : customerSearch}
+                  onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  placeholder="Search customers..."
+                  className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+                />
+                {showCustomerDropdown && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
+                    {filteredCustomers.map((c) => (
+                      <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
+                        <span className="font-medium">{c.name}</span>
+                        {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
+                      </button>
+                    ))}
+                    <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}>
+                      <Plus size={14} /> Add New Customer
+                    </button>
+                  </div>
+                )}
+              </div>
+            </FormRow>
+
+            {showNewCustomerForm && (
+              <div className="ml-[128px] border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
+                <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                  <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                  <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                </div>
+                <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
+                  <option value="">Type (optional)</option>
+                  <option value="rancher">Rancher</option>
+                  <option value="feedlot">Feedlot</option>
+                  <option value="dealer">Dealer</option>
+                  <option value="other">Other</option>
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>
+                    {addCustomerMutation.isPending ? "Saving..." : "Save Customer"}
+                  </button>
+                  <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
+                </div>
               </div>
             )}
-          </div>
-        </FormRow>
-
-        {showNewCustomerForm && (
-          <div className="ml-[128px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5 overflow-hidden">
-            <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-            </div>
-            <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none">
-              <option value="">Type (optional)</option>
-              <option value="rancher">Rancher</option>
-              <option value="feedlot">Feedlot</option>
-              <option value="dealer">Dealer</option>
-              <option value="other">Other</option>
-            </select>
-            <div className="flex gap-2">
-              <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg bg-catl-teal text-white text-sm font-semibold disabled:opacity-50">
-                {addCustomerMutation.isPending ? "Saving..." : "Save Customer"}
-              </button>
-              <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
-            </div>
-          </div>
-        )}
-        </>
+          </>
         )}
 
-        {/* INVENTORY */}
+        {/* ── INVENTORY (collapsible) ────────────────────────── */}
         <button
           type="button"
           onClick={() => setInventoryOpen(!inventoryOpen)}
@@ -1468,38 +1431,24 @@ export default function NewOrder() {
             </FormRow>
             {fromInventory && (
               <FormRow label="Inv. Location">
-                <input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
+                <input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" />
               </FormRow>
             )}
           </div>
         )}
 
-        {/* NOTES */}
+        {/* ── NOTES ──────────────────────────────────────────── */}
         <SectionHeader title="Notes" />
-        <FormRow label="Notes">
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0" />
-        </FormRow>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
       </div>
 
-      {/* Price Summary Bar */}
-      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 md:max-w-[680px] md:mx-auto md:rounded-xl md:border overflow-hidden">
-        {selectedBaseModel ? (
-          <div className="flex items-center justify-between text-sm mb-3 flex-wrap gap-1">
-            <span className="font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
-            {margin && (
-              <span className="text-xs font-semibold" style={{ color: marginColor }}>
-                {margin.percent.toFixed(1)}% margin
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground mb-3">Select a base model to see pricing</div>
-        )}
-
+      {/* ─── Save Button ────────────────────────────────────── */}
+      <div className="px-4 mt-4 md:max-w-[680px] md:mx-auto">
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
+          className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
+          style={{ background: "#F3D12A", color: "#0E2646" }}
         >
           {submitting ? "Creating..." : isDirectOrder ? "Create order" : "Create estimate"}
         </button>
