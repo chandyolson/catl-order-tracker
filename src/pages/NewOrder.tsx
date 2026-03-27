@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
@@ -155,6 +155,9 @@ function QtyStepper({ value, min, max, onChange }: { value: number; min: number;
 
 export default function NewOrder() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orderType = searchParams.get("type") === "order" ? "order" : "estimate";
+  const isDirectOrder = orderType === "order";
   const queryClient = useQueryClient();
 
   const [manufacturerId, setManufacturerId] = useState("");
