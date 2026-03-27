@@ -352,8 +352,9 @@ export default function EditOrder() {
     for (const [group, optId] of pickOneSelections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
-        const isPivot = group === "Controls" && opt.name.toLowerCase().includes("pivot");
-        result.push({ option: opt, quantity: 1, left: 0, right: 0, ...(isPivot ? { pivotType: pivotType || undefined, pivotSide: pivotSide || undefined } : {}) });
+        const isPivot = opt.short_code === "PC" || opt.short_code === "PC-FB";
+        const pType = opt.short_code === "PC" ? "side_to_side" : opt.short_code === "PC-FB" ? "front_to_back" : undefined;
+        result.push({ option: opt, quantity: 1, left: 0, right: 0, ...(isPivot ? { pivotType: pType, pivotSide: pivotSide || undefined } : {}) });
       }
     }
     for (const [optId, sel] of selections) {
@@ -365,7 +366,7 @@ export default function EditOrder() {
       if (qty > 0) result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
     }
     return result;
-  }, [selections, pickOneSelections, optionsQuery.data, pivotType, pivotSide]);
+  }, [selections, pickOneSelections, optionsQuery.data, pivotSide]);
 
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
     if (isExtendedSelected) return null;
@@ -696,11 +697,12 @@ export default function EditOrder() {
   );
 
   const controlsSelectedId = pickOneSelections.get("Controls") || null;
-  const isPivotSelected = useMemo(() => {
-    if (!controlsSelectedId) return false;
-    const opt = optionsQuery.data?.find((o) => o.id === controlsSelectedId);
-    return opt?.name.toLowerCase().includes("pivot") ?? false;
+  const selectedControlOpt = useMemo(() => {
+    if (!controlsSelectedId) return null;
+    return optionsQuery.data?.find((o) => o.id === controlsSelectedId) ?? null;
   }, [controlsSelectedId, optionsQuery.data]);
+  const isPivotSelected = selectedControlOpt?.short_code === "PC" || selectedControlOpt?.short_code === "PC-FB";
+  const derivedPivotType = selectedControlOpt?.short_code === "PC" ? "side_to_side" : selectedControlOpt?.short_code === "PC-FB" ? "front_to_back" : "";
 
   // ─── Render helpers (same as NewOrder) ─────────────────
 
