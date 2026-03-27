@@ -277,13 +277,21 @@ export default function EditOrder() {
       const opt = optionsQuery.data.find((o) => o.id === saved.option_id);
       if (!opt) continue;
 
+      // Controls: handle DC and PC/PC-FB via checkbox state
+      if (opt.short_code === "DC") {
+        setDualChecked(true);
+        continue;
+      }
+      if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
+        setPivotChecked(true);
+        setPivotType(saved.pivot_type === "front_to_back" ? "front_to_back" : "side_to_side");
+        setPivotSide((saved.side || "") as any);
+        continue;
+      }
+
       if (opt.selection_type === "pick_one") {
         const group = opt.option_group || "Misc";
         newPick.set(group, opt.id);
-        // Pivot side data
-        if (saved.side) {
-          setPivotSide((saved.side || "") as any);
-        }
       } else if (opt.selection_type === "side") {
         const left = saved.left_qty ?? saved.left ?? 0;
         const right = saved.right_qty ?? saved.right ?? 0;
