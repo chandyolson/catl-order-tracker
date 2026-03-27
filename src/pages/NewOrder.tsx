@@ -32,7 +32,7 @@ function FormRow({ label, error, children, narrow }: { label: string; error?: st
         <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 whitespace-nowrap" style={{ width: 120 }}>
           {label}
         </label>
-        <div className={cn("flex-1", narrow ? "max-w-[180px]" : "sm:max-w-[320px]")}>{children}</div>
+        <div className={cn("flex-1", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
       </div>
       {error && <p className="text-xs mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
     </div>
@@ -41,7 +41,7 @@ function FormRow({ label, error, children, narrow }: { label: string; error?: st
 
 function CurrencyInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold max-w-[180px] sm:max-w-[180px]">
+    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold md:max-w-[200px]">
       <span className="pl-3 text-muted-foreground text-sm font-medium">$</span>
       <input
         type="text"
@@ -58,11 +58,13 @@ function CurrencyInput({ value, onChange, placeholder }: { value: string; onChan
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="mt-6 mb-3">
-      <h3 className="text-[13px] font-bold text-catl-navy uppercase tracking-wide">{title}</h3>
-      <div className="h-px bg-border mt-2" />
+    <div className="-mx-4 mt-6 mb-3 px-4 py-2" style={{ background: "#F5F5F0" }}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>{title}</h3>
+        {subtitle && <span className="text-[11px]" style={{ color: "#717182" }}>{subtitle}</span>}
+      </div>
     </div>
   );
 }
@@ -466,7 +468,7 @@ export default function NewOrder() {
   const optionRetailTotal = checkedOptionsList.reduce((s, o) => s + o.retail_price, 0);
 
   return (
-    <div className="max-w-2xl mx-auto pb-40">
+    <div className="mx-auto pb-40 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <button onClick={() => navigate(-1)} className="text-catl-teal p-1">
@@ -476,7 +478,7 @@ export default function NewOrder() {
       </div>
 
       {/* Form card */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4 max-w-[600px]">
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto overflow-x-hidden">
 
         {/* SECTION 1: Equipment */}
         <SectionHeader title="Equipment" />
@@ -525,22 +527,22 @@ export default function NewOrder() {
           </FormRow>
         )}
 
+        <SectionHeader title="Options" subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined} />
         {groupedOptions.length > 0 && (
-          <FormRow label="Options">
-            <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
-              {groupedOptions.map(([group, opts]) => (
-                <OptionGroup
-                  key={group}
-                  group={group}
-                  options={opts}
-                  checked={checkedOptions}
-                  onToggle={toggleOption}
-                />
-              ))}
-            </div>
-          </FormRow>
+          <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
+            {groupedOptions.map(([group, opts]) => (
+              <OptionGroup
+                key={group}
+                group={group}
+                options={opts}
+                checked={checkedOptions}
+                onToggle={toggleOption}
+              />
+            ))}
+          </div>
         )}
 
+        <SectionHeader title="Build Summary" />
         <FormRow label="Build Short" error={errors.buildShorthand}>
           <input
             value={buildShorthand}
@@ -717,15 +719,15 @@ export default function NewOrder() {
         )}
 
         {/* SECTION 6: Inventory */}
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setInventoryOpen(!inventoryOpen)}
-            className="flex items-center gap-1.5 w-full text-left"
-          >
-            <ChevronDown size={16} className={cn("text-catl-navy transition-transform", inventoryOpen && "rotate-180")} />
-            <span className="text-[13px] font-bold text-catl-navy uppercase tracking-wide">Inventory Details</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setInventoryOpen(!inventoryOpen)}
+          className="-mx-4 mt-6 mb-3 px-4 py-2 flex items-center justify-between w-[calc(100%+2rem)]"
+          style={{ background: "#F5F5F0" }}
+        >
+          <span className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Inventory Details</span>
+          <ChevronDown size={14} className={cn("transition-transform", inventoryOpen && "rotate-180")} style={{ color: "#717182" }} />
+        </button>
           {inventoryOpen && (
             <div className="mt-3 space-y-4">
               <FormRow label="From Inv.">
@@ -745,7 +747,6 @@ export default function NewOrder() {
               )}
             </div>
           )}
-        </div>
 
         {/* SECTION 7: Notes */}
         <SectionHeader title="Notes" />
