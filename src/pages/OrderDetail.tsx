@@ -216,6 +216,36 @@ export default function OrderDetail() {
             >
               <Edit2 size={16} />
             </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center rounded-lg active:scale-[0.95] transition-all"
+                  style={{
+                    width: 36, height: 36,
+                    color: "rgba(240,240,240,0.5)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#F0F0F0";
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "rgba(240,240,240,0.5)";
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  <MoreVertical size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[160px]">
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-[#D4183D] focus:text-[#D4183D] focus:bg-red-50 cursor-pointer"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  Delete order
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <StatusBadge status={order.status} />
           </div>
         </div>
