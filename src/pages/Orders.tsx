@@ -39,7 +39,9 @@ export default function Orders() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const filterStatuses = FILTERS.find((f) => f.key === activeFilter)?.statuses ?? [];
+  const activeFilterDef = FILTERS.find((f) => f.key === activeFilter);
+  const filterStatuses = activeFilterDef?.statuses ?? [];
+  const filterSourceType = activeFilterDef?.sourceType ?? null;
   const sort = SORTS[sortIdx];
 
   // Attention items lookup
