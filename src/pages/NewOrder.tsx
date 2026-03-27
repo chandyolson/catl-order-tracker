@@ -454,6 +454,8 @@ export default function NewOrder() {
     setQuickBuildId("");
     setSelections(new Map());
     setPickOneSelections(new Map());
+    setPivotType("");
+    setPivotSide("");
     setCustomerPriceManual(false);
     setOurCostManual(false);
     setBuildShorthandManual(false);
@@ -463,6 +465,8 @@ export default function NewOrder() {
     setBaseModelId(id);
     setSelections(new Map());
     setPickOneSelections(new Map());
+    setPivotType("");
+    setPivotSide("");
     setQuickBuildId("");
     setCustomerPriceManual(false);
     setOurCostManual(false);
@@ -553,6 +557,14 @@ export default function NewOrder() {
       else next.delete(group);
       return next;
     });
+    // Reset pivot state when Controls selection changes
+    if (group === "Controls") {
+      const opt = optionsQuery.data?.find((o) => o.id === optId);
+      if (!opt || !opt.name.toLowerCase().includes("pivot")) {
+        setPivotType("");
+        setPivotSide("");
+      }
+    }
     setCustomerPriceManual(false);
     setOurCostManual(false);
     setBuildShorthandManual(false);
