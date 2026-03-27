@@ -215,7 +215,7 @@ export default function Orders() {
                           color: "#55BAAA",
                         }}
                       >
-                        {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
+                        {formatSavedOptionPill(opt)}
                       </span>
                     ))}
                   </div>

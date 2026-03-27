@@ -10,7 +10,7 @@ import { format, differenceInDays } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatSavedOptionPill } from "@/lib/optionDisplay";
+import { formatSavedOptionPill, getOptionDisplayName } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 
 const DOC_NAMES: Record<string, string> = {
@@ -200,7 +200,7 @@ export default function OrderDetail() {
                   color: "#55BAAA",
                 }}
               >
-                {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
+                {formatSavedOptionPill(opt)}
               </span>
             ))}
           </div>
