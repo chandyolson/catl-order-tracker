@@ -4,8 +4,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronLeft, ChevronDown, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
-  Circle, AlertCircle, Mail, Phone,
+  Circle, AlertCircle, Mail, Phone, MoreVertical, Trash2, AlertTriangle,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { format, differenceInDays } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -58,7 +65,22 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"timeline" | "documents" | "estimates" | "changes">("timeline");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const deleteOrderMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").delete().eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.error(`Order ${orderQuery.data?.order_number} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      navigate("/orders");
+    },
+    onError: (err: any) => {
+      toast.error("Failed to delete order: " + err.message);
+    },
+  });
   // ─── QUERIES ────────────────────────────────────────────
   const orderQuery = useQuery({
     queryKey: ["order", id],
@@ -194,6 +216,36 @@ export default function OrderDetail() {
             >
               <Edit2 size={16} />
             </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center rounded-lg active:scale-[0.95] transition-all"
+                  style={{
+                    width: 36, height: 36,
+                    color: "rgba(240,240,240,0.5)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#F0F0F0";
+                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "rgba(240,240,240,0.5)";
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  <MoreVertical size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[160px]">
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-[#D4183D] focus:text-[#D4183D] focus:bg-red-50 cursor-pointer"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  Delete order
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <StatusBadge status={order.status} />
           </div>
         </div>
@@ -304,6 +356,36 @@ export default function OrderDetail() {
           <Phone size={16} /> Call Customer
         </button>
       </div>
+
+      {/* ─── DELETE CONFIRMATION DIALOG ──────────────────── */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="max-w-sm rounded-xl p-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: "rgba(212,24,61,0.1)" }}>
+              <AlertTriangle size={24} style={{ color: "#D4183D" }} />
+            </div>
+            <AlertDialogHeader className="sm:text-center">
+              <AlertDialogTitle className="text-base font-semibold" style={{ color: "#1A1A1A" }}>
+                Delete this order?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-[13px] mt-1" style={{ color: "#717182" }}>
+                This will permanently delete order {order.order_number} and all associated paperwork, timeline events, estimates, and change orders. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter className="mt-4 flex-row gap-2">
+            <AlertDialogCancel className="flex-1 mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteOrderMutation.mutate()}
+              className="flex-1 active:scale-[0.97] transition-transform"
+              style={{ backgroundColor: "#D4183D", color: "#fff" }}
+              disabled={deleteOrderMutation.isPending}
+            >
+              {deleteOrderMutation.isPending ? "Deleting…" : "Delete order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
