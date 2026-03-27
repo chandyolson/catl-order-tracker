@@ -130,10 +130,8 @@ export default function EditOrder() {
   const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
   const [buildShorthand, setBuildShorthand] = useState("");
   const [buildShorthandManual, setBuildShorthandManual] = useState(true); // start manual for edit
-  const [customerPrice, setCustomerPrice] = useState("");
-  const [customerPriceManual, setCustomerPriceManual] = useState(true);
-  const [ourCost, setOurCost] = useState("");
-  const [ourCostManual, setOurCostManual] = useState(true);
+  const [discountType, setDiscountType] = useState<"$" | "%">("$");
+  const [discountAmount, setDiscountAmount] = useState("");
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
@@ -240,8 +238,8 @@ export default function EditOrder() {
     setManufacturerId(o.manufacturer_id || "");
     setBaseModelId(o.base_model_id || "");
     setBuildShorthand(o.build_shorthand || "");
-    setCustomerPrice(o.customer_price ? String(o.customer_price) : "");
-    setOurCost(o.our_cost ? String(o.our_cost) : "");
+    setDiscountType(((o as any).discount_type as "$" | "%") || "$");
+    setDiscountAmount((o as any).discount_amount ? String((o as any).discount_amount) : "");
     setFreightEstimate(o.freight_estimate ? String(o.freight_estimate) : "");
     setCatlNumber(o.catl_number || "");
     setSerialNumber(o.serial_number || "");
@@ -428,18 +426,35 @@ export default function EditOrder() {
     return total;
   }, [selectedBaseModel, selectedOptionsList]);
 
-  // ─── Handlers ─────────────────────────────────────────
+  const discountValue = useMemo(() => {
+    const amt = parseFloat(discountAmount) || 0;
+    if (amt <= 0) return 0;
+    if (discountType === "%") return Math.round(calcRetail * amt / 100 * 100) / 100;
+    return amt;
+  }, [discountAmount, discountType, calcRetail]);
+
+  const customerPrice = calcRetail - discountValue;
+  const ourCost = calcCost;
+
+  const margin = useMemo(() => {
+    if (customerPrice <= 0 || ourCost <= 0) return null;
+    const amount = customerPrice - ourCost;
+    const percent = (amount / customerPrice) * 100;
+    return { amount, percent };
+  }, [customerPrice, ourCost]);
+  const marginColor = margin ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D" : undefined;
+
   function handleManufacturerChange(mid: string) {
     setManufacturerId(mid); setBaseModelId(""); setQuickBuildId("");
     setSelections(new Map()); setPickOneSelections(new Map());
     setPivotType(""); setPivotSide("");
-    setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+    setBuildShorthandManual(false);
   }
 
   function handleBaseModelChange(mid: string) {
     setBaseModelId(mid); setSelections(new Map()); setPickOneSelections(new Map());
     setPivotType(""); setPivotSide(""); setQuickBuildId("");
-    setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+    setBuildShorthandManual(false);
   }
 
   function handleQuickBuildChange(qid: string) {
@@ -451,7 +466,7 @@ export default function EditOrder() {
       const newSel = new Map<string, OptionSelection>();
       for (const optId of qb.included_option_ids || []) newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
       setSelections(newSel); setPickOneSelections(new Map());
-      setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+      setBuildShorthandManual(false);
     }
   }
 
@@ -526,14 +541,6 @@ export default function EditOrder() {
     }
   }
 
-  // Margin
-  const margin = useMemo(() => {
-    const p = parseFloat(customerPrice), c = parseFloat(ourCost);
-    if (!p || !c || p <= 0 || c <= 0) return null;
-    return { amount: p - c, percent: ((p - c) / p) * 100 };
-  }, [customerPrice, ourCost]);
-  const marginColor = margin ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D" : undefined;
-
   // Customer
   const filteredCustomers = useMemo(() => {
     if (!customersQuery.data) return [];
@@ -566,8 +573,8 @@ export default function EditOrder() {
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
     if (!buildShorthand.trim()) e.buildShorthand = "Required";
-    if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Must be > 0";
-    if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Must be > 0";
+    if (customerPrice <= 0) e.customerPrice = "Must be > 0";
+    if (ourCost <= 0) e.ourCost = "Must be > 0";
     const controlsSelId = pickOneSelections.get("Controls");
     if (controlsSelId) {
       const copt = optionsQuery.data?.find((o) => o.id === controlsSelId);
@@ -589,8 +596,8 @@ export default function EditOrder() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const priceNum = parseFloat(customerPrice);
-      const costNum = parseFloat(ourCost);
+      const priceNum = customerPrice;
+      const costNum = ourCost;
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
@@ -614,6 +621,8 @@ export default function EditOrder() {
         build_description: notes || null,
         customer_price: priceNum,
         our_cost: costNum,
+        discount_type: discountType,
+        discount_amount: parseFloat(discountAmount) || 0,
         freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
         catl_number: catl_number || null,
         serial_number: serialNumber || null,
@@ -639,10 +648,10 @@ export default function EditOrder() {
         });
       }
 
-      if (customerPrice !== originalPrice || ourCost !== originalCost) {
+      if (String(customerPrice) !== originalPrice || String(ourCost) !== originalCost) {
         const parts: string[] = [];
-        if (customerPrice !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${priceNum.toLocaleString()}`);
-        if (ourCost !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${costNum.toLocaleString()}`);
+        if (String(customerPrice) !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${priceNum.toLocaleString()}`);
+        if (String(ourCost) !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${costNum.toLocaleString()}`);
         timelineInserts.push({
           order_id: id, event_type: "note",
           title: "Pricing updated", description: parts.join(". "),
@@ -985,30 +994,59 @@ export default function EditOrder() {
             style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }} />
         </FormRow>
 
+        {/* Pricing breakdown */}
         {selectedBaseModel && (
-          <div className="text-xs space-y-0.5 px-1" style={{ color: "#717182" }}>
-            <div>Base: ${fmtCurrency(selectedBaseModel.retail_price)}
-              {optionCount > 0 && <> + {optionCount} option{optionCount !== 1 ? "s" : ""}: ${fmtCurrency(optionRetailTotal)}</>}
-              {" = "}<span className="font-semibold text-foreground">${fmtCurrency(calcRetail)}</span>
+          <div className="mt-3 pt-3 space-y-2 overflow-hidden" style={{ borderTop: "1px solid #D4D4D0" }}>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "#1A1A1A" }}>Base model</span>
+              <span style={{ color: "#1A1A1A" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
+            </div>
+            {optionCount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span style={{ color: "#1A1A1A" }}>Options ({optionCount})</span>
+                <span style={{ color: "#1A1A1A" }}>${fmtCurrency(optionRetailTotal)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-medium pt-1" style={{ borderTop: "1px solid #D4D4D0" }}>
+              <span>Subtotal</span>
+              <span>${fmtCurrency(calcRetail)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-sm" style={{ color: "#1A1A1A" }}>Discount</span>
+              <div className="flex items-center gap-1.5">
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")}
+                  className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none" style={{ width: 60 }}>
+                  <option value="$">$</option>
+                  <option value="%">%</option>
+                </select>
+                <input type="text" inputMode="decimal" value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="0" className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none text-right"
+                  style={{ maxWidth: 120 }} />
+              </div>
+            </div>
+            <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid #D4D4D0" }}>
+              <div className="flex justify-between">
+                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>Customer Price</span>
+                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: "#717182" }}>Our Cost</span>
+                <span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span style={{ color: marginColor || "#717182" }}>Margin</span>
+                <span style={{ color: marginColor || "#717182" }}>
+                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-sm" style={{ color: "#717182" }}>Freight est.</span>
+                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
+              </div>
             </div>
           </div>
         )}
-
-        <SectionHeader title="Pricing" />
-        <FormRow label="Cust. Price" error={errors.customerPrice}>
-          <CurrencyInput value={customerPrice} onChange={(v) => { setCustomerPrice(v); setCustomerPriceManual(true); }} />
-        </FormRow>
-        <FormRow label="Our Cost" error={errors.ourCost}>
-          <CurrencyInput value={ourCost} onChange={(v) => { setOurCost(v); setOurCostManual(true); }} />
-        </FormRow>
-        <FormRow label="Margin">
-          <div className="py-2.5 text-sm font-semibold" style={{ color: marginColor }}>
-            {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-          </div>
-        </FormRow>
-        <FormRow label="Freight Est.">
-          <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
-        </FormRow>
 
         <SectionHeader title="Tracking" />
         <FormRow label="CATL #">
@@ -1124,14 +1162,13 @@ export default function EditOrder() {
       {/* Price Summary Bar */}
       <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 -mx-4 md:mx-0 md:rounded-xl md:border overflow-hidden">
         {selectedBaseModel ? (
-          <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
-            <div>Base: ${fmtCurrency(selectedBaseModel.retail_price)}
-              {optionCount > 0 && <> + {optionCount} option{optionCount !== 1 ? "s" : ""}: ${fmtCurrency(optionRetailTotal)}</>}
-              {" = "}<span className="font-semibold text-foreground">${fmtCurrency(calcRetail)}</span>
-            </div>
-            <div>Cost: ${fmtCurrency(calcCost)}
-              {margin && <> · Margin: <span style={{ color: marginColor }}>${fmtCurrency(margin.amount)} ({margin.percent.toFixed(1)}%)</span></>}
-            </div>
+          <div className="flex items-center justify-between text-sm mb-3 flex-wrap gap-1">
+            <span className="font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
+            {margin && (
+              <span className="text-xs font-semibold" style={{ color: marginColor }}>
+                {margin.percent.toFixed(1)}% margin
+              </span>
+            )}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground mb-3">Select a base model to see pricing</div>
