@@ -508,6 +508,8 @@ export type Database = {
           id: string
           inventory_location: string | null
           invoiced_date: string | null
+          linked_estimate_id: string | null
+          linked_order_id: string | null
           manufacturer_id: string | null
           margin_amount: number | null
           margin_percent: number | null
@@ -525,6 +527,7 @@ export type Database = {
           selected_options: Json | null
           serial_number: string | null
           so_received_date: string | null
+          source_type: string | null
           status: string
           subtotal: number | null
           updated_at: string | null
@@ -551,6 +554,8 @@ export type Database = {
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
+          linked_estimate_id?: string | null
+          linked_order_id?: string | null
           manufacturer_id?: string | null
           margin_amount?: number | null
           margin_percent?: number | null
@@ -568,6 +573,7 @@ export type Database = {
           selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
+          source_type?: string | null
           status?: string
           subtotal?: number | null
           updated_at?: string | null
@@ -594,6 +600,8 @@ export type Database = {
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
+          linked_estimate_id?: string | null
+          linked_order_id?: string | null
           manufacturer_id?: string | null
           margin_amount?: number | null
           margin_percent?: number | null
@@ -611,6 +619,7 @@ export type Database = {
           selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
+          source_type?: string | null
           status?: string
           subtotal?: number | null
           updated_at?: string | null
@@ -628,6 +637,20 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_linked_estimate_id_fkey"
+            columns: ["linked_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_linked_order_id_fkey"
+            columns: ["linked_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {
