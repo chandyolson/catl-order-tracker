@@ -648,19 +648,6 @@ export default function NewOrder() {
     setBuildShorthandManual(false);
   }
 
-  // Margin
-  const margin = useMemo(() => {
-    const price = parseFloat(customerPrice);
-    const cost = parseFloat(ourCost);
-    if (!price || !cost || price <= 0 || cost <= 0) return null;
-    const amount = price - cost;
-    const percent = (amount / price) * 100;
-    return { amount, percent };
-  }, [customerPrice, ourCost]);
-
-  const marginColor = margin
-    ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
-    : undefined;
 
   // Customer
   const filteredCustomers = useMemo(() => {
