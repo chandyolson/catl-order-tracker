@@ -596,8 +596,8 @@ export default function EditOrder() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const priceNum = parseFloat(customerPrice);
-      const costNum = parseFloat(ourCost);
+      const priceNum = customerPrice;
+      const costNum = ourCost;
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
