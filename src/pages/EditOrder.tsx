@@ -352,12 +352,20 @@ export default function EditOrder() {
   const selectedOptionsList = useMemo(() => {
     const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
     for (const [group, optId] of pickOneSelections) {
+      if (group === "Controls") continue;
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
-        const isPivot = opt.short_code === "PC" || opt.short_code === "PC-FB";
-        const pType = opt.short_code === "PC" ? "side_to_side" : opt.short_code === "PC-FB" ? "front_to_back" : undefined;
-        result.push({ option: opt, quantity: 1, left: 0, right: 0, ...(isPivot ? { pivotType: pType, pivotSide: pivotSide || undefined } : {}) });
+        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
       }
+    }
+    if (dualChecked) {
+      const dcOpt = optionsQuery.data?.find((o) => o.short_code === "DC");
+      if (dcOpt) result.push({ option: dcOpt, quantity: 1, left: 0, right: 0 });
+    }
+    if (pivotChecked) {
+      const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
+      const pcOpt = optionsQuery.data?.find((o) => o.short_code === pcCode);
+      if (pcOpt) result.push({ option: pcOpt, quantity: 1, left: 0, right: 0, pivotType: pivotType || undefined, pivotSide: pivotSide || undefined });
     }
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
@@ -368,7 +376,7 @@ export default function EditOrder() {
       if (qty > 0) result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
     }
     return result;
-  }, [selections, pickOneSelections, optionsQuery.data, pivotSide]);
+  }, [selections, pickOneSelections, optionsQuery.data, pivotSide, pivotType, dualChecked, pivotChecked]);
 
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
     if (isExtendedSelected) return null;

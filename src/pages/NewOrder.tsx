@@ -348,17 +348,26 @@ export default function NewOrder() {
   // All selected options for pricing/summary/submit
   const selectedOptionsList = useMemo(() => {
     const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
+    // Pick-one groups (exclude Controls — handled separately)
     for (const [group, optId] of pickOneSelections) {
+      if (group === "Controls") continue;
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
-        const isPivot = opt.short_code === "PC" || opt.short_code === "PC-FB";
-        const pType = opt.short_code === "PC" ? "side_to_side" : opt.short_code === "PC-FB" ? "front_to_back" : undefined;
-        result.push({
-          option: opt, quantity: 1, left: 0, right: 0,
-          ...(isPivot ? { pivotType: pType, pivotSide: pivotSide || undefined } : {}),
-        });
+        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
       }
     }
+    // Controls: Dual
+    if (dualChecked) {
+      const dcOpt = optionsQuery.data?.find((o) => o.short_code === "DC");
+      if (dcOpt) result.push({ option: dcOpt, quantity: 1, left: 0, right: 0 });
+    }
+    // Controls: Pivot
+    if (pivotChecked) {
+      const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
+      const pcOpt = optionsQuery.data?.find((o) => o.short_code === pcCode);
+      if (pcOpt) result.push({ option: pcOpt, quantity: 1, left: 0, right: 0, pivotType: pivotType || undefined, pivotSide: pivotSide || undefined });
+    }
+    // Selections map (side, simple, quantity)
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (!opt) continue;
@@ -374,7 +383,7 @@ export default function NewOrder() {
       }
     }
     return result;
-  }, [selections, pickOneSelections, optionsQuery.data, pivotSide]);
+  }, [selections, pickOneSelections, optionsQuery.data, pivotSide, pivotType, dualChecked, pivotChecked]);
 
   // Side conflict logic
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
