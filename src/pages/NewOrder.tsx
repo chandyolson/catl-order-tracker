@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatOptionPillLabel } from "@/lib/optionDisplay";
+import { formatOptionPillLabel, getOptionDisplayName } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = [
   "estimate", "approved", "ordered", "so_received", "in_production",
@@ -151,6 +151,8 @@ export default function NewOrder() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
+  const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
 
   // Queries
   const manufacturersQuery = useQuery({
@@ -299,12 +301,16 @@ export default function NewOrder() {
 
   // All selected options (for pricing, summary, submit)
   const selectedOptionsList = useMemo(() => {
-    const result: { option: FullOption; quantity: number; left: number; right: number }[] = [];
+    const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
     // pick_one selections
-    for (const [, optId] of pickOneSelections) {
+    for (const [group, optId] of pickOneSelections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
-        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
+        const isPivot = group === "Controls" && opt.name.toLowerCase().includes("pivot");
+        result.push({
+          option: opt, quantity: 1, left: 0, right: 0,
+          ...(isPivot ? { pivotType: pivotType || undefined, pivotSide: pivotSide || undefined } : {}),
+        });
       }
     }
     // Other selections
@@ -319,7 +325,7 @@ export default function NewOrder() {
       }
     }
     return result;
-  }, [selections, pickOneSelections, optionsQuery.data]);
+  }, [selections, pickOneSelections, optionsQuery.data, pivotType, pivotSide]);
 
   // Side conflict logic: WTD right blocks side exit right (non-extended only)
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
@@ -448,6 +454,8 @@ export default function NewOrder() {
     setQuickBuildId("");
     setSelections(new Map());
     setPickOneSelections(new Map());
+    setPivotType("");
+    setPivotSide("");
     setCustomerPriceManual(false);
     setOurCostManual(false);
     setBuildShorthandManual(false);
@@ -457,6 +465,8 @@ export default function NewOrder() {
     setBaseModelId(id);
     setSelections(new Map());
     setPickOneSelections(new Map());
+    setPivotType("");
+    setPivotSide("");
     setQuickBuildId("");
     setCustomerPriceManual(false);
     setOurCostManual(false);
@@ -547,6 +557,14 @@ export default function NewOrder() {
       else next.delete(group);
       return next;
     });
+    // Reset pivot state when Controls selection changes
+    if (group === "Controls") {
+      const opt = optionsQuery.data?.find((o) => o.id === optId);
+      if (!opt || !opt.name.toLowerCase().includes("pivot")) {
+        setPivotType("");
+        setPivotSide("");
+      }
+    }
     setCustomerPriceManual(false);
     setOurCostManual(false);
     setBuildShorthandManual(false);
@@ -606,6 +624,15 @@ export default function NewOrder() {
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
     if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Customer price must be greater than 0";
     if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Our cost must be greater than 0";
+    // Pivot validation
+    const controlsSelId = pickOneSelections.get("Controls");
+    if (controlsSelId) {
+      const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
+      if (controlsOpt?.name.toLowerCase().includes("pivot")) {
+        if (!pivotType) e.pivotType = "Select pivot type";
+        if (!pivotSide) e.pivotSide = "Select a side";
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -622,18 +649,21 @@ export default function NewOrder() {
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
+        const isPivot = s.pivotType != null;
         return {
           option_id: s.option.id,
           name: s.option.name,
           short_code: s.option.short_code,
           cost_price_each: s.option.cost_price,
           retail_price_each: s.option.retail_price,
-          sides: (() => {
-            const parts: string[] = [];
-            if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
-            if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
-            return parts.join(", ");
-          })(),
+          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide } : {
+            sides: (() => {
+              const parts: string[] = [];
+              if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
+              if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
+              return parts.join(", ");
+            })(),
+          }),
           quantity: qty,
           total_cost: s.option.cost_price * qty,
           total_retail: s.option.retail_price * qty,
@@ -693,8 +723,34 @@ export default function NewOrder() {
   const optionCount = selectedOptionsList.length;
   const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
 
-  // Render pick_one group
+  // Check if any overhead scales option is selected
+  const isOverheadScalesSelected = useMemo(() => {
+    const opts = optionsQuery.data || [];
+    const scalesOpts = opts.filter((o) =>
+      o.option_group === "Scales" && o.name.toLowerCase().includes("overhead")
+    );
+    return scalesOpts.some((o) => {
+      const groupSel = pickOneSelections.get("Scales");
+      return groupSel === o.id;
+    });
+  }, [optionsQuery.data, pickOneSelections]);
+
+  // Find "Pivot on Overhead Scales" option
+  const pivotOnScalesOption = useMemo(() =>
+    optionsQuery.data?.find((o) => o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")),
+    [optionsQuery.data]
+  );
+
+  const controlsSelectedId = pickOneSelections.get("Controls") || null;
+  const isPivotSelected = useMemo(() => {
+    if (!controlsSelectedId) return false;
+    const opt = optionsQuery.data?.find((o) => o.id === controlsSelectedId);
+    return opt?.name.toLowerCase().includes("pivot") ?? false;
+  }, [controlsSelectedId, optionsQuery.data]);
+
+  // Render pick_one group — special case for Controls
   function renderPickOneGroup(group: string, options: FullOption[]) {
+    if (group === "Controls") return renderControlsGroup(options);
     const selectedId = pickOneSelections.get(group) || null;
     const hasIncluded = options.some((o) => o.is_included);
     return (
@@ -713,7 +769,6 @@ export default function NewOrder() {
         )}
         {options.map((opt) => {
           const isSelected = selectedId === opt.id;
-          const priceLabel = opt.is_included ? "included" : `$${fmtCurrency(opt.retail_price)}`;
           return (
             <div key={opt.id}>
               <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
@@ -731,12 +786,6 @@ export default function NewOrder() {
                   <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
                 )}
               </label>
-              {/* Controls-specific: side picker for Pivot */}
-              {isSelected && group === "Controls" && opt.name.toLowerCase().includes("pivot") && (
-                <div className="ml-[26px] mt-1 mb-1 flex items-center gap-2">
-                  {renderControlsSidePicker(opt)}
-                </div>
-              )}
             </div>
           );
         })}
@@ -744,29 +793,77 @@ export default function NewOrder() {
     );
   }
 
-  // Controls side picker for Pivot
-  function renderControlsSidePicker(opt: FullOption) {
-    const sel = selections.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
-    const leftActive = sel.left > 0;
-    const rightActive = sel.right > 0;
+  // Controls group with pivot sub-selections
+  function renderControlsGroup(options: FullOption[]) {
+    const selectedId = pickOneSelections.get("Controls") || null;
+    const hasIncluded = options.some((o) => o.is_included);
+    // Filter out "Pivot on Overhead Scales" — it's rendered conditionally below
+    const mainOptions = options.filter((o) => !(o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")));
     return (
-      <div className="flex items-center gap-2">
-        <SidePill label="Left" active={leftActive} onClick={() => {
-          setSelections((prev) => {
-            const next = new Map(prev);
-            const cur = next.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
-            next.set(opt.id, { ...cur, left: cur.left > 0 ? 0 : 1, right: 0 });
-            return next;
-          });
-        }} />
-        <SidePill label="Right" active={rightActive} onClick={() => {
-          setSelections((prev) => {
-            const next = new Map(prev);
-            const cur = next.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
-            next.set(opt.id, { ...cur, right: cur.right > 0 ? 0 : 1, left: 0 });
-            return next;
-          });
-        }} />
+      <div className="space-y-1">
+        {hasIncluded ? null : (
+          <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+            <input type="radio" name="pickone-Controls" checked={selectedId === null} onChange={() => selectPickOne("Controls", null)} className="w-[18px] h-[18px] accent-catl-teal" />
+            <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
+          </label>
+        )}
+        {mainOptions.map((opt) => {
+          const isSelected = selectedId === opt.id;
+          const isPivot = opt.name.toLowerCase().includes("pivot");
+          const isDual = opt.name.toLowerCase().includes("dual");
+          return (
+            <div key={opt.id}>
+              <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+                <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
+                <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
+                  {opt.name}{opt.is_included ? " — included" : ""}
+                  {isDual ? " (both sides)" : ""}
+                </span>
+                {!opt.is_included && (
+                  <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+                )}
+              </label>
+              {/* Pivot sub-selections */}
+              {isSelected && isPivot && (
+                <div className="ml-[26px] mt-2 mb-2 p-3 rounded-lg border space-y-3" style={{ borderColor: "#D4D4D0" }}>
+                  <div>
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Pivot type:</p>
+                    <div className="flex items-center gap-2">
+                      <SidePill label="Side-to-Side" active={pivotType === "side_to_side"} onClick={() => setPivotType("side_to_side")} />
+                      <SidePill label="Front-to-Back" active={pivotType === "front_to_back"} onClick={() => setPivotType("front_to_back")} />
+                    </div>
+                    {errors.pivotType && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotType}</p>}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>
+                      {pivotType === "front_to_back" ? "Mounted on:" : "Dominant side:"}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <SidePill label="Left" active={pivotSide === "Left"} onClick={() => setPivotSide("Left")} />
+                      <SidePill label="Right" active={pivotSide === "Right"} onClick={() => setPivotSide("Right")} />
+                    </div>
+                    {errors.pivotSide && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotSide}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {/* Pivot on Overhead Scales — only when pivot + overhead scales */}
+        {isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && (
+          <div className="mt-2 border-t border-border pt-2">
+            <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+              <input
+                type="checkbox"
+                checked={selections.get(pivotOnScalesOption.id)?.selected ?? false}
+                onChange={() => toggleSimpleOption(pivotOnScalesOption.id)}
+                className="w-[18px] h-[18px] accent-catl-teal rounded"
+              />
+              <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.name}</span>
+              <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(pivotOnScalesOption.retail_price)}</span>
+            </label>
+          </div>
+        )}
       </div>
     );
   }
@@ -897,8 +994,21 @@ export default function NewOrder() {
     const pills: { label: string; variant: "base" | "standard" | "addon" }[] = [];
     if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
-    for (const { option, left, right } of selectedOptionsList) {
-      const label = formatOptionPillLabel(option.name, left, right);
+    for (const item of selectedOptionsList) {
+      const { option, left, right, pivotType: pt, pivotSide: ps } = item;
+      let label: string;
+      if (pt) {
+        // Pivot Controls with detail
+        const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
+        const parts = [getOptionDisplayName(option.name)];
+        if (typeLabel) parts.push(typeLabel);
+        if (ps) parts.push(ps);
+        label = parts.join(" · ");
+      } else if (option.name.toLowerCase().includes("dual control")) {
+        label = getOptionDisplayName(option.name);
+      } else {
+        label = formatOptionPillLabel(option.name, left, right);
+      }
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }
     return pills;

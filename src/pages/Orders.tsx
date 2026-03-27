@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, AlertTriangle, Package } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
-import { formatOptionPillLabel } from "@/lib/optionDisplay";
+import { formatSavedOptionPill } from "@/lib/optionDisplay";
 
 const FILTERS = [
   { label: "All", key: "all", statuses: [] },
@@ -206,18 +206,22 @@ export default function Orders() {
                 {/* Option pills */}
                 {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
-                    {(order.selected_options as any[]).map((opt: any, i: number) => (
-                      <span
-                        key={i}
-                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
-                        style={{
-                          backgroundColor: "rgba(85,186,170,0.15)",
-                          color: "#55BAAA",
-                        }}
-                      >
-                        {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
-                      </span>
-                    ))}
+                    {(order.selected_options as any[]).map((opt: any, i: number) => {
+                      const pillLabel = formatSavedOptionPill(opt);
+                      if (!pillLabel) return null;
+                      return (
+                        <span
+                          key={i}
+                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                          style={{
+                            backgroundColor: "rgba(85,186,170,0.15)",
+                            color: "#55BAAA",
+                          }}
+                        >
+                          {pillLabel}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
                 {/* Row 3 */}
