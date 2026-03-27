@@ -36,6 +36,45 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
     },
   });
 
+  const convertToOrderMutation = useMutation({
+    mutationFn: async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      // Update order status
+      const { error: orderErr } = await supabase.from("orders").update({
+        status: "ordered",
+        ordered_date: today,
+        approved_date: today,
+      }).eq("id", order.id);
+      if (orderErr) throw orderErr;
+
+      // Approve current estimate
+      const { error: estErr } = await supabase.from("estimates").update({
+        is_approved: true,
+        approved_date: today,
+      }).eq("order_id", order.id).eq("is_current", true);
+      if (estErr) throw estErr;
+
+      // Timeline entry
+      const { error: tlErr } = await supabase.from("order_timeline").insert({
+        order_id: order.id,
+        event_type: "status_change",
+        title: "Estimate approved and converted to order",
+        description: `Status changed from estimate to ordered. Ordered date set to ${today}.`,
+      });
+      if (tlErr) throw tlErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+      queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+      toast.success("Estimate converted to order");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to convert");
+    },
+  });
+
+  const isEstimate = order.source_type === "estimate" && order.status === "estimate";
+
   const customerDocs = paperwork.filter((d) => d.side === "customer");
   const vendorDocs = paperwork.filter((d) => d.side === "vendor");
   const customerComplete = customerDocs.filter((d) => d.status === "complete").length;
