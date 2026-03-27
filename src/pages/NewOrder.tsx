@@ -798,8 +798,8 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded"
           />
           <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
-            {opt.name}
-            {opt.allows_quantity && maxSide > 1 ? " — " : " — "}
+            {opt.name.replace(/\s*\(per sidegate\)/i, "")}
+            {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
         </label>
@@ -825,6 +825,9 @@ export default function NewOrder() {
                 }}
               />
             </div>
+            {totalQty === 0 && (
+              <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>
+            )}
             {rightConflict && (
               <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>
             )}
