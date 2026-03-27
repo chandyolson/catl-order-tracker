@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import NewOrderPicker from "@/components/NewOrderPicker";
 
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -51,6 +52,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const sidebar = (
     <div className="flex flex-col h-full">
@@ -66,8 +68,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div className="px-4 mb-4">
         <button
           onClick={() => {
-            navigate("/orders/new");
             setDrawerOpen(false);
+            setShowPicker(true);
           }}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-catl-gold text-catl-navy font-bold text-sm active:scale-[0.97] transition-transform"
         >
@@ -147,11 +149,12 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Mobile FAB */}
       <button
-        onClick={() => navigate("/orders/new")}
+        onClick={() => setShowPicker(true)}
         className="md:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-catl-gold text-catl-navy shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform"
       >
         <Plus size={28} />
       </button>
+      <NewOrderPicker open={showPicker} onClose={() => setShowPicker(false)} />
     </div>
   );
 }
