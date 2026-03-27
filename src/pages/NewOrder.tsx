@@ -994,8 +994,21 @@ export default function NewOrder() {
     const pills: { label: string; variant: "base" | "standard" | "addon" }[] = [];
     if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
-    for (const { option, left, right } of selectedOptionsList) {
-      const label = formatOptionPillLabel(option.name, left, right);
+    for (const item of selectedOptionsList) {
+      const { option, left, right, pivotType: pt, pivotSide: ps } = item;
+      let label: string;
+      if (pt) {
+        // Pivot Controls with detail
+        const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
+        const parts = [getOptionDisplayName(option.name)];
+        if (typeLabel) parts.push(typeLabel);
+        if (ps) parts.push(ps);
+        label = parts.join(" · ");
+      } else if (option.name.toLowerCase().includes("dual control")) {
+        label = getOptionDisplayName(option.name);
+      } else {
+        label = formatOptionPillLabel(option.name, left, right);
+      }
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }
     return pills;
