@@ -5,15 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, AlertTriangle, Package } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import NewOrderPicker from "@/components/NewOrderPicker";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 
 const FILTERS = [
-  { label: "All", key: "all", statuses: [] },
-  { label: "Estimates", key: "estimates", statuses: ["estimate", "approved"] },
-  { label: "Ordered", key: "ordered", statuses: ["ordered", "so_received"] },
-  { label: "In Production", key: "production", statuses: ["in_production"] },
-  { label: "Ready to Invoice", key: "ready", statuses: ["completed", "freight_arranged", "delivered"] },
-  { label: "Closed", key: "closed", statuses: ["invoiced", "paid", "closed"] },
+  { label: "All", key: "all", statuses: [], sourceType: null },
+  { label: "Estimates", key: "estimates", statuses: ["estimate", "approved"], sourceType: "estimate" },
+  { label: "Direct Orders", key: "direct", statuses: [], sourceType: "direct_order" },
+  { label: "In Production", key: "production", statuses: ["ordered", "so_received", "in_production"], sourceType: null },
+  { label: "Ready to Invoice", key: "ready", statuses: ["completed", "freight_arranged", "delivered"], sourceType: null },
+  { label: "Closed", key: "closed", statuses: ["invoiced", "paid", "closed"], sourceType: null },
 ] as const;
 
 const SORTS = [
@@ -31,13 +32,16 @@ export default function Orders() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortIdx, setSortIdx] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const filterStatuses = FILTERS.find((f) => f.key === activeFilter)?.statuses ?? [];
+  const activeFilterDef = FILTERS.find((f) => f.key === activeFilter);
+  const filterStatuses = activeFilterDef?.statuses ?? [];
+  const filterSourceType = activeFilterDef?.sourceType ?? null;
   const sort = SORTS[sortIdx];
 
   // Attention items lookup
@@ -79,6 +83,10 @@ export default function Orders() {
         query = query.in("status", filterStatuses as unknown as string[]);
       }
 
+      if (filterSourceType) {
+        query = query.eq("source_type", filterSourceType);
+      }
+
       if (sort.isCustomer) {
         query = query.order("customers(name)", { ascending: sort.asc });
       } else {
@@ -114,7 +122,7 @@ export default function Orders() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{totalCount} total</span>
           <button
-            onClick={() => navigate("/orders/new")}
+            onClick={() => setShowPicker(true)}
             className="w-10 h-10 rounded-full bg-catl-gold text-catl-navy flex items-center justify-center active:scale-[0.95] transition-transform"
           >
             <Plus size={20} />
@@ -176,7 +184,7 @@ export default function Orders() {
           <Package size={48} className="text-border mb-4" />
           <p className="text-base font-medium text-muted-foreground mb-4">No orders yet</p>
           <button
-            onClick={() => navigate("/orders/new")}
+            onClick={() => setShowPicker(true)}
             className="px-6 py-3 rounded-full bg-catl-gold text-catl-navy font-bold text-sm active:scale-[0.97] transition-transform"
           >
             Create your first order
@@ -199,7 +207,12 @@ export default function Orders() {
                   <span className={`text-[15px] font-semibold ${customer?.name ? '' : 'italic'}`} style={{ color: customer?.name ? "#F0F0F0" : "#717182" }}>
                     {customer?.name ?? "Unassigned"}
                   </span>
-                  <StatusBadge status={order.status} />
+                  <div className="flex flex-col items-end">
+                    <StatusBadge status={order.status} />
+                    {order.source_type === "direct_order" && (
+                      <span className="text-[9px] mt-0.5" style={{ color: "rgba(240,240,240,0.35)" }}>DIRECT</span>
+                    )}
+                  </div>
                 </div>
                 {/* Row 2 */}
                 <p className="text-[13px] font-medium text-catl-teal mt-0.5">{order.build_shorthand}</p>
@@ -267,6 +280,7 @@ export default function Orders() {
           </div>
         </div>
       )}
+      <NewOrderPicker open={showPicker} onClose={() => setShowPicker(false)} />
     </div>
   );
 }

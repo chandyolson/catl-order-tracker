@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
@@ -155,6 +155,9 @@ function QtyStepper({ value, min, max, onChange }: { value: number; min: number;
 
 export default function NewOrder() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orderType = searchParams.get("type") === "order" ? "order" : "estimate";
+  const isDirectOrder = orderType === "order";
   const queryClient = useQueryClient();
 
   const [manufacturerId, setManufacturerId] = useState("");
@@ -169,7 +172,7 @@ export default function NewOrder() {
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [status, setStatus] = useState("estimate");
+  const [status, setStatus] = useState(isDirectOrder ? "ordered" : "estimate");
   const [estimateDate, setEstimateDate] = useState<Date>(new Date());
   const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState("");
@@ -741,7 +744,7 @@ export default function NewOrder() {
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
         order_number: orderNumber,
-        customer_id: customerId || null,
+        customer_id: isDirectOrder ? null : (customerId || null),
         manufacturer_id: manufacturerId,
         base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null,
@@ -755,7 +758,9 @@ export default function NewOrder() {
         catl_number: catl_number || null,
         serial_number: serialNumber || null,
         status,
+        source_type: isDirectOrder ? "direct_order" : "estimate",
         estimate_date: format(estimateDate, "yyyy-MM-dd"),
+        ordered_date: isDirectOrder ? format(new Date(), "yyyy-MM-dd") : null,
         est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
         from_inventory: fromInventory,
         inventory_location: fromInventory ? inventoryLocation || null : null,
@@ -779,7 +784,7 @@ export default function NewOrder() {
       });
       if (estError) throw estError;
 
-      toast.success(`Order ${orderNumber} created`);
+      toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${orderNumber} created`);
       navigate(`/orders/${order.id}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to create order");
@@ -1147,7 +1152,7 @@ export default function NewOrder() {
         <button onClick={() => navigate(-1)} className="text-catl-teal p-1">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-[17px] font-bold text-foreground">New Order</h1>
+        <h1 className="text-[17px] font-bold text-foreground">{isDirectOrder ? "New order" : "New estimate"}</h1>
       </div>
 
       {/* Form card */}
@@ -1371,7 +1376,9 @@ export default function NewOrder() {
           </Popover>
         </FormRow>
 
-        {/* CUSTOMER */}
+        {/* CUSTOMER — hidden for direct orders */}
+        {!isDirectOrder && (
+        <>
         <SectionHeader title="Customer" />
         <p className="text-xs text-muted-foreground italic -mt-2 mb-3">Optional — can be assigned later</p>
 
@@ -1426,6 +1433,8 @@ export default function NewOrder() {
             </div>
           </div>
         )}
+        </>
+        )}
 
         {/* INVENTORY */}
         <button
@@ -1479,7 +1488,7 @@ export default function NewOrder() {
           disabled={submitting}
           className="w-full bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
         >
-          {submitting ? "Creating..." : "Create Order"}
+          {submitting ? "Creating..." : isDirectOrder ? "Create order" : "Create estimate"}
         </button>
       </div>
     </div>

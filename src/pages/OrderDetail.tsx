@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ChevronLeft, ChevronDown, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
+  ChevronLeft, ChevronDown, ChevronRight, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
   Circle, AlertCircle, Mail, Phone, MoreVertical, Trash2, AlertTriangle,
 } from "lucide-react";
 import {
@@ -66,6 +66,7 @@ export default function OrderDetail() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"timeline" | "documents" | "estimates" | "changes">("timeline");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
   const deleteOrderMutation = useMutation({
     mutationFn: async () => {
@@ -81,6 +82,9 @@ export default function OrderDetail() {
       toast.error("Failed to delete order: " + err.message);
     },
   });
+
+  // (conversion hooks moved below after order is declared)
+
   // ─── QUERIES ────────────────────────────────────────────
   const orderQuery = useQuery({
     queryKey: ["order", id],
@@ -156,6 +160,64 @@ export default function OrderDetail() {
   const order = orderQuery.data;
   const customer = order?.customers as any;
   const manufacturer = order?.manufacturers as any;
+
+  const isEstimate = order?.source_type === "estimate" && (order?.status === "estimate" || order?.status === "approved");
+
+  const convertToOrderMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").update({
+        status: "ordered",
+        ordered_date: format(new Date(), "yyyy-MM-dd"),
+      }).eq("id", id!);
+      if (error) throw error;
+      await supabase.from("order_timeline").insert({
+        order_id: id,
+        event_type: "status_change",
+        title: "Estimate converted to order",
+        description: `New order placed with ${manufacturer?.name || "manufacturer"}`,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+      queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
+      toast.success("Estimate converted to order");
+      setShowConvertModal(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const onOrderCountQuery = useQuery({
+    queryKey: ["on-order-count", id, order?.manufacturer_id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("source_type", "direct_order")
+        .is("customer_id", null)
+        .in("status", ["ordered", "so_received", "in_production"])
+        .eq("manufacturer_id", order?.manufacturer_id || "");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!order?.manufacturer_id && isEstimate,
+  });
+
+  const inventoryCountQuery = useQuery({
+    queryKey: ["inventory-count", id, order?.manufacturer_id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("source_type", "direct_order")
+        .is("customer_id", null)
+        .in("status", ["completed", "freight_arranged"])
+        .eq("from_inventory", true)
+        .eq("manufacturer_id", order?.manufacturer_id || "");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!order?.manufacturer_id && isEstimate,
+  });
 
   // ─── MARGIN ─────────────────────────────────────────────
   const margin = useMemo(() => {
@@ -246,7 +308,12 @@ export default function OrderDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <StatusBadge status={order.status} />
+            <div className="flex flex-col items-end">
+              <StatusBadge status={order.status} />
+              {order.source_type === "direct_order" && (
+                <span className="text-[9px] mt-0.5" style={{ color: "rgba(240,240,240,0.35)" }}>DIRECT</span>
+              )}
+            </div>
           </div>
         </div>
         {/* Option pills */}
@@ -274,6 +341,26 @@ export default function OrderDetail() {
           {order.order_number} · {fmtDate(order.estimate_date, true)}
         </p>
       </div>
+
+      {/* ─── CONVERT TO ORDER BAR ────────────────────────── */}
+      {isEstimate && (
+        <div
+          className="rounded-lg p-3 mb-5 flex items-center justify-between"
+          style={{ backgroundColor: "#E1F5EE", border: "0.5px solid #5DCAA5" }}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} style={{ color: "#1D9E75" }} />
+            <span className="text-[13px] font-medium" style={{ color: "#085041" }}>Ready to convert?</span>
+          </div>
+          <button
+            onClick={() => setShowConvertModal(true)}
+            className="px-4 py-1.5 rounded-full text-[13px] font-medium active:scale-[0.97] transition-transform"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+          >
+            Convert to order
+          </button>
+        </div>
+      )}
 
       {/* ─── KPI ROW ─────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2 mb-5">
@@ -383,6 +470,72 @@ export default function OrderDetail() {
             >
               {deleteOrderMutation.isPending ? "Deleting…" : "Delete order"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── CONVERT TO ORDER MODAL ─────────────────────── */}
+      <AlertDialog open={showConvertModal} onOpenChange={setShowConvertModal}>
+        <AlertDialogContent className="max-w-sm rounded-xl p-4">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-medium" style={{ color: "#1A1A1A" }}>
+              Convert to order
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs" style={{ color: "#717182" }}>
+              How do you want to fulfill this?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2 mt-3">
+            {/* Option 1 — Order new */}
+            <button
+              onClick={() => convertToOrderMutation.mutate()}
+              disabled={convertToOrderMutation.isPending}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#E1F5EE", border: "0.5px solid #5DCAA5" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#085041" }}>Order new from manufacturer</p>
+                <p className="text-[11px]" style={{ color: "#0F6E56" }}>
+                  Submit PO to {manufacturer?.name || "manufacturer"} for this exact build
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#5DCAA5" }} className="flex-shrink-0" />
+            </button>
+
+            {/* Option 2 — Assign to on-order */}
+            <button
+              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=on_order`); }}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#E6F1FB", border: "0.5px solid #85B7EB" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#0C447C" }}>Assign to equipment already on order</p>
+                <p className="text-[11px]" style={{ color: "#185FA5" }}>
+                  {onOrderCountQuery.data ?? "…"} compatible chutes currently being built
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#85B7EB" }} className="flex-shrink-0" />
+            </button>
+
+            {/* Option 3 — Sell from inventory */}
+            <button
+              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=inventory`); }}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#FAEEDA", border: "0.5px solid #EF9F27" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#633806" }}>Sell from inventory</p>
+                <p className="text-[11px]" style={{ color: "#854F0B" }}>
+                  {inventoryCountQuery.data ?? "…"} matching chutes in stock
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#EF9F27" }} className="flex-shrink-0" />
+            </button>
+          </div>
+
+          <AlertDialogFooter className="mt-3">
+            <AlertDialogCancel className="w-full mt-0">Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

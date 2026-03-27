@@ -15,6 +15,29 @@ export function useActiveOrdersCount() {
   });
 }
 
+export function useEstimateVsOrderCounts() {
+  return useQuery({
+    queryKey: ["estimate-vs-order-counts"],
+    queryFn: async () => {
+      const { count: estCount, error: e1 } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("source_type", "estimate")
+        .in("status", ["estimate", "approved"]);
+      if (e1) throw e1;
+
+      const { count: ordCount, error: e2 } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .not("status", "in", '("closed","paid")')
+        .not("source_type", "eq", "estimate");
+      if (e2) throw e2;
+
+      return { estimates: estCount ?? 0, orders: ordCount ?? 0 };
+    },
+  });
+}
+
 export function useAttentionItems() {
   return useQuery({
     queryKey: ["attention-items"],
