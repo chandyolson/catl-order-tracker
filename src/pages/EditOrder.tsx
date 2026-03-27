@@ -573,8 +573,8 @@ export default function EditOrder() {
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
     if (!buildShorthand.trim()) e.buildShorthand = "Required";
-    if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Must be > 0";
-    if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Must be > 0";
+    if (customerPrice <= 0) e.customerPrice = "Must be > 0";
+    if (ourCost <= 0) e.ourCost = "Must be > 0";
     const controlsSelId = pickOneSelections.get("Controls");
     if (controlsSelId) {
       const copt = optionsQuery.data?.find((o) => o.id === controlsSelId);
