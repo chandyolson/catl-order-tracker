@@ -543,6 +543,7 @@ export default function NewOrder() {
         )}
 
         <SectionHeader title="Build Summary" />
+        <FormRow label="Build Short" error={errors.buildShorthand}>
           <input
             value={buildShorthand}
             onChange={(e) => {
