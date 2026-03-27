@@ -712,7 +712,7 @@ export default function NewOrder() {
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
         order_number: orderNumber,
-        customer_id: isDirectOrder ? null : (customerId || null),
+        customer_id: customerId || null,
         manufacturer_id: manufacturerId,
         base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null,
@@ -1155,10 +1155,9 @@ export default function NewOrder() {
       {/* ─── Form Card ──────────────────────────────────────── */}
       <div className="bg-white border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
-        {/* ── CUSTOMER (estimates only — shown first) ─────────── */}
-        {!isDirectOrder && (
-          <>
-            <SectionHeader title="Customer" />
+        {/* ── CUSTOMER ─────────────────────────────────────── */}
+        <>
+          <SectionHeader title={isDirectOrder ? "Customer (optional)" : "Customer"} />
 
             <FormRow label="Customer">
               <div className="relative">
@@ -1211,8 +1210,7 @@ export default function NewOrder() {
                 </div>
               </div>
             )}
-          </>
-        )}
+        </>
 
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <SectionHeader title="Equipment" />
