@@ -378,26 +378,31 @@ export default function NewOrder() {
     return null;
   }, [isExtendedSelected, optionsQuery.data, selections]);
 
-  // When extended chute is deselected, remove extended-only options
+  // When extended chute is toggled, swap carrier/scales sets and remove incompatible selections
   useEffect(() => {
     if (!extendedChuteOption) return;
-    if (isExtendedSelected) return;
-    // Remove any extended-only options that are selected
     const opts = optionsQuery.data || [];
     let changed = false;
+    let removedStandard = false;
+    let removedExtended = false;
     const newSelections = new Map(selections);
     const newPickOne = new Map(pickOneSelections);
+
     for (const opt of opts) {
-      if (opt.requires_extended) {
-        if (newSelections.has(opt.id)) {
-          newSelections.delete(opt.id);
-          changed = true;
+      if (isExtendedSelected) {
+        // Extended is ON — remove standard carrier/scales selections
+        if (isStandardCarrierOrScales(opt)) {
+          if (newSelections.has(opt.id)) { newSelections.delete(opt.id); changed = true; removedStandard = true; }
+          for (const [group, selId] of newPickOne) {
+            if (selId === opt.id) { newPickOne.delete(group); changed = true; removedStandard = true; }
+          }
         }
-        // Check pick_one groups
-        for (const [group, selId] of newPickOne) {
-          if (selId === opt.id) {
-            newPickOne.delete(group);
-            changed = true;
+      } else {
+        // Extended is OFF — remove extended carrier/scales and other extended-only options
+        if (isExtendedCarrierOrScales(opt) || opt.requires_extended) {
+          if (newSelections.has(opt.id)) { newSelections.delete(opt.id); changed = true; if (isCarrierOption(opt) || isScalesOption(opt)) removedExtended = true; }
+          for (const [group, selId] of newPickOne) {
+            if (selId === opt.id) { newPickOne.delete(group); changed = true; if (isCarrierOption(opt) || isScalesOption(opt)) removedExtended = true; }
           }
         }
       }
@@ -405,7 +410,9 @@ export default function NewOrder() {
     if (changed) {
       setSelections(newSelections);
       setPickOneSelections(newPickOne);
-      toast.info("Extended options removed");
+      if (removedStandard) toast.info("Standard carrier removed — select an extended carrier");
+      else if (removedExtended) toast.info("Extended carrier removed");
+      else toast.info("Extended options removed");
     }
   }, [isExtendedSelected]);
 
