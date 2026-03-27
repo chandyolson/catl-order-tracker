@@ -1376,7 +1376,9 @@ export default function NewOrder() {
           </Popover>
         </FormRow>
 
-        {/* CUSTOMER */}
+        {/* CUSTOMER — hidden for direct orders */}
+        {!isDirectOrder && (
+        <>
         <SectionHeader title="Customer" />
         <p className="text-xs text-muted-foreground italic -mt-2 mb-3">Optional — can be assigned later</p>
 
