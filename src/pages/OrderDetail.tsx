@@ -468,6 +468,72 @@ export default function OrderDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ─── CONVERT TO ORDER MODAL ─────────────────────── */}
+      <AlertDialog open={showConvertModal} onOpenChange={setShowConvertModal}>
+        <AlertDialogContent className="max-w-sm rounded-xl p-4">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-medium" style={{ color: "#1A1A1A" }}>
+              Convert to order
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs" style={{ color: "#717182" }}>
+              How do you want to fulfill this?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2 mt-3">
+            {/* Option 1 — Order new */}
+            <button
+              onClick={() => convertToOrderMutation.mutate()}
+              disabled={convertToOrderMutation.isPending}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#E1F5EE", border: "0.5px solid #5DCAA5" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#085041" }}>Order new from manufacturer</p>
+                <p className="text-[11px]" style={{ color: "#0F6E56" }}>
+                  Submit PO to {manufacturer?.name || "manufacturer"} for this exact build
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#5DCAA5" }} className="flex-shrink-0" />
+            </button>
+
+            {/* Option 2 — Assign to on-order */}
+            <button
+              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=on_order`); }}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#E6F1FB", border: "0.5px solid #85B7EB" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#0C447C" }}>Assign to equipment already on order</p>
+                <p className="text-[11px]" style={{ color: "#185FA5" }}>
+                  {onOrderCountQuery.data ?? "…"} compatible chutes currently being built
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#85B7EB" }} className="flex-shrink-0" />
+            </button>
+
+            {/* Option 3 — Sell from inventory */}
+            <button
+              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=inventory`); }}
+              className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#FAEEDA", border: "0.5px solid #EF9F27" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: "#633806" }}>Sell from inventory</p>
+                <p className="text-[11px]" style={{ color: "#854F0B" }}>
+                  {inventoryCountQuery.data ?? "…"} matching chutes in stock
+                </p>
+              </div>
+              <ChevronRight size={16} style={{ color: "#EF9F27" }} className="flex-shrink-0" />
+            </button>
+          </div>
+
+          <AlertDialogFooter className="mt-3">
+            <AlertDialogCancel className="w-full mt-0">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
