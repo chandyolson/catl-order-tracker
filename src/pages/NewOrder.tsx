@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatOptionPillLabel, getOptionDisplayName } from "@/lib/optionDisplay";
+import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = [
   "estimate", "approved", "ordered", "so_received", "in_production",
@@ -24,6 +24,7 @@ const GROUP_ORDER = [
 type FullOption = {
   id: string;
   name: string;
+  display_name: string | null;
   short_code: string;
   option_group: string | null;
   retail_price: number;
@@ -229,7 +230,7 @@ export default function NewOrder() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("model_options")
-        .select("id, name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included")
+        .select("id, name, display_name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included")
         .eq("manufacturer_id", manufacturerId)
         .eq("is_active", true)
         .order("option_group").order("sort_order");
@@ -744,6 +745,7 @@ export default function NewOrder() {
         const isPivot = s.pivotType != null;
         return {
           option_id: s.option.id,
+          display_name: s.option.display_name || s.option.name,
           name: s.option.name,
           short_code: s.option.short_code,
           cost_price_each: s.option.cost_price,
@@ -849,7 +851,7 @@ export default function NewOrder() {
           <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
             <input type="radio" name={`pickone-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-              {opt.name}{opt.is_included ? " — included" : ""}
+              {opt.display_name || opt.name}{opt.is_included ? " — included" : ""}
             </span>
             {!opt.is_included && (
               <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
@@ -881,7 +883,7 @@ export default function NewOrder() {
               <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
                 <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
                 <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-                  {opt.name}{opt.is_included ? " — included" : ""}
+                  {opt.display_name || opt.name}{opt.is_included ? " — included" : ""}
                   {isDual ? " (both sides)" : ""}
                 </span>
                 {!opt.is_included && (
@@ -952,7 +954,7 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
           />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {opt.name.replace(/\s*\(per sidegate\)/i, "")}
+            {(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")}
             {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
@@ -1040,7 +1042,7 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
           />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {opt.name}
+            {opt.display_name || opt.name}
             {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
@@ -1080,7 +1082,7 @@ export default function NewOrder() {
           onChange={() => toggleSimpleOption(opt.id)}
           className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
         />
-        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name}</span>
+        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
         <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
       </label>
     );
@@ -1115,21 +1117,17 @@ export default function NewOrder() {
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
     for (const item of selectedOptionsList) {
       const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
+      const dn = option.display_name || option.name;
       let label: string;
       if (pt) {
         const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
-        const parts = [getOptionDisplayName(option.name)];
-        if (typeLabel) parts.push(typeLabel);
-        if (ps) parts.push(ps);
-        label = parts.join(" · ");
-      } else if (option.name.toLowerCase().includes("dual control")) {
-        label = getOptionDisplayName(option.name);
+        label = [dn, typeLabel, ps].filter(Boolean).join(" · ");
       } else if (left > 0 || right > 0) {
-        label = formatOptionPillLabel(option.name, left, right);
+        label = formatOptionPillLabel(dn, left, right);
       } else if (quantity > 1) {
-        label = `${getOptionDisplayName(option.name)} ×${quantity}`;
+        label = `${dn} ×${quantity}`;
       } else {
-        label = getOptionDisplayName(option.name);
+        label = dn;
       }
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }

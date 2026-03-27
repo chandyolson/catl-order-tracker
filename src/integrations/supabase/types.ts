@@ -367,6 +367,7 @@ export type Database = {
           conflicts_with: string[] | null
           cost_price: number
           created_at: string | null
+          display_name: string | null
           id: string
           is_active: boolean | null
           is_included: boolean | null
@@ -391,6 +392,7 @@ export type Database = {
           conflicts_with?: string[] | null
           cost_price: number
           created_at?: string | null
+          display_name?: string | null
           id?: string
           is_active?: boolean | null
           is_included?: boolean | null
@@ -415,6 +417,7 @@ export type Database = {
           conflicts_with?: string[] | null
           cost_price?: number
           created_at?: string | null
+          display_name?: string | null
           id?: string
           is_active?: boolean | null
           is_included?: boolean | null

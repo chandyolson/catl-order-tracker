@@ -17,7 +17,7 @@ import { format, differenceInDays } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatSavedOptionPill, getOptionDisplayName } from "@/lib/optionDisplay";
+import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 
 const DOC_NAMES: Record<string, string> = {
@@ -704,7 +704,7 @@ function EstimateCard({ estimate }: { estimate: any }) {
         <div className="mt-2 space-y-1">
           {lineItems.map((item: any, i: number) => (
             <div key={i} className="flex justify-between text-xs text-foreground">
-              <span>{item.name ? getOptionDisplayName(item.name) : item.short_code || "Item"}</span>
+              <span>{item.display_name || item.name || item.short_code || "Item"}</span>
               <span>{fmtCurrency(item.retail_price)}</span>
             </div>
           ))}
