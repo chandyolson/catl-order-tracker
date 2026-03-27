@@ -994,30 +994,59 @@ export default function EditOrder() {
             style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }} />
         </FormRow>
 
+        {/* Pricing breakdown */}
         {selectedBaseModel && (
-          <div className="text-xs space-y-0.5 px-1" style={{ color: "#717182" }}>
-            <div>Base: ${fmtCurrency(selectedBaseModel.retail_price)}
-              {optionCount > 0 && <> + {optionCount} option{optionCount !== 1 ? "s" : ""}: ${fmtCurrency(optionRetailTotal)}</>}
-              {" = "}<span className="font-semibold text-foreground">${fmtCurrency(calcRetail)}</span>
+          <div className="mt-3 pt-3 space-y-2 overflow-hidden" style={{ borderTop: "1px solid #D4D4D0" }}>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "#1A1A1A" }}>Base model</span>
+              <span style={{ color: "#1A1A1A" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
+            </div>
+            {optionCount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span style={{ color: "#1A1A1A" }}>Options ({optionCount})</span>
+                <span style={{ color: "#1A1A1A" }}>${fmtCurrency(optionRetailTotal)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-medium pt-1" style={{ borderTop: "1px solid #D4D4D0" }}>
+              <span>Subtotal</span>
+              <span>${fmtCurrency(calcRetail)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-sm" style={{ color: "#1A1A1A" }}>Discount</span>
+              <div className="flex items-center gap-1.5">
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")}
+                  className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none" style={{ width: 60 }}>
+                  <option value="$">$</option>
+                  <option value="%">%</option>
+                </select>
+                <input type="text" inputMode="decimal" value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="0" className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none text-right"
+                  style={{ maxWidth: 120 }} />
+              </div>
+            </div>
+            <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid #D4D4D0" }}>
+              <div className="flex justify-between">
+                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>Customer Price</span>
+                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: "#717182" }}>Our Cost</span>
+                <span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span style={{ color: marginColor || "#717182" }}>Margin</span>
+                <span style={{ color: marginColor || "#717182" }}>
+                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-sm" style={{ color: "#717182" }}>Freight est.</span>
+                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
+              </div>
             </div>
           </div>
         )}
-
-        <SectionHeader title="Pricing" />
-        <FormRow label="Cust. Price" error={errors.customerPrice}>
-          <CurrencyInput value={customerPrice} onChange={(v) => { setCustomerPrice(v); setCustomerPriceManual(true); }} />
-        </FormRow>
-        <FormRow label="Our Cost" error={errors.ourCost}>
-          <CurrencyInput value={ourCost} onChange={(v) => { setOurCost(v); setOurCostManual(true); }} />
-        </FormRow>
-        <FormRow label="Margin">
-          <div className="py-2.5 text-sm font-semibold" style={{ color: marginColor }}>
-            {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-          </div>
-        </FormRow>
-        <FormRow label="Freight Est.">
-          <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
-        </FormRow>
 
         <SectionHeader title="Tracking" />
         <FormRow label="CATL #">
