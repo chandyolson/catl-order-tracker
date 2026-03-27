@@ -41,7 +41,7 @@ function FormRow({ label, error, children, narrow }: { label: string; error?: st
 
 function CurrencyInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold">
+    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold max-w-[180px] sm:max-w-[180px]">
       <span className="pl-3 text-muted-foreground text-sm font-medium">$</span>
       <input
         type="text"
@@ -476,7 +476,7 @@ export default function NewOrder() {
       </div>
 
       {/* Form card */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4 max-w-[600px]">
 
         {/* SECTION 1: Equipment */}
         <SectionHeader title="Equipment" />
@@ -615,7 +615,7 @@ export default function NewOrder() {
           </select>
         </FormRow>
 
-        <FormRow label="Est. Date">
+        <FormRow label="Est. Date" narrow>
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estimateDate && "text-muted-foreground")}>
@@ -628,7 +628,7 @@ export default function NewOrder() {
           </Popover>
         </FormRow>
 
-        <FormRow label="Completion">
+        <FormRow label="Completion" narrow>
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estCompletionDate && "text-muted-foreground")}>
@@ -734,7 +734,7 @@ export default function NewOrder() {
                 </div>
               </FormRow>
               {fromInventory && (
-                <FormRow label="Location">
+                <FormRow label="Inv. Location">
                   <input
                     value={inventoryLocation}
                     onChange={(e) => setInventoryLocation(e.target.value)}
