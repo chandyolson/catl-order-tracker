@@ -601,13 +601,15 @@ export default function EditOrder() {
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
         const isPivot = s.pivotType != null;
+        const pivotDisplayName = s.pivotType === "side_to_side" ? "Pivot · Side-to-Side" : s.pivotType === "front_to_back" ? "Pivot · Front-to-Back" : undefined;
+        const sideLabel = s.pivotType === "side_to_side" ? "Dominant side" : s.pivotType === "front_to_back" ? "Mounted on" : undefined;
         return {
           option_id: s.option.id,
-          display_name: s.option.display_name || s.option.name,
+          display_name: pivotDisplayName || s.option.display_name || s.option.name,
           name: s.option.name,
           short_code: s.option.short_code,
           cost_price_each: s.option.cost_price, retail_price_each: s.option.retail_price,
-          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide } : { left_qty: s.left, right_qty: s.right }),
+          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide, side_label: sideLabel } : { left_qty: s.left, right_qty: s.right }),
           quantity: qty, total_cost: s.option.cost_price * qty, total_retail: s.option.retail_price * qty,
         };
       });
