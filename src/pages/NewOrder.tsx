@@ -527,9 +527,9 @@ export default function NewOrder() {
           </FormRow>
         )}
 
+        <SectionHeader title="Options" subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined} />
         {groupedOptions.length > 0 && (
-          <FormRow label="Options">
-            <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
+          <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
               {groupedOptions.map(([group, opts]) => (
                 <OptionGroup
                   key={group}
