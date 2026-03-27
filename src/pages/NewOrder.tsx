@@ -744,7 +744,7 @@ export default function NewOrder() {
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
         order_number: orderNumber,
-        customer_id: customerId || null,
+        customer_id: isDirectOrder ? null : (customerId || null),
         manufacturer_id: manufacturerId,
         base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null,
@@ -758,7 +758,9 @@ export default function NewOrder() {
         catl_number: catl_number || null,
         serial_number: serialNumber || null,
         status,
+        source_type: isDirectOrder ? "direct_order" : "estimate",
         estimate_date: format(estimateDate, "yyyy-MM-dd"),
+        ordered_date: isDirectOrder ? format(new Date(), "yyyy-MM-dd") : null,
         est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
         from_inventory: fromInventory,
         inventory_location: fromInventory ? inventoryLocation || null : null,
@@ -782,7 +784,7 @@ export default function NewOrder() {
       });
       if (estError) throw estError;
 
-      toast.success(`Order ${orderNumber} created`);
+      toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${orderNumber} created`);
       navigate(`/orders/${order.id}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to create order");
