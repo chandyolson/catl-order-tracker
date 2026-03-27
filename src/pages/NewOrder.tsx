@@ -240,6 +240,18 @@ export default function NewOrder() {
     ? (selections.get(extendedChuteOption.id)?.selected ?? false)
     : false;
 
+  // Helpers to identify standard vs extended carrier/scales options
+  const isExtendedVariant = (opt: FullOption) =>
+    /\(ext(ended)?\)/i.test(opt.name) || opt.requires_extended;
+  const isCarrierOption = (opt: FullOption) =>
+    opt.option_group === "Carrier" || opt.name.toLowerCase().includes("carrier");
+  const isScalesOption = (opt: FullOption) =>
+    opt.option_group === "Scales" || opt.name.toLowerCase().includes("scales");
+  const isStandardCarrierOrScales = (opt: FullOption) =>
+    (isCarrierOption(opt) || isScalesOption(opt)) && !isExtendedVariant(opt);
+  const isExtendedCarrierOrScales = (opt: FullOption) =>
+    (isCarrierOption(opt) || isScalesOption(opt)) && isExtendedVariant(opt);
+
   // Filter options based on model restrictions, requires_extended, requires_options
   const visibleOptions = useMemo(() => {
     if (!optionsQuery.data) return [];
@@ -249,8 +261,14 @@ export default function NewOrder() {
       if (opt.model_restriction && opt.model_restriction.length > 0 && selectedModel) {
         if (!opt.model_restriction.includes(selectedModel.short_name)) return false;
       }
-      // Requires extended
-      if (opt.requires_extended && !isExtendedSelected) return false;
+      // Carrier/Scales extended toggle: show one set or the other, never both
+      if (isExtendedSelected) {
+        if (isStandardCarrierOrScales(opt)) return false; // hide standard when extended
+      } else {
+        if (isExtendedCarrierOrScales(opt)) return false; // hide extended when standard
+      }
+      // Requires extended (for non-carrier/scales options)
+      if (opt.requires_extended && !isExtendedSelected && !isCarrierOption(opt) && !isScalesOption(opt)) return false;
       // Requires other options
       if (opt.requires_options && opt.requires_options.length > 0) {
         const allRequired = opt.requires_options.every((reqId) => {
