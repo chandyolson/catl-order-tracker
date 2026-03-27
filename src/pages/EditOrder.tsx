@@ -710,7 +710,7 @@ export default function EditOrder() {
         {options.map((opt) => (
           <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
             <input type="radio" name={`pickone-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
-            <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name}{opt.is_included ? " — included" : ""}</span>
+            <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}{opt.is_included ? " — included" : ""}</span>
             {!opt.is_included && <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>}
           </label>
         ))}
@@ -738,7 +738,7 @@ export default function EditOrder() {
             <div key={opt.id}>
               <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
                 <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
-                <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name}{opt.is_included ? " — included" : ""}{isDual ? " (both sides)" : ""}</span>
+                <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}{opt.is_included ? " — included" : ""}{isDual ? " (both sides)" : ""}</span>
                 {!opt.is_included && <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>}
               </label>
               {isSelected && isPivot && (
@@ -791,7 +791,7 @@ export default function EditOrder() {
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
           <input type="checkbox" checked={isChecked} onChange={() => toggleSideOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {opt.name.replace(/\s*\(per sidegate\)/i, "")} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
+            {(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
         </label>
         {isChecked && (
@@ -832,7 +832,7 @@ export default function EditOrder() {
       <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
           <input type="checkbox" checked={isChecked} onChange={() => toggleQuantityOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span></span>
+          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span></span>
         </label>
         {isChecked && (
           <div className="ml-[26px] mt-1 mb-2 space-y-1">
