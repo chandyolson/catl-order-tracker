@@ -24,6 +24,7 @@ const GROUP_ORDER = [
 type FullOption = {
   id: string;
   name: string;
+  display_name: string | null;
   short_code: string;
   option_group: string | null;
   retail_price: number;
