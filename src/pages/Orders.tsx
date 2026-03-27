@@ -2,35 +2,52 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, AlertTriangle, Package } from "lucide-react";
+import { Search, Plus, Package } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 
-const FILTERS = [
-  { label: "All", key: "all", statuses: [], sourceType: null },
-  { label: "Estimates", key: "estimates", statuses: ["estimate", "approved"], sourceType: "estimate" },
-  { label: "Direct Orders", key: "direct", statuses: [], sourceType: "direct_order" },
-  { label: "In Production", key: "production", statuses: ["ordered", "so_received", "in_production"], sourceType: null },
-  { label: "Ready to Invoice", key: "ready", statuses: ["completed", "freight_arranged", "delivered"], sourceType: null },
-  { label: "Closed", key: "closed", statuses: ["invoiced", "paid", "closed"], sourceType: null },
-] as const;
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "estimate", label: "Estimate" },
+  { value: "approved", label: "Approved" },
+  { value: "ordered", label: "Ordered" },
+  { value: "so_received", label: "SO Received" },
+  { value: "in_production", label: "In Production" },
+  { value: "completed", label: "Completed" },
+  { value: "freight_arranged", label: "Freight Arranged" },
+  { value: "delivered", label: "Delivered" },
+  { value: "invoiced", label: "Invoiced" },
+  { value: "paid", label: "Paid" },
+  { value: "closed", label: "Closed" },
+];
 
 const SORTS = [
-  { label: "Newest first", col: "updated_at", asc: false, isCustomer: false },
-  { label: "Oldest first", col: "updated_at", asc: true, isCustomer: false },
+  { label: "Newest first", col: "updated_at", asc: false },
+  { label: "ETA soonest", col: "est_completion_date", asc: true },
   { label: "Customer A-Z", col: "customer_name", asc: true, isCustomer: true },
-  { label: "Price high-low", col: "customer_price", asc: false, isCustomer: false },
+  { label: "Price high-low", col: "customer_price", asc: false },
 ] as const;
 
 const PAGE_SIZE = 20;
+
+function fmtCurrency(n: number | null | undefined) {
+  if (n == null) return "$0";
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function fmtDate(d: string | null | undefined) {
+  if (!d) return "—";
+  try { return format(new Date(d + "T00:00:00"), "MMM d"); } catch { return d; }
+}
 
 export default function Orders() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [mfgFilter, setMfgFilter] = useState("all");
   const [sortIdx, setSortIdx] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
 
@@ -39,27 +56,33 @@ export default function Orders() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const activeFilterDef = FILTERS.find((f) => f.key === activeFilter);
-  const filterStatuses = activeFilterDef?.statuses ?? [];
-  const filterSourceType = activeFilterDef?.sourceType ?? null;
-  const sort = SORTS[sortIdx];
-
-  // Attention items lookup
-  const attentionQuery = useQuery({
-    queryKey: ["attention-items-map"],
+  const mfgQuery = useQuery({
+    queryKey: ["manufacturers_filter"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("attention_items").select("*");
+      const { data, error } = await supabase.from("manufacturers").select("id, name, short_name").order("name");
       if (error) throw error;
-      const map: Record<string, { title: string; attention_type: string }[]> = {};
-      for (const item of data ?? []) {
-        if (item.order_id) {
-          if (!map[item.order_id]) map[item.order_id] = [];
-          map[item.order_id].push({ title: item.title ?? "", attention_type: item.attention_type ?? "" });
-        }
-      }
+      return data;
+    },
+  });
+
+  // Paperwork counts per order
+  const paperworkQuery = useQuery({
+    queryKey: ["paperwork_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("paperwork").select("order_id, status");
+      if (error) throw error;
+      const map: Record<string, { total: number; complete: number }> = {};
+      (data || []).forEach((p: any) => {
+        if (!p.order_id) return;
+        if (!map[p.order_id]) map[p.order_id] = { total: 0, complete: 0 };
+        map[p.order_id].total++;
+        if (p.status === "complete") map[p.order_id].complete++;
+      });
       return map;
     },
   });
+
+  const sort = SORTS[sortIdx];
 
   const {
     data,
@@ -68,34 +91,33 @@ export default function Orders() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["orders-list", debouncedSearch, activeFilter, sortIdx],
+    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, sortIdx],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
-        .select("*, customers(name, address_city, address_state)", { count: "exact" });
+        .select("*, customers(name), manufacturers(name, short_name)", { count: "exact" });
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
         query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},customers.name.ilike.${s}`);
       }
 
-      if (filterStatuses.length > 0) {
-        query = query.in("status", filterStatuses as unknown as string[]);
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
       }
 
-      if (filterSourceType) {
-        query = query.eq("source_type", filterSourceType);
+      if (mfgFilter !== "all") {
+        query = query.eq("manufacturer_id", mfgFilter);
       }
 
-      if (sort.isCustomer) {
+      if ((sort as any).isCustomer) {
         query = query.order("customers(name)", { ascending: sort.asc });
       } else {
         query = query.order(sort.col, { ascending: sort.asc, nullsFirst: false });
       }
 
       const from = pageParam * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-      query = query.range(from, to);
+      query = query.range(from, from + PAGE_SIZE - 1);
 
       const { data, count, error } = await query;
       if (error) throw error;
@@ -110,20 +132,19 @@ export default function Orders() {
 
   const allOrders = useMemo(() => data?.pages.flatMap((p) => p.rows) ?? [], [data]);
   const totalCount = data?.pages[0]?.total ?? 0;
-  const attentionMap = attentionQuery.data ?? {};
+  const paperworkMap = paperworkQuery.data ?? {};
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl mx-auto pb-24 overflow-x-hidden space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold text-catl-navy" style={{ letterSpacing: "-0.02em" }}>
-          Orders
-        </h1>
+        <h1 className="text-[20px] font-bold text-foreground">Orders</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{totalCount} total</span>
           <button
             onClick={() => setShowPicker(true)}
-            className="w-10 h-10 rounded-full bg-catl-gold text-catl-navy flex items-center justify-center active:scale-[0.95] transition-transform"
+            className="w-10 h-10 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
           >
             <Plus size={20} />
           </button>
@@ -131,39 +152,41 @@ export default function Orders() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex items-center gap-2 border border-border rounded-lg bg-card px-3 py-2">
+        <Search size={16} className="text-muted-foreground shrink-0" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search customer, order #, or build..."
-          className="w-full h-[46px] rounded-full border border-border bg-card pl-11 pr-4 text-foreground outline-none"
+          placeholder="Search order #, customer, or build…"
+          className="flex-1 bg-transparent text-sm outline-none"
         />
       </div>
 
-      {/* Filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto py-1 -mx-1 px-1 no-scrollbar">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeFilter === f.key
-                ? "bg-catl-gold text-catl-navy font-bold"
-                : "bg-card border border-border text-muted-foreground"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Sort */}
-      <div className="flex justify-end">
+      {/* Filters & Sort */}
+      <div className="flex gap-2 flex-wrap">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          value={mfgFilter}
+          onChange={(e) => setMfgFilter(e.target.value)}
+          className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none"
+        >
+          <option value="all">All Manufacturers</option>
+          {(mfgQuery.data || []).map((m: any) => (
+            <option key={m.id} value={m.id}>{m.short_name || m.name}</option>
+          ))}
+        </select>
         <select
           value={sortIdx}
           onChange={(e) => setSortIdx(Number(e.target.value))}
-          className="text-sm border border-border rounded-lg px-3 py-1.5 bg-card text-muted-foreground outline-none"
+          className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none ml-auto"
         >
           {SORTS.map((s, i) => (
             <option key={i} value={i}>{s.label}</option>
@@ -171,95 +194,137 @@ export default function Orders() {
         </select>
       </div>
 
-      {/* Order cards */}
+      {/* Order Cards */}
       {isLoading ? (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />
+            <div key={i} className="h-32 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
       ) : allOrders.length === 0 ? (
-        /* Empty state */
         <div className="flex flex-col items-center justify-center py-20">
           <Package size={48} className="text-border mb-4" />
           <p className="text-base font-medium text-muted-foreground mb-4">No orders yet</p>
           <button
             onClick={() => setShowPicker(true)}
-            className="px-6 py-3 rounded-full bg-catl-gold text-catl-navy font-bold text-sm active:scale-[0.97] transition-transform"
+            className="px-6 py-3 rounded-full font-bold text-sm active:scale-[0.97] transition-transform"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
           >
             Create your first order
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {allOrders.map((order) => {
-            const customer = order.customers as { name: string; address_city: string | null; address_state: string | null } | null;
-            const alerts = attentionMap[order.id];
+            const customer = order.customers as any;
+            const manufacturer = order.manufacturers as any;
+            const pw = paperworkMap[order.id];
+            const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
+            const margin = order.customer_price && order.our_cost
+              ? { amount: order.customer_price - order.our_cost, percent: ((order.customer_price - order.our_cost) / order.customer_price) * 100 }
+              : null;
+            const marginColor = margin
+              ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
+              : "#717182";
+
             return (
-              <button
+              <div
                 key={order.id}
                 onClick={() => navigate(`/orders/${order.id}`)}
-                className="w-full text-left rounded-xl p-3.5 active:scale-[0.98] transition-transform cursor-pointer"
-                style={{ backgroundColor: "#0E2646" }}
+                className="rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-border"
               >
-                {/* Row 1 */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-[15px] font-semibold ${customer?.name ? '' : 'italic'}`} style={{ color: customer?.name ? "#F0F0F0" : "#717182" }}>
-                    {customer?.name ?? "Unassigned"}
-                  </span>
-                  <div className="flex flex-col items-end">
+                {/* Card Header — Navy */}
+                <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[14px] font-bold" style={{ color: "#F0F0F0" }}>{order.order_number}</span>
                     <StatusBadge status={order.status} />
-                    {order.source_type === "direct_order" && (
-                      <span className="text-[9px] mt-0.5" style={{ color: "rgba(240,240,240,0.35)" }}>DIRECT</span>
-                    )}
                   </div>
-                </div>
-                {/* Row 2 */}
-                <p className="text-[13px] font-medium text-catl-teal mt-0.5">{order.build_shorthand}</p>
-                {/* Option pills */}
-                {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {(order.selected_options as any[]).map((opt: any, i: number) => {
-                      const pillLabel = formatSavedOptionPill(opt);
-                      if (!pillLabel) return null;
-                      return (
-                        <span
-                          key={i}
-                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
-                          style={{
-                            backgroundColor: "rgba(85,186,170,0.15)",
-                            color: "#55BAAA",
-                          }}
-                        >
-                          {pillLabel}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* Row 3 */}
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs" style={{ color: "rgba(240,240,240,0.45)" }}>
-                    {order.order_number}
-                    {order.estimate_date && ` · ${format(new Date(order.estimate_date + "T00:00:00"), "MMM d, yyyy")}`}
-                  </span>
                   {order.customer_price != null && (
-                    <span className="text-[15px] font-semibold" style={{ color: "#F0F0F0" }}>
-                      ${Number(order.customer_price).toLocaleString("en-US")}
+                    <span className="text-[17px] font-bold shrink-0" style={{ color: "#F3D12A" }}>
+                      {fmtCurrency(order.customer_price)}
                     </span>
                   )}
                 </div>
-                {/* Row 4 - attention */}
-                {alerts && alerts.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <AlertTriangle size={14} className="text-catl-gold flex-shrink-0" />
-                    <span className="text-xs font-medium text-catl-gold truncate">
-                      {alerts[0].title}
-                      {alerts.length > 1 && ` +${alerts.length - 1} more`}
+
+                {/* Card Body — White */}
+                <div className="px-4 py-3 bg-card space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-medium text-foreground">
+                      {customer?.name || <span className="italic text-muted-foreground">Unassigned</span>}
+                    </span>
+                    {manufacturer && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                        {manufacturer.short_name || manufacturer.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[13px]" style={{ color: "#55BAAA" }}>{order.build_shorthand}</p>
+
+                  {/* Option pills */}
+                  {options.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {options.map((opt: any, i: number) => {
+                        const label = formatSavedOptionPill(opt);
+                        if (!label) return null;
+                        const isAddon = !opt.is_included;
+                        return (
+                          <span
+                            key={i}
+                            className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                            style={
+                              isAddon
+                                ? { backgroundColor: "rgba(243,209,42,0.15)", color: "#8B7A0A" }
+                                : { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }
+                            }
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Key dates */}
+                  <div className="flex gap-4 text-[11px] text-muted-foreground">
+                    <span>Ordered: {fmtDate(order.ordered_date)}</span>
+                    <span>ETA: {fmtDate(order.est_completion_date)}</span>
+                    <span>Delivered: {fmtDate(order.delivered_date)}</span>
+                  </div>
+                </div>
+
+                {/* Card Footer — Cream */}
+                <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ backgroundColor: "#F5F5F0" }}>
+                  <div className="flex items-center gap-3">
+                    {/* Margin */}
+                    <span className="text-[12px] font-medium" style={{ color: marginColor }}>
+                      {margin ? `${margin.percent.toFixed(1)}% · ${fmtCurrency(margin.amount)}` : "No margin"}
+                    </span>
+                    {/* Source type */}
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={
+                        order.source_type === "estimate"
+                          ? { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }
+                          : { backgroundColor: "rgba(243,209,42,0.2)", color: "#8B7A0A" }
+                      }
+                    >
+                      {order.source_type === "estimate" ? "Estimate" : "Direct Order"}
                     </span>
                   </div>
-                )}
-              </button>
+                  {/* Paperwork indicator */}
+                  {pw && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">Docs: {pw.complete}/{pw.total}</span>
+                      <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pw.total > 0 ? (pw.complete / pw.total) * 100 : 0}%`, backgroundColor: "#27AE60" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             );
           })}
 
@@ -272,14 +337,16 @@ export default function Orders() {
               <button
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
-                className="w-full py-3 rounded-xl border border-border text-catl-teal font-semibold text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+                style={{ color: "#55BAAA" }}
               >
-                {isFetchingNextPage ? "Loading..." : "Load more"}
+                {isFetchingNextPage ? "Loading…" : "Load more"}
               </button>
             )}
           </div>
         </div>
       )}
+
       <NewOrderPicker open={showPicker} onClose={() => setShowPicker(false)} />
     </div>
   );
