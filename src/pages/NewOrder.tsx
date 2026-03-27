@@ -1488,7 +1488,7 @@ export default function NewOrder() {
           disabled={submitting}
           className="w-full bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
         >
-          {submitting ? "Creating..." : "Create Order"}
+          {submitting ? "Creating..." : isDirectOrder ? "Create order" : "Create estimate"}
         </button>
       </div>
     </div>
