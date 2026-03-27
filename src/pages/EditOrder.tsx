@@ -22,54 +22,33 @@ const GROUP_ORDER = [
 ];
 
 type FullOption = {
-  id: string;
-  name: string;
-  display_name: string | null;
-  short_code: string;
-  option_group: string | null;
-  retail_price: number;
-  cost_price: number;
-  selection_type: string | null;
-  allows_quantity: boolean | null;
-  max_per_side: number | null;
-  requires_extended: boolean | null;
-  requires_options: string[] | null;
-  conflicts_with: string[] | null;
-  model_restriction: string[] | null;
-  is_upgrade_of: string | null;
-  is_included: boolean | null;
-  sort_order: number | null;
+  id: string; name: string; display_name: string | null; short_code: string;
+  option_group: string | null; retail_price: number; cost_price: number;
+  selection_type: string | null; allows_quantity: boolean | null; max_per_side: number | null;
+  requires_extended: boolean | null; requires_options: string[] | null;
+  conflicts_with: string[] | null; model_restriction: string[] | null;
+  is_upgrade_of: string | null; is_included: boolean | null; sort_order: number | null;
 };
 
-type OptionSelection = {
-  optionId: string;
-  left: number;
-  right: number;
-  selected: boolean;
-  quantity: number;
-};
+type OptionSelection = { optionId: string; left: number; right: number; selected: boolean; quantity: number; };
 
 function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
   return (
     <div className="overflow-hidden">
       <div className="flex items-start gap-2">
-        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>{label}</label>
+        <label className="text-[13px] font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>{label}</label>
         <div className={cn("flex-1 min-w-0", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
       </div>
-      {error && <p className="text-xs mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
+      {error && <p className="text-[11px] mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
     </div>
   );
 }
 
 function CurrencyInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold md:max-w-[200px]">
+    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold" style={{ maxWidth: 140 }}>
       <span className="pl-3 text-muted-foreground text-sm font-medium">$</span>
-      <input type="text" inputMode="decimal" value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
-        placeholder={placeholder}
-        className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0"
-      />
+      <input type="text" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))} placeholder={placeholder} className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0 text-[16px]" />
     </div>
   );
 }
@@ -85,9 +64,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-function fmtCurrency(n: number) {
-  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
+function fmtCurrency(n: number) { return n.toLocaleString("en-US", { maximumFractionDigits: 0 }); }
 
 function SidePill({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
   return (
@@ -103,17 +80,9 @@ function SidePill({ label, active, disabled, onClick }: { label: string; active:
 function QtyStepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-1">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
-        className="flex items-center justify-center border rounded-md transition-colors"
-        style={{ width: 28, height: 28, borderColor: "#D4D4D0", opacity: value <= min ? 0.3 : 1 }}>
-        <Minus size={14} />
-      </button>
-      <span className="text-center font-semibold text-sm" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
-        className="flex items-center justify-center border rounded-md transition-colors"
-        style={{ width: 28, height: 28, borderColor: "#D4D4D0", opacity: value >= max ? 0.3 : 1 }}>
-        <Plus size={14} />
-      </button>
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="flex items-center justify-center border rounded-md transition-colors" style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value <= min ? "#D4D4D0" : "#1A1A1A" }}><Minus size={14} /></button>
+      <span className="text-center text-sm font-semibold" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="flex items-center justify-center border rounded-md transition-colors" style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value >= max ? "#D4D4D0" : "#1A1A1A" }}><Plus size={14} /></button>
     </div>
   );
 }
@@ -130,7 +99,7 @@ export default function EditOrder() {
   const [selections, setSelections] = useState<Map<string, OptionSelection>>(new Map());
   const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
   const [buildShorthand, setBuildShorthand] = useState("");
-  const [buildShorthandManual, setBuildShorthandManual] = useState(true); // start manual for edit
+  const [buildShorthandManual, setBuildShorthandManual] = useState(true);
   const [discountType, setDiscountType] = useState<"$" | "%">("$");
   const [discountAmount, setDiscountAmount] = useState("");
   const [freightEstimate, setFreightEstimate] = useState("");
@@ -155,21 +124,17 @@ export default function EditOrder() {
   const [dualChecked, setDualChecked] = useState(false);
   const [pivotChecked, setPivotChecked] = useState(false);
 
-  // Store original values for change detection
   const [originalStatus, setOriginalStatus] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [originalCost, setOriginalCost] = useState("");
   const [originalOptionsJson, setOriginalOptionsJson] = useState("");
 
-  // ─── Queries ───────────────────────────────────────────
+  /* ─── Queries ──────────────────────────────────────────────── */
+
   const orderQuery = useQuery({
     queryKey: ["order-edit", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, customers(name, phone, email)")
-        .eq("id", id!)
-        .single();
+      const { data, error } = await supabase.from("orders").select("*, customers(name, phone, email)").eq("id", id!).single();
       if (error) throw error;
       return data;
     },
@@ -178,22 +143,14 @@ export default function EditOrder() {
 
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("manufacturers").select("*").order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => { const { data, error } = await supabase.from("manufacturers").select("*").order("name"); if (error) throw error; return data; },
   });
 
   const baseModelsQuery = useQuery({
     queryKey: ["base_models", manufacturerId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("base_models").select("*")
-        .eq("manufacturer_id", manufacturerId).eq("is_active", true)
-        .order("sort_order").order("name");
-      if (error) throw error;
-      return data;
+      const { data, error } = await supabase.from("base_models").select("*").eq("manufacturer_id", manufacturerId).eq("is_active", true).order("sort_order").order("name");
+      if (error) throw error; return data;
     },
     enabled: !!manufacturerId,
   });
@@ -205,8 +162,7 @@ export default function EditOrder() {
       const ids = baseModelsQuery.data.map((m) => m.id);
       if (!ids.length) return [];
       const { data, error } = await supabase.from("quick_builds").select("*").in("base_model_id", ids).eq("is_active", true).order("sort_order");
-      if (error) throw error;
-      return data;
+      if (error) throw error; return data;
     },
     enabled: !!baseModelsQuery.data && baseModelsQuery.data.length > 0,
   });
@@ -214,27 +170,21 @@ export default function EditOrder() {
   const optionsQuery = useQuery({
     queryKey: ["model_options_full", manufacturerId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("model_options")
+      const { data, error } = await supabase.from("model_options")
         .select("id, name, display_name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included, sort_order")
-        .eq("manufacturer_id", manufacturerId).eq("is_active", true)
-        .order("option_group").order("sort_order");
-      if (error) throw error;
-      return data as FullOption[];
+        .eq("manufacturer_id", manufacturerId).eq("is_active", true).order("option_group").order("sort_order");
+      if (error) throw error; return data as FullOption[];
     },
     enabled: !!manufacturerId,
   });
 
   const customersQuery = useQuery({
     queryKey: ["customers"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => { const { data, error } = await supabase.from("customers").select("*").order("name"); if (error) throw error; return data; },
   });
 
-  // ─── Pre-fill from order ─────────────────────────────
+  /* ─── Pre-fill from order ──────────────────────────────────── */
+
   useEffect(() => {
     if (!orderQuery.data || initialized) return;
     const o = orderQuery.data;
@@ -255,43 +205,32 @@ export default function EditOrder() {
     setFromInventory(o.from_inventory || false);
     setInventoryLocation(o.inventory_location || "");
     setNotes(o.notes || "");
-
     setOriginalStatus(o.status || "");
     setOriginalPrice(o.customer_price ? String(o.customer_price) : "");
     setOriginalCost(o.our_cost ? String(o.our_cost) : "");
     setOriginalOptionsJson(JSON.stringify(o.selected_options || []));
-
     setInitialized(true);
   }, [orderQuery.data, initialized]);
 
-  // Pre-fill selections from saved selected_options once options are loaded
+  // Pre-fill selections from saved selected_options
   useEffect(() => {
     if (!initialized || !optionsQuery.data || !orderQuery.data) return;
     const savedOpts = (orderQuery.data.selected_options || []) as any[];
     if (savedOpts.length === 0) return;
-
     const newSel = new Map<string, OptionSelection>();
     const newPick = new Map<string, string>();
-
     for (const saved of savedOpts) {
       const opt = optionsQuery.data.find((o) => o.id === saved.option_id);
       if (!opt) continue;
-
-      // Controls: handle DC and PC/PC-FB via checkbox state
-      if (opt.short_code === "DC") {
-        setDualChecked(true);
-        continue;
-      }
+      if (opt.short_code === "DC") { setDualChecked(true); continue; }
       if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
         setPivotChecked(true);
         setPivotType(saved.pivot_type === "front_to_back" ? "front_to_back" : "side_to_side");
         setPivotSide((saved.side || "") as any);
         continue;
       }
-
       if (opt.selection_type === "pick_one") {
-        const group = opt.option_group || "Misc";
-        newPick.set(group, opt.id);
+        newPick.set(opt.option_group || "Misc", opt.id);
       } else if (opt.selection_type === "side") {
         const left = saved.left_qty ?? saved.left ?? 0;
         const right = saved.right_qty ?? saved.right ?? 0;
@@ -302,12 +241,13 @@ export default function EditOrder() {
         newSel.set(opt.id, { optionId: opt.id, left: 0, right: 0, selected: true, quantity: 1 });
       }
     }
-
     setSelections(newSel);
     setPickOneSelections(newPick);
   }, [initialized, optionsQuery.data]);
 
-  // ─── Derived ──────────────────────────────────────────
+  /* ─── Derived state ────────────────────────────────────────── */
+
+  const selectedManufacturer = manufacturersQuery.data?.find((m) => m.id === manufacturerId);
   const selectedBaseModel = baseModelsQuery.data?.find((m) => m.id === baseModelId);
   const selectedQuickBuild = quickBuildsQuery.data?.find((q) => q.id === quickBuildId);
 
@@ -334,23 +274,26 @@ export default function EditOrder() {
       else { if (isExtendedCarrierOrScales(opt)) return false; }
       if (opt.requires_extended && !isExtendedSelected && !isCarrierOption(opt) && !isScalesOption(opt)) return false;
       if (opt.requires_options && opt.requires_options.length > 0) {
-        const allRequired = opt.requires_options.every((reqId) => {
-          const sel = selections.get(reqId);
-          return sel && (sel.selected || sel.left > 0 || sel.right > 0);
+        const anySelected = opt.requires_options.some((reqCode) => {
+          const matchOpt = optionsQuery.data?.find((o) => o.short_code === reqCode || o.id === reqCode);
+          if (!matchOpt) return false;
+          const sel = selections.get(matchOpt.id);
+          if (sel && (sel.selected || sel.left > 0 || sel.right > 0)) return true;
+          for (const [, selId] of pickOneSelections) { if (selId === matchOpt.id) return true; }
+          if (matchOpt.short_code === "PC" && pivotChecked && pivotType === "side_to_side") return true;
+          if (matchOpt.short_code === "PC-FB" && pivotChecked && pivotType === "front_to_back") return true;
+          if (matchOpt.short_code === "DC" && dualChecked) return true;
+          return false;
         });
-        if (!allRequired) return false;
+        if (!anySelected) return false;
       }
       return true;
     });
-  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections]);
+  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections, pickOneSelections, pivotChecked, pivotType, dualChecked]);
 
   const groupedOptions = useMemo(() => {
     const groups = new Map<string, FullOption[]>();
-    for (const opt of visibleOptions) {
-      const g = opt.option_group || "Misc";
-      if (!groups.has(g)) groups.set(g, []);
-      groups.get(g)!.push(opt);
-    }
+    for (const opt of visibleOptions) { const g = opt.option_group || "Misc"; if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(opt); }
     const sorted: [string, FullOption[]][] = [];
     for (const g of GROUP_ORDER) { if (groups.has(g)) { sorted.push([g, groups.get(g)!]); groups.delete(g); } }
     for (const [g, opts] of groups) sorted.push([g, opts]);
@@ -362,14 +305,9 @@ export default function EditOrder() {
     for (const [group, optId] of pickOneSelections) {
       if (group === "Controls") continue;
       const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (opt && opt.is_included !== true) {
-        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
-      }
+      if (opt && opt.is_included !== true) result.push({ option: opt, quantity: 1, left: 0, right: 0 });
     }
-    if (dualChecked) {
-      const dcOpt = optionsQuery.data?.find((o) => o.short_code === "DC");
-      if (dcOpt) result.push({ option: dcOpt, quantity: 1, left: 0, right: 0 });
-    }
+    if (dualChecked) { const dcOpt = optionsQuery.data?.find((o) => o.short_code === "DC"); if (dcOpt) result.push({ option: dcOpt, quantity: 1, left: 0, right: 0 }); }
     if (pivotChecked) {
       const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
       const pcOpt = optionsQuery.data?.find((o) => o.short_code === pcCode);
@@ -378,9 +316,7 @@ export default function EditOrder() {
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (!opt || opt.selection_type === "pick_one") continue;
-      let qty: number;
-      if (sel.selected && sel.left === 0 && sel.right === 0) qty = sel.quantity || 1;
-      else qty = sel.left + sel.right;
+      let qty = (sel.selected && sel.left === 0 && sel.right === 0) ? (sel.quantity || 1) : sel.left + sel.right;
       if (qty > 0) result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
     }
     return result;
@@ -393,24 +329,22 @@ export default function EditOrder() {
     const isWTD = opt.short_code === "WD" || opt.name.toLowerCase().includes("walk-through");
     const isSideExit = opt.short_code === "SE" || opt.short_code === "SSH" || opt.short_code === "HE" ||
       opt.name.toLowerCase().includes("side exit") || opt.name.toLowerCase().includes("slam shut") || opt.name.toLowerCase().includes("hydraulic exit");
-    if (isWTD && side === "right") {
+    if (isWTD) {
       const exits = optionsQuery.data?.filter((o) => o.short_code === "SE" || o.short_code === "SSH" || o.short_code === "HE" || o.name.toLowerCase().includes("side exit") || o.name.toLowerCase().includes("slam shut") || o.name.toLowerCase().includes("hydraulic exit")) || [];
-      for (const ex of exits) { const exSel = selections.get(ex.id); if (exSel && exSel.right > 0) return `Right blocked — ${ex.name} on right`; }
+      for (const ex of exits) { const exSel = selections.get(ex.id); if (exSel && (side === "left" ? exSel.left : exSel.right) > 0) return `${side === "left" ? "Left" : "Right"} blocked — ${ex.display_name || ex.name} on ${side} (non-extended)`; }
     }
-    if (isSideExit && side === "right") {
+    if (isSideExit) {
       const wtds = optionsQuery.data?.filter((o) => o.short_code === "WD" || o.name.toLowerCase().includes("walk-through")) || [];
-      for (const w of wtds) { const wSel = selections.get(w.id); if (wSel && wSel.right > 0) return `Right blocked — walk-through door on right`; }
+      for (const w of wtds) { const wSel = selections.get(w.id); if (wSel && (side === "left" ? wSel.left : wSel.right) > 0) return `${side === "left" ? "Left" : "Right"} blocked — walk-through door on ${side} (non-extended)`; }
     }
     return null;
   }, [isExtendedSelected, optionsQuery.data, selections]);
 
-  // Extended chute toggle
   useEffect(() => {
     if (!extendedChuteOption) return;
     const opts = optionsQuery.data || [];
     let changed = false, removedStd = false, removedExt = false;
-    const newSel = new Map(selections);
-    const newPick = new Map(pickOneSelections);
+    const newSel = new Map(selections); const newPick = new Map(pickOneSelections);
     for (const opt of opts) {
       if (isExtendedSelected) {
         if (isStandardCarrierOrScales(opt)) {
@@ -425,14 +359,14 @@ export default function EditOrder() {
       }
     }
     if (changed) {
-      setSelections(newSel);
-      setPickOneSelections(newPick);
+      setSelections(newSel); setPickOneSelections(newPick);
       if (removedStd) toast.info("Standard carrier removed — select an extended carrier");
       else if (removedExt) toast.info("Extended carrier removed");
     }
   }, [isExtendedSelected]);
 
-  // Auto-calculate prices
+  /* ─── Pricing ──────────────────────────────────────────────── */
+
   const calcRetail = useMemo(() => {
     let total = selectedBaseModel?.retail_price || 0;
     for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
@@ -448,8 +382,7 @@ export default function EditOrder() {
   const discountValue = useMemo(() => {
     const amt = parseFloat(discountAmount) || 0;
     if (amt <= 0) return 0;
-    if (discountType === "%") return Math.round(calcRetail * amt / 100 * 100) / 100;
-    return amt;
+    return discountType === "%" ? Math.round(calcRetail * amt / 100 * 100) / 100 : amt;
   }, [discountAmount, discountType, calcRetail]);
 
   const customerPrice = calcRetail - discountValue;
@@ -458,10 +391,12 @@ export default function EditOrder() {
   const margin = useMemo(() => {
     if (customerPrice <= 0 || ourCost <= 0) return null;
     const amount = customerPrice - ourCost;
-    const percent = (amount / customerPrice) * 100;
-    return { amount, percent };
+    return { amount, percent: (amount / customerPrice) * 100 };
   }, [customerPrice, ourCost]);
-  const marginColor = margin ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D" : undefined;
+
+  const marginColor = margin ? margin.percent >= 15 ? "#55BAAA" : margin.percent >= 10 ? "#F3D12A" : "#E87461" : undefined;
+
+  /* ─── Handlers ─────────────────────────────────────────────── */
 
   function handleManufacturerChange(mid: string) {
     setManufacturerId(mid); setBaseModelId(""); setQuickBuildId("");
@@ -484,87 +419,48 @@ export default function EditOrder() {
       if (qb.base_model_id) setBaseModelId(qb.base_model_id);
       const newSel = new Map<string, OptionSelection>();
       for (const optId of qb.included_option_ids || []) newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-      setSelections(newSel); setPickOneSelections(new Map());
-      setBuildShorthandManual(false);
+      setSelections(newSel); setPickOneSelections(new Map()); setBuildShorthandManual(false);
     }
   }
 
   function toggleSimpleOption(optId: string) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing?.selected) next.delete(optId);
-      else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); if (next.get(optId)?.selected) next.delete(optId); else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 }); return next; });
   }
 
   function toggleQuantityOption(optId: string) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing?.selected) next.delete(optId);
-      else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); if (next.get(optId)?.selected) next.delete(optId); else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 }); return next; });
   }
 
   function setQuantityOptionQty(optId: string, qty: number) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing) next.set(optId, { ...existing, quantity: qty });
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId); if (e) next.set(optId, { ...e, quantity: qty }); return next; });
   }
 
   function toggleSideOption(optId: string) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId);
-      if (existing && (existing.left > 0 || existing.right > 0)) next.delete(optId);
-      else if (!existing) next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 });
-      else next.delete(optId);
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId); if (e && (e.left > 0 || e.right > 0)) next.delete(optId); else if (!e) next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }); else next.delete(optId); return next; });
   }
 
   function toggleSide(optId: string, side: "left" | "right") {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
-      const current = side === "left" ? existing.left : existing.right;
-      next.set(optId, { ...existing, [side]: current > 0 ? 0 : 1 });
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }; const cur = side === "left" ? e.left : e.right; next.set(optId, { ...e, [side]: cur > 0 ? 0 : 1 }); return next; });
   }
 
   function setSideQty(optId: string, side: "left" | "right", qty: number) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
-      next.set(optId, { ...existing, [side]: qty });
-      return next;
-    });
+    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }; next.set(optId, { ...e, [side]: qty }); return next; });
   }
 
   function selectPickOne(group: string, optId: string | null) {
-    setPickOneSelections((prev) => {
-      const next = new Map(prev);
-      if (optId) next.set(group, optId); else next.delete(group);
-      return next;
-    });
-    // Controls handled separately
+    setPickOneSelections((prev) => { const next = new Map(prev); if (optId) next.set(group, optId); else next.delete(group); return next; });
     setBuildShorthandManual(false);
   }
 
-  // Customer
+  /* ─── Customer ─────────────────────────────────────────────── */
+
   const filteredCustomers = useMemo(() => {
     if (!customersQuery.data) return [];
     if (!customerSearch) return customersQuery.data;
     const q = customerSearch.toLowerCase();
     return customersQuery.data.filter((c) => c.name.toLowerCase().includes(q));
   }, [customersQuery.data, customerSearch]);
+
   const selectedCustomer = customersQuery.data?.find((c) => c.id === customerId);
 
   const addCustomerMutation = useMutation({
@@ -573,8 +469,7 @@ export default function EditOrder() {
         name: newCustomer.name, email: newCustomer.email || null, phone: newCustomer.phone || null,
         address_city: newCustomer.city || null, address_state: newCustomer.state || null, customer_type: newCustomer.type || null,
       }).select().single();
-      if (error) throw error;
-      return data;
+      if (error) throw error; return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -584,14 +479,13 @@ export default function EditOrder() {
     },
   });
 
-  // Validate
+  /* ─── Validation ───────────────────────────────────────────── */
+
   function validate() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
     if (!buildShorthand.trim()) e.buildShorthand = "Required";
-    if (customerPrice <= 0) e.customerPrice = "Must be > 0";
-    if (ourCost <= 0) e.ourCost = "Must be > 0";
     if (pivotChecked) {
       if (!pivotType) e.pivotType = "Select pivot type";
       if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
@@ -600,28 +494,23 @@ export default function EditOrder() {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected) e[`side_${optId}`] = "Select a side";
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    setErrors(e); return Object.keys(e).length === 0;
   }
 
-  // Submit (UPDATE)
+  /* ─── Submit (UPDATE) ──────────────────────────────────────── */
+
   async function handleSubmit() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const priceNum = customerPrice;
-      const costNum = ourCost;
-
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
         const isPivot = s.pivotType != null;
         const pivotDisplayName = s.pivotType === "side_to_side" ? "Pivot · Side-to-Side" : s.pivotType === "front_to_back" ? "Pivot · Front-to-Back" : undefined;
         const sideLabel = s.pivotType === "side_to_side" ? "Dominant side" : s.pivotType === "front_to_back" ? "Mounted on" : undefined;
         return {
-          option_id: s.option.id,
-          display_name: pivotDisplayName || s.option.display_name || s.option.name,
-          name: s.option.name,
-          short_code: s.option.short_code,
+          option_id: s.option.id, display_name: pivotDisplayName || s.option.display_name || s.option.name,
+          name: s.option.name, short_code: s.option.short_code,
           cost_price_each: s.option.cost_price, retail_price_each: s.option.retail_price,
           ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide, side_label: sideLabel } : { left_qty: s.left, right_qty: s.right }),
           quantity: qty, total_cost: s.option.cost_price * qty, total_retail: s.option.retail_price * qty,
@@ -629,60 +518,35 @@ export default function EditOrder() {
       });
 
       const { error: updateError } = await supabase.from("orders").update({
-        manufacturer_id: manufacturerId,
-        base_model_id: baseModelId,
-        base_model: selectedBaseModel?.name || null,
-        build_shorthand: buildShorthand,
-        build_description: notes || null,
-        customer_price: priceNum,
-        our_cost: costNum,
-        discount_type: discountType,
-        discount_amount: parseFloat(discountAmount) || 0,
+        manufacturer_id: manufacturerId, base_model_id: baseModelId,
+        base_model: selectedBaseModel?.name || null, build_shorthand: buildShorthand,
+        build_description: notes || null, subtotal: calcRetail,
+        customer_price: customerPrice, our_cost: ourCost,
+        discount_type: discountType, discount_amount: parseFloat(discountAmount) || 0,
         freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
-        catl_number: catl_number || null,
-        serial_number: serialNumber || null,
-        status,
+        catl_number: catl_number || null, serial_number: serialNumber || null, status,
         estimate_date: format(estimateDate, "yyyy-MM-dd"),
         est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
-        from_inventory: fromInventory,
-        inventory_location: fromInventory ? inventoryLocation || null : null,
-        selected_options: selectedOptionsJson,
-        notes: notes || null,
-        customer_id: customerId || null,
+        from_inventory: fromInventory, inventory_location: fromInventory ? inventoryLocation || null : null,
+        selected_options: selectedOptionsJson, notes: notes || null, customer_id: customerId || null,
       }).eq("id", id!);
       if (updateError) throw updateError;
 
-      // Timeline entries for changes
+      // Timeline entries
       const timelineInserts: any[] = [];
-
       if (status !== originalStatus) {
-        timelineInserts.push({
-          order_id: id, event_type: "status_change",
-          title: `Status changed to ${status.replace(/_/g, " ")}`,
-          description: `Changed from ${originalStatus.replace(/_/g, " ")}`,
-        });
+        timelineInserts.push({ order_id: id, event_type: "status_change", title: `Status changed to ${status.replace(/_/g, " ")}`, description: `Changed from ${originalStatus.replace(/_/g, " ")}` });
       }
-
       if (String(customerPrice) !== originalPrice || String(ourCost) !== originalCost) {
         const parts: string[] = [];
-        if (String(customerPrice) !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${priceNum.toLocaleString()}`);
-        if (String(ourCost) !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${costNum.toLocaleString()}`);
-        timelineInserts.push({
-          order_id: id, event_type: "note",
-          title: "Pricing updated", description: parts.join(". "),
-        });
+        if (String(customerPrice) !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${customerPrice.toLocaleString()}`);
+        if (String(ourCost) !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${ourCost.toLocaleString()}`);
+        timelineInserts.push({ order_id: id, event_type: "note", title: "Pricing updated", description: parts.join(". ") });
       }
-
       if (JSON.stringify(selectedOptionsJson) !== originalOptionsJson) {
-        timelineInserts.push({
-          order_id: id, event_type: "note",
-          title: "Build updated", description: "Options modified",
-        });
+        timelineInserts.push({ order_id: id, event_type: "note", title: "Build updated", description: "Options modified" });
       }
-
-      if (timelineInserts.length > 0) {
-        await supabase.from("order_timeline").insert(timelineInserts);
-      }
+      if (timelineInserts.length > 0) await supabase.from("order_timeline").insert(timelineInserts);
 
       queryClient.invalidateQueries({ queryKey: ["order", id] });
       queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
@@ -696,7 +560,8 @@ export default function EditOrder() {
     }
   }
 
-  // Option counts
+  /* ─── Computed display values ──────────────────────────────── */
+
   const optionCount = selectedOptionsList.length;
   const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
 
@@ -711,9 +576,25 @@ export default function EditOrder() {
   );
 
   const isPivotSelected = pivotChecked;
-  const derivedPivotType = pivotType;
 
-  // ─── Render helpers (same as NewOrder) ─────────────────
+  const summaryPills = useMemo(() => {
+    const pills: { label: string; variant: "base" | "standard" | "addon"; optionId?: string }[] = [];
+    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
+    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
+    for (const item of selectedOptionsList) {
+      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
+      const dn = option.display_name || option.name;
+      let label: string;
+      if (pt) { label = [dn, pt === "side_to_side" ? "Side-to-Side" : "Front-to-Back", ps].filter(Boolean).join(" · "); }
+      else if (left > 0 || right > 0) { label = formatOptionPillLabel(dn, left, right); }
+      else if (quantity > 1) { label = `${dn} ×${quantity}`; }
+      else { label = dn; }
+      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon", optionId: option.id });
+    }
+    return pills;
+  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
+
+  /* ─── Render helpers ───────────────────────────────────────── */
 
   function renderPickOneGroup(group: string, options: FullOption[]) {
     if (group === "Controls") return renderControlsGroup(options);
@@ -723,13 +604,13 @@ export default function EditOrder() {
       <div className="space-y-1">
         {!hasIncluded && (
           <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="radio" name={`pickone-${group}`} checked={selectedId === null} onChange={() => selectPickOne(group, null)} className="w-[18px] h-[18px] accent-catl-teal" />
+            <input type="radio" name={`pickone-edit-${group}`} checked={selectedId === null} onChange={() => selectPickOne(group, null)} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
           </label>
         )}
         {options.map((opt) => (
           <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="radio" name={`pickone-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
+            <input type="radio" name={`pickone-edit-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}{opt.is_included ? " — included" : ""}</span>
             {!opt.is_included && <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>}
           </label>
@@ -745,21 +626,22 @@ export default function EditOrder() {
     return (
       <div className="space-y-2">
         {dcOpt && (
-          <div>
-            <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={dualChecked} onChange={() => setDualChecked(!dualChecked)} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Dual Controls</span>
-                <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides.</p>
-              </div>
-              <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(dcOpt.retail_price)}</span>
-            </label>
-          </div>
+          <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+            <input type="checkbox" checked={dualChecked} onChange={() => setDualChecked(!dualChecked)} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Dual Controls</span>
+              <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides.</p>
+            </div>
+            <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(dcOpt.retail_price)}</span>
+          </label>
         )}
         {(pcOpt || pcFbOpt) && (
           <div>
             <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={pivotChecked} onChange={() => { if (pivotChecked) { setPivotChecked(false); setPivotType(""); setPivotSide(""); if (pivotOnScalesOption) { setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; }); } } else { setPivotChecked(true); } }} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
+              <input type="checkbox" checked={pivotChecked} onChange={() => {
+                if (pivotChecked) { setPivotChecked(false); setPivotType(""); setPivotSide(""); if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; }); }
+                else setPivotChecked(true);
+              }} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
               <div className="flex-1 min-w-0">
                 <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Pivot Controls</span>
                 <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Upgrades one side from stationary to pivot.</p>
@@ -784,9 +666,7 @@ export default function EditOrder() {
                 </div>
                 {pivotType && (
                   <div>
-                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>
-                      {pivotType === "side_to_side" ? "Dominant side:" : "Mounted on:"}
-                    </p>
+                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>{pivotType === "side_to_side" ? "Dominant side:" : "Mounted on:"}</p>
                     <div className="flex items-center gap-2">
                       <SidePill label="Left" active={pivotSide === "Left"} onClick={() => setPivotSide("Left")} />
                       <SidePill label="Right" active={pivotSide === "Right"} onClick={() => setPivotSide("Right")} />
@@ -807,9 +687,7 @@ export default function EditOrder() {
             </label>
           </div>
         )}
-        {!dualChecked && !pivotChecked && (
-          <p className="text-[11px] px-2" style={{ color: "#717182" }}>Standard controls (included). One side, fixed position, no additional cost.</p>
-        )}
+        {!dualChecked && !pivotChecked && <p className="text-[11px] px-2" style={{ color: "#717182" }}>Standard controls (included). One side, fixed position, no additional cost.</p>}
       </div>
     );
   }
@@ -827,33 +705,25 @@ export default function EditOrder() {
       <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
           <input type="checkbox" checked={isChecked} onChange={() => toggleSideOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
-          </span>
+          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")}</span>
+          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
         </label>
         {isChecked && (
           <div className="ml-[26px] mt-1 mb-2 space-y-2 overflow-hidden">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Sides:</span>
               <SidePill label="Left" active={(sel?.left || 0) > 0} disabled={!!leftConflict} onClick={() => { if (!leftConflict) toggleSide(opt.id, "left"); }} />
               <SidePill label="Right" active={(sel?.right || 0) > 0} disabled={!!rightConflict} onClick={() => { if (!rightConflict) toggleSide(opt.id, "right"); }} />
             </div>
             {maxSide > 1 && (sel?.left || 0) > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Left:</span>
-                <QtyStepper value={sel?.left || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "left", v)} />
-              </div>
+              <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Left:</span><QtyStepper value={sel?.left || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "left", v)} /></div>
             )}
             {maxSide > 1 && (sel?.right || 0) > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Right:</span>
-                <QtyStepper value={sel?.right || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "right", v)} />
-              </div>
+              <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Right:</span><QtyStepper value={sel?.right || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "right", v)} /></div>
             )}
             {!hasAnySide && <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>}
-            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
             {leftConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>}
-            {totalQty > 0 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>Total: {totalQty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}</p>}
+            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
+            {totalQty > 0 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>{totalQty > 1 ? `${totalQty} × $${fmtCurrency(opt.retail_price)} = $${fmtCurrency(totalPrice)}` : `$${fmtCurrency(totalPrice)}`}</p>}
           </div>
         )}
       </div>
@@ -869,15 +739,13 @@ export default function EditOrder() {
       <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
           <input type="checkbox" checked={isChecked} onChange={() => toggleQuantityOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name} — <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span></span>
+          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
+          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
         </label>
         {isChecked && (
           <div className="ml-[26px] mt-1 mb-2 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 28 }}>Qty:</span>
-              <QtyStepper value={qty} min={1} max={maxQty} onChange={(v) => setQuantityOptionQty(opt.id, v)} />
-            </div>
-            {qty > 1 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>Total: {qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(qty * opt.retail_price)}</p>}
+            <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 28 }}>Qty:</span><QtyStepper value={qty} min={1} max={maxQty} onChange={(v) => setQuantityOptionQty(opt.id, v)} /></div>
+            {qty > 1 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>{qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(qty * opt.retail_price)}</p>}
           </div>
         )}
       </div>
@@ -896,115 +764,113 @@ export default function EditOrder() {
 
   function renderGroupCard(group: string, options: FullOption[]) {
     const isPick = options.every((o) => o.selection_type === "pick_one");
-
-    // Scales sub-groups: platforms (pick_one) and indicators (simple)
     if (group === "Scales") {
       const platforms = options.filter((o) => o.selection_type === "pick_one");
       const indicators = options.filter((o) => o.selection_type !== "pick_one");
       return (
         <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
-          {platforms.length > 0 && (
-            <div className="mb-2">
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
-              {renderPickOneGroup(group, platforms)}
-            </div>
-          )}
-          {indicators.length > 0 && (
-            <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
-              <div className="space-y-0.5">
-                {indicators.map((opt) => renderSimpleOption(opt))}
-              </div>
-            </div>
-          )}
+          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
+          {platforms.length > 0 && (<div className="mb-2"><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>{renderPickOneGroup(group, platforms)}</div>)}
+          {indicators.length > 0 && (<div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p><div className="space-y-0.5">{indicators.map((opt) => renderSimpleOption(opt))}</div></div>)}
         </div>
       );
     }
-
     return (
       <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
-        {isPick ? renderPickOneGroup(group, options) : (
-          <div className="space-y-0.5">
-            {options.map((opt) => {
-              if (opt.selection_type === "side") return renderSideOption(opt);
-              if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
-              if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
-              return renderSimpleOption(opt);
-            })}
-          </div>
-        )}
+        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
+        {isPick ? renderPickOneGroup(group, options) : (<div className="space-y-0.5">{options.map((opt) => {
+          if (opt.selection_type === "side") return renderSideOption(opt);
+          if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
+          if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
+          return renderSimpleOption(opt);
+        })}</div>)}
       </div>
     );
   }
 
-  // Build summary pills
-  const summaryPills = useMemo(() => {
-    const pills: { label: string; variant: "base" | "standard" | "addon" }[] = [];
-    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
-    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
-    for (const item of selectedOptionsList) {
-      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
-      const dn = option.display_name || option.name;
-      let label: string;
-      if (pt) {
-        const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
-        label = [dn, typeLabel, ps].filter(Boolean).join(" · ");
-      } else if (left > 0 || right > 0) {
-        label = formatOptionPillLabel(dn, left, right);
-      } else if (quantity > 1) {
-        label = `${dn} ×${quantity}`;
-      } else {
-        label = dn;
-      }
-      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
+  function handlePillClick(pill: { optionId?: string }) {
+    if (!pill.optionId) return;
+    const opt = optionsQuery.data?.find((o) => o.id === pill.optionId);
+    if (!opt) return;
+    if (opt.short_code === "DC") { setDualChecked(false); return; }
+    if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
+      setPivotChecked(false); setPivotType(""); setPivotSide("");
+      if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; });
+      return;
     }
-    return pills;
-  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
+    if (opt.selection_type === "pick_one") {
+      for (const [group, selId] of pickOneSelections) { if (selId === pill.optionId) { selectPickOne(group, null); return; } }
+    }
+    setSelections(prev => { const n = new Map(prev); n.delete(pill.optionId!); return n; });
+  }
 
-  // Loading
-  if (orderQuery.isLoading) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading order…</div>;
-  }
-  if (!orderQuery.data) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Order not found</div>;
-  }
+  const showCompletionDate = ["ordered", "so_received", "in_production", "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed"].includes(status);
+  const isDirectOrder = orderQuery.data?.source_type === "direct_order";
+
+  /* ─── Loading / Not found ──────────────────────────────────── */
+
+  if (orderQuery.isLoading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading order…</div>;
+  if (!orderQuery.data) return <div className="flex items-center justify-center h-64 text-muted-foreground">Order not found</div>;
+
+  const modelLabel = selectedBaseModel ? `${selectedBaseModel.short_name} · ${selectedManufacturer?.short_name || ""}` : "Select a model";
+  const discountDisplay = discountValue > 0 ? (discountType === "%" ? `−${parseFloat(discountAmount) || 0}%` : `−$${fmtCurrency(discountValue)}`) : "—";
+
+  /* ─── RENDER ───────────────────────────────────────────────── */
 
   return (
-    <div className="mx-auto pb-40 overflow-x-hidden max-w-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <button onClick={() => navigate(`/orders/${id}`)} className="text-catl-teal p-1 flex items-center gap-1">
+    <div className="mx-auto pb-40 overflow-x-hidden max-w-full" style={{ background: "#F5F5F0" }}>
+      {/* Sticky Navy Price Bar */}
+      <div className="sticky top-0 z-10 md:max-w-[680px] md:mx-auto" style={{ background: "#0E2646", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: "rgba(240,240,240,0.45)" }}>Edit order</span>
+          <span className="text-[11px] truncate ml-2" style={{ color: "rgba(240,240,240,0.45)" }}>{modelLabel}</span>
+        </div>
+        <div className="hidden sm:flex items-baseline justify-between gap-4">
+          <div className="flex items-baseline gap-4">
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p></div>
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p><p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p></div>
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p></div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p>
+            <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</p>
+          </div>
+        </div>
+        <div className="flex sm:hidden items-baseline justify-between">
+          <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
+          <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `${margin.percent.toFixed(1)}%` : "—"}</p>
+        </div>
+      </div>
+
+      {/* Page Header */}
+      <div className="flex items-center gap-2 my-4 px-4 md:max-w-[680px] md:mx-auto">
+        <button onClick={() => navigate(`/orders/${id}`)} className="p-1 flex items-center gap-1" style={{ color: "#55BAAA" }}>
           <ChevronLeft size={24} />
           <span className="text-sm font-medium">Cancel</span>
         </button>
-        <h1 className="text-[17px] font-bold text-foreground ml-auto">Edit Order</h1>
+        <h1 className="text-[17px] font-bold text-foreground ml-auto">Edit order</h1>
         <span className="text-xs text-muted-foreground ml-2">{orderQuery.data.order_number}</span>
       </div>
 
-      {/* Form card */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto overflow-x-hidden">
+      {/* Form Card */}
+      <div className="bg-white border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
         <SectionHeader title="Equipment" />
-
         <FormRow label="Manufacturer" error={errors.manufacturer}>
-          <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none">
+          <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
             <option value="">Select manufacturer</option>
             {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </FormRow>
-
         <FormRow label="Base Model" error={errors.baseModel}>
-          <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" disabled={!manufacturerId}>
+          <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
             <option value="">Select base model</option>
             {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
           </select>
         </FormRow>
-
         {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
           <FormRow label="Quick Build">
-            <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none">
+            <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
               <option value="">None — custom build</option>
               {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
             </select>
@@ -1012,7 +878,6 @@ export default function EditOrder() {
         )}
 
         <SectionHeader title="Options" subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined} />
-
         {extendedChuteOption && (
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
             <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
@@ -1020,216 +885,134 @@ export default function EditOrder() {
             <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
-
         {groupedOptions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {groupedOptions.map(([group, opts]) => {
-              const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
-              if (filtered.length === 0) return null;
-              return renderGroupCard(group, filtered);
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+            {groupedOptions.map(([group, opts]) => { const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id); if (filtered.length === 0) return null; return renderGroupCard(group, filtered); })}
           </div>
         )}
 
         <SectionHeader title="Build Summary" />
+        {selectedBaseModel && (
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>{selectedBaseModel.short_name}</span>
+            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
-          {summaryPills.map((pill, i) => (
-            <span key={i} className="px-2.5 py-1 rounded-full text-xs font-semibold break-words"
-              style={{
-                background: pill.variant === "base" ? "#0E2646" : pill.variant === "standard" ? "rgba(85,186,170,0.15)" : "rgba(243,209,42,0.2)",
-                color: pill.variant === "base" ? "#F0F0F0" : pill.variant === "standard" ? "#55BAAA" : "#8B7A1A",
-              }}>{pill.label}</span>
+          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
+            <button key={i} type="button" onClick={() => handlePillClick(pill)} className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform" style={{
+              background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
+              border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
+              color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
+            }}>{pill.label}</button>
           ))}
         </div>
-
         <FormRow label="Build Short" error={errors.buildShorthand}>
-          <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0"
-            style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }} />
+          <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
         </FormRow>
-
-        {/* Pricing breakdown */}
         {selectedBaseModel && (
           <div className="mt-3 pt-3 space-y-2 overflow-hidden" style={{ borderTop: "1px solid #D4D4D0" }}>
-            <div className="flex justify-between text-sm">
-              <span style={{ color: "#1A1A1A" }}>Base model</span>
-              <span style={{ color: "#1A1A1A" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
-            </div>
-            {optionCount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span style={{ color: "#1A1A1A" }}>Options ({optionCount})</span>
-                <span style={{ color: "#1A1A1A" }}>${fmtCurrency(optionRetailTotal)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm font-medium pt-1" style={{ borderTop: "1px solid #D4D4D0" }}>
-              <span>Subtotal</span>
-              <span>${fmtCurrency(calcRetail)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-sm" style={{ color: "#1A1A1A" }}>Discount</span>
-              <div className="flex items-center gap-1.5">
-                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")}
-                  className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none" style={{ width: 60 }}>
-                  <option value="$">$</option>
-                  <option value="%">%</option>
-                </select>
-                <input type="text" inputMode="decimal" value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="0" className="border border-border rounded-md px-2 py-1.5 bg-card text-sm outline-none text-right"
-                  style={{ maxWidth: 120 }} />
-              </div>
-            </div>
-            <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid #D4D4D0" }}>
-              <div className="flex justify-between">
-                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>Customer Price</span>
-                <span className="text-base font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: "#717182" }}>Our Cost</span>
-                <span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold">
-                <span style={{ color: marginColor || "#717182" }}>Margin</span>
-                <span style={{ color: marginColor || "#717182" }}>
-                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <span className="text-sm" style={{ color: "#717182" }}>Freight est.</span>
-                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
-              </div>
-            </div>
+            <div className="flex justify-between text-sm"><span style={{ color: "#1A1A1A" }}>Base model</span><span style={{ color: "#1A1A1A" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span></div>
+            {optionCount > 0 && <div className="flex justify-between text-sm"><span style={{ color: "#1A1A1A" }}>Options ({optionCount})</span><span style={{ color: "#1A1A1A" }}>${fmtCurrency(optionRetailTotal)}</span></div>}
+            <div className="flex justify-between text-sm font-medium pt-1" style={{ borderTop: "1px solid #D4D4D0" }}><span>Subtotal</span><span>${fmtCurrency(calcRetail)}</span></div>
+            <div className="flex justify-between text-sm"><span style={{ color: "#717182" }}>Our Cost</span><span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span></div>
+            <div className="flex justify-between text-sm font-semibold"><span style={{ color: marginColor || "#717182" }}>Margin</span><span style={{ color: marginColor || "#717182" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span></div>
           </div>
         )}
 
+        <SectionHeader title="Discount & Freight" />
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
+            <div className="flex items-center gap-1.5">
+              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ width: 60 }}><option value="$">$</option><option value="%">%</option></select>
+              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-right text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ maxWidth: 120 }} />
+            </div>
+          </div>
+          <div style={{ minWidth: 140 }}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight estimate</p>
+            <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
+          </div>
+        </div>
+
         <SectionHeader title="Tracking" />
-        <FormRow label="CATL #">
-          <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
-        </FormRow>
-        <FormRow label="Serial #">
-          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
-        </FormRow>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1" style={{ minWidth: 160 }}><FormRow label="CATL #"><input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" /></FormRow></div>
+          <div className="flex-1" style={{ minWidth: 160 }}><FormRow label="Serial #"><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" /></FormRow></div>
+        </div>
 
         <SectionHeader title="Status" />
-        <FormRow label="Status">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize">
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-          </select>
-        </FormRow>
-        <FormRow label="Est. Date" narrow>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estimateDate && "text-muted-foreground")}>
-                {estimateDate ? format(estimateDate, "PPP") : "Pick a date"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-        </FormRow>
-        <FormRow label="Completion" narrow>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-sm", !estCompletionDate && "text-muted-foreground")}>
-                {estCompletionDate ? format(estCompletionDate, "PPP") : "Pick a date"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-        </FormRow>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="Status">
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              </select>
+            </FormRow>
+          </div>
+          <div className="flex-1" style={{ minWidth: 160 }}>
+            <FormRow label="Est. Date" narrow>
+              <Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>{estimateDate ? format(estimateDate, "PPP") : "Pick a date"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" /></PopoverContent></Popover>
+            </FormRow>
+          </div>
+        </div>
+        {showCompletionDate && (
+          <FormRow label="Completion" narrow>
+            <Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>{estCompletionDate ? format(estCompletionDate, "PPP") : "Pick a date"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" /></PopoverContent></Popover>
+          </FormRow>
+        )}
 
-        <SectionHeader title="Customer" />
-        <p className="text-xs text-muted-foreground italic -mt-2 mb-3">Optional — can be assigned later</p>
+        {/* Customer */}
+        <SectionHeader title="Customer" subtitle="Optional" />
         <FormRow label="Customer">
           <div className="relative">
-            <input value={selectedCustomer ? selectedCustomer.name : customerSearch}
-              onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
-              onFocus={() => setShowCustomerDropdown(true)}
-              placeholder="Search customers..."
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
+            <input value={selectedCustomer ? selectedCustomer.name : customerSearch} onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }} onFocus={() => setShowCustomerDropdown(true)} placeholder="Search customers..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
             {showCustomerDropdown && (
               <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
-                {filteredCustomers.map((c) => (
-                  <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
-                    <span className="font-medium">{c.name}</span>
-                    {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
-                  </button>
-                ))}
-                <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold text-catl-teal flex items-center gap-1 border-t border-border">
-                  <Plus size={14} /> Add New Customer
-                </button>
+                {filteredCustomers.map((c) => (<button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm"><span className="font-medium">{c.name}</span>{c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}</button>))}
+                <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}><Plus size={14} /> Add New Customer</button>
               </div>
             )}
           </div>
         </FormRow>
-
         {showNewCustomerForm && (
-          <div className="ml-[128px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5 overflow-hidden">
-            <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
+          <div className="ml-[128px] border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
+            <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
+              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
-              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
+              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
             </div>
-            <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none">
-              <option value="">Type (optional)</option>
-              <option value="rancher">Rancher</option>
-              <option value="feedlot">Feedlot</option>
-              <option value="dealer">Dealer</option>
-              <option value="other">Other</option>
-            </select>
             <div className="flex gap-2">
-              <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg bg-catl-teal text-white text-sm font-semibold disabled:opacity-50">
-                {addCustomerMutation.isPending ? "Saving..." : "Save Customer"}
-              </button>
+              <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>{addCustomerMutation.isPending ? "Saving..." : "Save Customer"}</button>
               <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
             </div>
           </div>
         )}
 
-        <button type="button" onClick={() => setInventoryOpen(!inventoryOpen)}
-          className="-mx-4 mt-6 mb-3 px-4 py-2 flex items-center justify-between w-[calc(100%+2rem)]" style={{ background: "#F5F5F0" }}>
+        {/* Inventory */}
+        <button type="button" onClick={() => setInventoryOpen(!inventoryOpen)} className="-mx-4 mt-6 mb-3 px-4 py-2 flex items-center justify-between w-[calc(100%+2rem)]" style={{ background: "#F5F5F0" }}>
           <span className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Inventory Details</span>
           <ChevronDown size={14} className={cn("transition-transform", inventoryOpen && "rotate-180")} style={{ color: "#717182" }} />
         </button>
         {inventoryOpen && (
           <div className="mt-3 space-y-4">
             <FormRow label="From Inv."><div className="flex items-center h-[42px]"><Switch checked={fromInventory} onCheckedChange={setFromInventory} /></div></FormRow>
-            {fromInventory && (
-              <FormRow label="Inv. Location"><input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" /></FormRow>
-            )}
+            {fromInventory && <FormRow label="Inv. Location"><input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" /></FormRow>}
           </div>
         )}
 
         <SectionHeader title="Notes" />
-        <FormRow label="Notes">
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0" />
-        </FormRow>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
       </div>
 
-      {/* Price Summary Bar */}
-      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 md:max-w-[680px] md:mx-auto md:rounded-xl md:border overflow-hidden">
-        {selectedBaseModel ? (
-          <div className="flex items-center justify-between text-sm mb-3 flex-wrap gap-1">
-            <span className="font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
-            {margin && (
-              <span className="text-xs font-semibold" style={{ color: marginColor }}>
-                {margin.percent.toFixed(1)}% margin
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground mb-3">Select a base model to see pricing</div>
-        )}
-        <button onClick={handleSubmit} disabled={submitting}
-          className="w-full bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50">
-          {submitting ? "Saving..." : "Save Changes"}
+      {/* Save Button */}
+      <div className="px-4 mt-4 md:max-w-[680px] md:mx-auto">
+        <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50" style={{ background: "#F3D12A", color: "#0E2646" }}>
+          {submitting ? "Saving..." : "Save changes"}
         </button>
       </div>
     </div>
