@@ -883,13 +883,7 @@ export default function NewOrder() {
     if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
     for (const { option, left, right } of selectedOptionsList) {
-      let label = option.short_code;
-      if (left > 0 || right > 0) {
-        const sides: string[] = [];
-        if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
-        if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
-        label += ` · ${sides.join(", ")}`;
-      }
+      const label = formatOptionPillLabel(option.name, left, right);
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }
     return pills;
