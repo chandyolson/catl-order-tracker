@@ -13,6 +13,7 @@ import EquipmentMatch from "./pages/EquipmentMatch";
 import Paperwork from "./pages/Paperwork";
 import Production from "./pages/Production";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import InventoryPage from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
