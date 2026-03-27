@@ -17,8 +17,8 @@ const STATUS_OPTIONS = [
 ];
 
 const GROUP_ORDER = [
-  "Controls", "Squeeze", "Head / Neck", "Doors / Exits",
-  "Floor / Pan", "Power", "Scales", "Carrier", "Misc",
+  "Squeeze", "Controls", "Head / Neck", "Doors / Exits",
+  "Floor / Pan", "Misc", "Power", "Scales", "Carrier",
 ];
 
 type FullOption = {
@@ -1071,6 +1071,31 @@ export default function NewOrder() {
   function renderGroupCard(group: string, options: FullOption[]) {
     const isPick = options.every((o) => o.selection_type === "pick_one");
 
+    // Scales sub-groups: platforms (pick_one) and indicators (simple)
+    if (group === "Scales") {
+      const platforms = options.filter((o) => o.selection_type === "pick_one");
+      const indicators = options.filter((o) => o.selection_type !== "pick_one");
+      return (
+        <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
+          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
+          {platforms.length > 0 && (
+            <div className="mb-2">
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
+              {renderPickOneGroup(group, platforms)}
+            </div>
+          )}
+          {indicators.length > 0 && (
+            <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
+              <div className="space-y-0.5">
+                {indicators.map((opt) => renderSimpleOption(opt))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
         <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
@@ -1434,7 +1459,7 @@ export default function NewOrder() {
       </div>
 
       {/* Price Summary Bar */}
-      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 -mx-4 md:mx-0 md:rounded-xl md:border overflow-hidden">
+      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 md:max-w-[680px] md:mx-auto md:rounded-xl md:border overflow-hidden">
         {selectedBaseModel ? (
           <div className="flex items-center justify-between text-sm mb-3 flex-wrap gap-1">
             <span className="font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
@@ -1451,7 +1476,7 @@ export default function NewOrder() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full md:w-auto bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
+          className="w-full bg-catl-gold text-catl-navy rounded-full py-3.5 px-8 text-base font-bold active:scale-[0.97] transition-transform disabled:opacity-50"
         >
           {submitting ? "Creating..." : "Create Order"}
         </button>
