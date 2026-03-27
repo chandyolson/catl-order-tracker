@@ -18,7 +18,7 @@ const STATUS_OPTIONS = [
 
 const GROUP_ORDER = [
   "Squeeze", "Controls", "Head / Neck", "Doors / Exits",
-  "Floor / Pan", "Misc", "Power", "Scales", "Carrier",
+  "Floor / Pan", "Misc", "CATL Mods", "Power", "Scales", "Carrier",
 ];
 
 type FullOption = {
