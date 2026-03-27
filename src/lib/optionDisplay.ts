@@ -6,6 +6,7 @@ const NAME_MAP: Record<string, string> = {
   'Walk-Through Door (26")': "Walk-Through Door",
   "Rubber-Belted Louvers": "Louvers",
   "Additional Neck Access": "Neck Access",
+  "Additional Neck Access (per sidegate)": "Neck Access",
   "Rear Frame Hook-Up": "Rear Hook-Up",
   "12 HP Gas Pump + Electric Start": "12HP Gas Pump",
   "5 HP Electric Pump 60Hz": "5HP Electric",

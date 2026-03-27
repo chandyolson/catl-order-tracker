@@ -163,50 +163,51 @@ export default function OrderDetail() {
 
   return (
     <div className="max-w-3xl mx-auto pb-32">
-      {/* ─── HEADER ──────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-5">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button onClick={() => navigate("/orders")} className="text-catl-teal p-1 shrink-0">
+      {/* ─── HEADER — Navy Card ──────────────────────────── */}
+      <div className="rounded-xl p-4 mb-5" style={{ backgroundColor: "#0E2646" }}>
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => navigate("/orders")} className="p-1 shrink-0" style={{ color: "#55BAAA" }}>
             <ChevronLeft size={24} />
           </button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-[17px] font-bold text-foreground truncate">
-                {customer?.name || "No customer"}
+              <h1 className="text-[17px] font-bold truncate" style={{ color: "#F0F0F0" }}>
+                {customer?.name || <span className="italic" style={{ color: "rgba(240,240,240,0.45)" }}>No customer</span>}
               </h1>
               <button
                 onClick={() => navigate(`/orders/${id}/edit`)}
-                className="text-muted-foreground hover:text-catl-teal shrink-0"
+                className="shrink-0 hover:opacity-80"
+                style={{ color: "rgba(240,240,240,0.45)" }}
               >
                 <Edit2 size={16} />
               </button>
             </div>
             <p className="text-sm font-medium" style={{ color: "#55BAAA" }}>{order.build_shorthand}</p>
-            {/* Option pills */}
-            {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {(order.selected_options as any[]).map((opt: any, i: number) => (
-                  <span
-                    key={i}
-                    className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
-                    style={{
-                      backgroundColor: "rgba(85,186,170,0.12)",
-                      color: "#55BAAA",
-                    }}
-                  >
-                    {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
-                  </span>
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {order.order_number} · {fmtDate(order.estimate_date, true)}
-            </p>
+          </div>
+          <div className="ml-auto shrink-0">
+            <StatusBadge status={order.status} />
           </div>
         </div>
-        <div className="ml-8 md:ml-0">
-          <StatusBadge status={order.status} />
-        </div>
+        {/* Option pills */}
+        {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {(order.selected_options as any[]).map((opt: any, i: number) => (
+              <span
+                key={i}
+                className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                style={{
+                  backgroundColor: "rgba(85,186,170,0.15)",
+                  color: "#55BAAA",
+                }}
+              >
+                {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-xs mt-2" style={{ color: "rgba(240,240,240,0.45)" }}>
+          {order.order_number} · {fmtDate(order.estimate_date, true)}
+        </p>
       </div>
 
       {/* ─── KPI ROW ─────────────────────────────────────── */}
