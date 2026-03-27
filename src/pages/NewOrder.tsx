@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatOptionPillLabel, getOptionDisplayName } from "@/lib/optionDisplay";
+import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = [
   "estimate", "approved", "ordered", "so_received", "in_production",
@@ -24,6 +24,7 @@ const GROUP_ORDER = [
 type FullOption = {
   id: string;
   name: string;
+  display_name: string | null;
   short_code: string;
   option_group: string | null;
   retail_price: number;
@@ -229,7 +230,7 @@ export default function NewOrder() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("model_options")
-        .select("id, name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included")
+        .select("id, name, display_name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included")
         .eq("manufacturer_id", manufacturerId)
         .eq("is_active", true)
         .order("option_group").order("sort_order");
