@@ -870,7 +870,7 @@ export default function EditOrder() {
     const isPick = options.every((o) => o.selection_type === "pick_one");
     return (
       <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group}</h4>
+        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, ' ')}</h4>
         {isPick ? renderPickOneGroup(group, options) : (
           <div className="space-y-0.5">
             {options.map((opt) => {
