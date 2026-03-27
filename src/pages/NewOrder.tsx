@@ -620,16 +620,27 @@ export default function NewOrder() {
       const priceNum = parseFloat(customerPrice);
       const costNum = parseFloat(ourCost);
 
-      const selectedOptionsJson = selectedOptionsList.map((s) => ({
-        option_id: s.option.id,
-        name: s.option.name,
-        short_code: s.option.short_code,
-        cost_price: s.option.cost_price,
-        retail_price: s.option.retail_price,
-        quantity: s.quantity,
-        left: s.left,
-        right: s.right,
-      }));
+      const selectedOptionsJson = selectedOptionsList.map((s) => {
+        const qty = s.quantity;
+        return {
+          option_id: s.option.id,
+          name: s.option.name,
+          short_code: s.option.short_code,
+          cost_price_each: s.option.cost_price,
+          retail_price_each: s.option.retail_price,
+          sides: (() => {
+            const parts: string[] = [];
+            if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
+            if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
+            return parts.join(", ");
+          })(),
+          quantity: qty,
+          total_cost: s.option.cost_price * qty,
+          total_retail: s.option.retail_price * qty,
+          left: s.left,
+          right: s.right,
+        };
+      });
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
         order_number: orderNumber,
@@ -787,8 +798,8 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded"
           />
           <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
-            {opt.name}
-            {opt.allows_quantity && maxSide > 1 ? " — " : " — "}
+            {opt.name.replace(/\s*\(per sidegate\)/i, "")}
+            {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
         </label>
@@ -814,6 +825,9 @@ export default function NewOrder() {
                 }}
               />
             </div>
+            {totalQty === 0 && (
+              <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>
+            )}
             {rightConflict && (
               <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>
             )}
