@@ -337,6 +337,26 @@ export default function OrderDetail() {
         </p>
       </div>
 
+      {/* ─── CONVERT TO ORDER BAR ────────────────────────── */}
+      {isEstimate && (
+        <div
+          className="rounded-lg p-3 mb-5 flex items-center justify-between"
+          style={{ backgroundColor: "#E1F5EE", border: "0.5px solid #5DCAA5" }}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} style={{ color: "#1D9E75" }} />
+            <span className="text-[13px] font-medium" style={{ color: "#085041" }}>Ready to convert?</span>
+          </div>
+          <button
+            onClick={() => setShowConvertModal(true)}
+            className="px-4 py-1.5 rounded-full text-[13px] font-medium active:scale-[0.97] transition-transform"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+          >
+            Convert to order
+          </button>
+        </div>
+      )}
+
       {/* ─── KPI ROW ─────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2 mb-5">
         <div className="bg-card border border-border rounded-lg p-2.5 text-center">
