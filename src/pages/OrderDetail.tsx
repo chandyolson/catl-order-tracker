@@ -608,7 +608,7 @@ function EstimateCard({ estimate }: { estimate: any }) {
         <div className="mt-2 space-y-1">
           {lineItems.map((item: any, i: number) => (
             <div key={i} className="flex justify-between text-xs text-foreground">
-              <span>{item.name || item.short_code || "Item"}</span>
+              <span>{item.name ? getOptionDisplayName(item.name) : item.short_code || "Item"}</span>
               <span>{fmtCurrency(item.retail_price)}</span>
             </div>
           ))}
