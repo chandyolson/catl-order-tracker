@@ -83,6 +83,10 @@ export default function Orders() {
         query = query.in("status", filterStatuses as unknown as string[]);
       }
 
+      if (filterSourceType) {
+        query = query.eq("source_type", filterSourceType);
+      }
+
       if (sort.isCustomer) {
         query = query.order("customers(name)", { ascending: sort.asc });
       } else {
@@ -118,7 +122,7 @@ export default function Orders() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{totalCount} total</span>
           <button
-            onClick={() => navigate("/orders/new")}
+            onClick={() => setShowPicker(true)}
             className="w-10 h-10 rounded-full bg-catl-gold text-catl-navy flex items-center justify-center active:scale-[0.95] transition-transform"
           >
             <Plus size={20} />
@@ -180,7 +184,7 @@ export default function Orders() {
           <Package size={48} className="text-border mb-4" />
           <p className="text-base font-medium text-muted-foreground mb-4">No orders yet</p>
           <button
-            onClick={() => navigate("/orders/new")}
+            onClick={() => setShowPicker(true)}
             className="px-6 py-3 rounded-full bg-catl-gold text-catl-navy font-bold text-sm active:scale-[0.97] transition-transform"
           >
             Create your first order
