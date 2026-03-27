@@ -25,16 +25,16 @@ type OptionItem = {
   cost_price: number;
 };
 
-function FormRow({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
   return (
     <div>
       <div className="flex items-start gap-2">
-        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5" style={{ width: 85 }}>
+        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 whitespace-nowrap" style={{ width: 120 }}>
           {label}
         </label>
-        <div className="flex-1">{children}</div>
+        <div className={cn("flex-1", narrow ? "max-w-[180px]" : "sm:max-w-[320px]")}>{children}</div>
       </div>
-      {error && <p className="text-xs mt-1 ml-[93px]" style={{ color: "#D4183D" }}>{error}</p>}
+      {error && <p className="text-xs mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
     </div>
   );
 }
