@@ -280,6 +280,7 @@ export default function Orders() {
           </div>
         </div>
       )}
+      <NewOrderPicker open={showPicker} onClose={() => setShowPicker(false)} />
     </div>
   );
 }
