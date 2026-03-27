@@ -10,6 +10,7 @@ import { format, differenceInDays } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatOptionPillLabel } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 
 const DOC_NAMES: Record<string, string> = {
@@ -181,6 +182,23 @@ export default function OrderDetail() {
               </button>
             </div>
             <p className="text-sm font-medium" style={{ color: "#55BAAA" }}>{order.build_shorthand}</p>
+            {/* Option pills */}
+            {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(order.selected_options as any[]).map((opt: any, i: number) => (
+                  <span
+                    key={i}
+                    className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{
+                      backgroundColor: "rgba(85,186,170,0.12)",
+                      color: "#55BAAA",
+                    }}
+                  >
+                    {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
+                  </span>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               {order.order_number} · {fmtDate(order.estimate_date, true)}
             </p>
