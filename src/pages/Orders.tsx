@@ -203,6 +203,23 @@ export default function Orders() {
                 </div>
                 {/* Row 2 */}
                 <p className="text-[13px] font-medium text-catl-teal mt-0.5">{order.build_shorthand}</p>
+                {/* Option pills */}
+                {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(order.selected_options as any[]).map((opt: any, i: number) => (
+                      <span
+                        key={i}
+                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+                        style={{
+                          backgroundColor: "rgba(85,186,170,0.15)",
+                          color: "#55BAAA",
+                        }}
+                      >
+                        {formatOptionPillLabel(opt.name || opt.short_code || "Option", opt.left || 0, opt.right || 0)}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {/* Row 3 */}
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-xs" style={{ color: "rgba(240,240,240,0.45)" }}>
