@@ -530,18 +530,17 @@ export default function NewOrder() {
         <SectionHeader title="Options" subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined} />
         {groupedOptions.length > 0 && (
           <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
-              {groupedOptions.map(([group, opts]) => (
-                <OptionGroup
-                  key={group}
-                  group={group}
-                  options={opts}
-                  checked={checkedOptions}
-                  onToggle={toggleOption}
-                />
-              ))}
-            </div>
-            </div>
-          )}
+            {groupedOptions.map(([group, opts]) => (
+              <OptionGroup
+                key={group}
+                group={group}
+                options={opts}
+                checked={checkedOptions}
+                onToggle={toggleOption}
+              />
+            ))}
+          </div>
+        )}
 
         <FormRow label="Build Short" error={errors.buildShorthand}>
           <input
