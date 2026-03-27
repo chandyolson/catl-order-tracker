@@ -5,15 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, AlertTriangle, Package } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import NewOrderPicker from "@/components/NewOrderPicker";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 
 const FILTERS = [
-  { label: "All", key: "all", statuses: [] },
-  { label: "Estimates", key: "estimates", statuses: ["estimate", "approved"] },
-  { label: "Ordered", key: "ordered", statuses: ["ordered", "so_received"] },
-  { label: "In Production", key: "production", statuses: ["in_production"] },
-  { label: "Ready to Invoice", key: "ready", statuses: ["completed", "freight_arranged", "delivered"] },
-  { label: "Closed", key: "closed", statuses: ["invoiced", "paid", "closed"] },
+  { label: "All", key: "all", statuses: [], sourceType: null },
+  { label: "Estimates", key: "estimates", statuses: ["estimate", "approved"], sourceType: "estimate" },
+  { label: "Direct Orders", key: "direct", statuses: [], sourceType: "direct_order" },
+  { label: "In Production", key: "production", statuses: ["ordered", "so_received", "in_production"], sourceType: null },
+  { label: "Ready to Invoice", key: "ready", statuses: ["completed", "freight_arranged", "delivered"], sourceType: null },
+  { label: "Closed", key: "closed", statuses: ["invoiced", "paid", "closed"], sourceType: null },
 ] as const;
 
 const SORTS = [
@@ -31,6 +32,7 @@ export default function Orders() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [sortIdx, setSortIdx] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
