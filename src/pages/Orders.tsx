@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, AlertTriangle, Package } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const FILTERS = [
   { label: "All", key: "all", statuses: [] },

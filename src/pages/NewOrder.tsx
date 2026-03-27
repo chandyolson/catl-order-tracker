@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = [
   "estimate", "approved", "ordered", "so_received", "in_production",
