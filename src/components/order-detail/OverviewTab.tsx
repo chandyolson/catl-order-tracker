@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
-import { Edit2, Check, X, Phone, Mail } from "lucide-react";
+import { Edit2, Check, X, Phone, Mail, ArrowRightCircle } from "lucide-react";
+import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
