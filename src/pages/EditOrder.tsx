@@ -621,6 +621,8 @@ export default function EditOrder() {
         build_description: notes || null,
         customer_price: priceNum,
         our_cost: costNum,
+        discount_type: discountType,
+        discount_amount: parseFloat(discountAmount) || 0,
         freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
         catl_number: catl_number || null,
         serial_number: serialNumber || null,
