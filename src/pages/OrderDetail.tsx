@@ -65,7 +65,22 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"timeline" | "documents" | "estimates" | "changes">("timeline");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const deleteOrderMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").delete().eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.error(`Order ${orderQuery.data?.order_number} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      navigate("/orders");
+    },
+    onError: (err: any) => {
+      toast.error("Failed to delete order: " + err.message);
+    },
+  });
   // ─── QUERIES ────────────────────────────────────────────
   const orderQuery = useQuery({
     queryKey: ["order", id],
