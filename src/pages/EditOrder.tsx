@@ -541,14 +541,6 @@ export default function EditOrder() {
     }
   }
 
-  // Margin
-  const margin = useMemo(() => {
-    const p = parseFloat(customerPrice), c = parseFloat(ourCost);
-    if (!p || !c || p <= 0 || c <= 0) return null;
-    return { amount: p - c, percent: ((p - c) / p) * 100 };
-  }, [customerPrice, ourCost]);
-  const marginColor = margin ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D" : undefined;
-
   // Customer
   const filteredCustomers = useMemo(() => {
     if (!customersQuery.data) return [];
