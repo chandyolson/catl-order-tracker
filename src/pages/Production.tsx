@@ -291,9 +291,8 @@ function ListView({ orders, navigate, queryClient }: { orders: any[]; navigate: 
             className={cn(
               "grid grid-cols-1 sm:grid-cols-[100px_1fr_1fr_100px_100px_90px_80px_90px] gap-1 sm:gap-2 px-3 py-3 border-b border-border last:border-0 items-center cursor-pointer hover:bg-muted/50 transition-colors",
               idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-card",
-              eta.overdue && "ring-1 ring-inset"
+              eta.overdue && "ring-1 ring-inset ring-red-300"
             )}
-            style={eta.overdue ? { ringColor: "rgba(212,24,61,0.3)" } : undefined}
           >
             <span className="text-[13px] font-bold" style={{ color: "#55BAAA" }}>{order.order_number}</span>
             <span className="text-[13px] text-foreground truncate">{customer?.name || "Unassigned"}</span>
