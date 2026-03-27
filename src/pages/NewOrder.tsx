@@ -449,13 +449,26 @@ export default function NewOrder() {
     return total;
   }, [selectedBaseModel, selectedOptionsList]);
 
-  useEffect(() => {
-    if (!customerPriceManual && calcRetail > 0) setCustomerPrice(String(calcRetail));
-  }, [calcRetail, customerPriceManual]);
+  const discountValue = useMemo(() => {
+    const amt = parseFloat(discountAmount) || 0;
+    if (amt <= 0) return 0;
+    if (discountType === "%") return Math.round(calcRetail * amt / 100 * 100) / 100;
+    return amt;
+  }, [discountAmount, discountType, calcRetail]);
 
-  useEffect(() => {
-    if (!ourCostManual && calcCost > 0) setOurCost(String(calcCost));
-  }, [calcCost, ourCostManual]);
+  const customerPrice = calcRetail - discountValue;
+  const ourCost = calcCost;
+
+  const margin = useMemo(() => {
+    if (customerPrice <= 0 || ourCost <= 0) return null;
+    const amount = customerPrice - ourCost;
+    const percent = (amount / customerPrice) * 100;
+    return { amount, percent };
+  }, [customerPrice, ourCost]);
+
+  const marginColor = margin
+    ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
+    : undefined;
 
   // Auto-generate build shorthand
   useEffect(() => {
