@@ -195,8 +195,8 @@ export default function Orders() {
               >
                 {/* Row 1 */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-semibold" style={{ color: "#F0F0F0" }}>
-                    {customer?.name ?? "—"}
+                  <span className={`text-[15px] font-semibold ${customer?.name ? '' : 'italic'}`} style={{ color: customer?.name ? "#F0F0F0" : "#717182" }}>
+                    {customer?.name ?? "Unassigned"}
                   </span>
                   <StatusBadge status={order.status} />
                 </div>
