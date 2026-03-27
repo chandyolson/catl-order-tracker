@@ -431,13 +431,13 @@ export default function EditOrder() {
     setManufacturerId(mid); setBaseModelId(""); setQuickBuildId("");
     setSelections(new Map()); setPickOneSelections(new Map());
     setPivotType(""); setPivotSide("");
-    setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+    setBuildShorthandManual(false);
   }
 
   function handleBaseModelChange(mid: string) {
     setBaseModelId(mid); setSelections(new Map()); setPickOneSelections(new Map());
     setPivotType(""); setPivotSide(""); setQuickBuildId("");
-    setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+    setBuildShorthandManual(false);
   }
 
   function handleQuickBuildChange(qid: string) {
@@ -449,7 +449,7 @@ export default function EditOrder() {
       const newSel = new Map<string, OptionSelection>();
       for (const optId of qb.included_option_ids || []) newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
       setSelections(newSel); setPickOneSelections(new Map());
-      setCustomerPriceManual(false); setOurCostManual(false); setBuildShorthandManual(false);
+      setBuildShorthandManual(false);
     }
   }
 
