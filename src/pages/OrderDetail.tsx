@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ChevronLeft, ChevronDown, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
+  ChevronLeft, ChevronDown, ChevronRight, Edit2, Plus, CheckCircle, XCircle, Clock, Lock,
   Circle, AlertCircle, Mail, Phone, MoreVertical, Trash2, AlertTriangle,
 } from "lucide-react";
 import {
@@ -66,6 +66,7 @@ export default function OrderDetail() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"timeline" | "documents" | "estimates" | "changes">("timeline");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
   const deleteOrderMutation = useMutation({
     mutationFn: async () => {
