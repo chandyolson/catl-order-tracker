@@ -499,6 +499,8 @@ export type Database = {
           customer_id: string | null
           customer_price: number | null
           delivered_date: string | null
+          discount_amount: number | null
+          discount_type: string | null
           est_completion_date: string | null
           estimate_date: string | null
           freight_estimate: number | null
@@ -524,6 +526,7 @@ export type Database = {
           serial_number: string | null
           so_received_date: string | null
           status: string
+          subtotal: number | null
           updated_at: string | null
         }
         Insert: {
@@ -539,6 +542,8 @@ export type Database = {
           customer_id?: string | null
           customer_price?: number | null
           delivered_date?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null
           freight_estimate?: number | null
@@ -564,6 +569,7 @@ export type Database = {
           serial_number?: string | null
           so_received_date?: string | null
           status?: string
+          subtotal?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -579,6 +585,8 @@ export type Database = {
           customer_id?: string | null
           customer_price?: number | null
           delivered_date?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null
           freight_estimate?: number | null
@@ -604,6 +612,7 @@ export type Database = {
           serial_number?: string | null
           so_received_date?: string | null
           status?: string
+          subtotal?: number | null
           updated_at?: string | null
         }
         Relationships: [
