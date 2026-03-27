@@ -16,10 +16,7 @@ const STATUS_OPTIONS = [
   "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed",
 ];
 
-const GROUP_ORDER = [
-  "Squeeze", "Controls", "Head / Neck", "Doors / Exits",
-  "Floor / Pan", "Misc", "CATL Mods", "Power", "Scales", "Carrier",
-];
+// Group order is driven by sort_order from the database, not hardcoded.
 
 type FullOption = {
   id: string; name: string; display_name: string | null; short_code: string;
@@ -172,7 +169,7 @@ export default function EditOrder() {
     queryFn: async () => {
       const { data, error } = await supabase.from("model_options")
         .select("id, name, display_name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included, sort_order")
-        .eq("manufacturer_id", manufacturerId).eq("is_active", true).order("option_group").order("sort_order");
+        .eq("manufacturer_id", manufacturerId).eq("is_active", true).order("sort_order", { ascending: true }).order("display_name", { ascending: true });
       if (error) throw error; return data as FullOption[];
     },
     enabled: !!manufacturerId,
@@ -294,10 +291,7 @@ export default function EditOrder() {
   const groupedOptions = useMemo(() => {
     const groups = new Map<string, FullOption[]>();
     for (const opt of visibleOptions) { const g = opt.option_group || "Misc"; if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(opt); }
-    const sorted: [string, FullOption[]][] = [];
-    for (const g of GROUP_ORDER) { if (groups.has(g)) { sorted.push([g, groups.get(g)!]); groups.delete(g); } }
-    for (const [g, opts] of groups) sorted.push([g, opts]);
-    return sorted;
+    return Array.from(groups.entries());
   }, [visibleOptions]);
 
   const selectedOptionsList = useMemo(() => {
