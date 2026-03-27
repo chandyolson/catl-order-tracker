@@ -39,7 +39,7 @@ export function formatOptionPillLabel(name: string, left: number, right: number)
   return label;
 }
 
-// Format pill label from saved JSONB option (handles pivot_type, side, sides fields)
+// Format pill label from saved JSONB option (handles pivot_type, side, left_qty, right_qty, quantity fields)
 export function formatSavedOptionPill(opt: any): string {
   const name = getOptionDisplayName(opt.name || opt.short_code || "Option");
   // Standard controls (included) — don't show
@@ -52,7 +52,12 @@ export function formatSavedOptionPill(opt: any): string {
     if (opt.side) parts.push(opt.side);
     return parts.join(" · ");
   }
-  // Side-based options
+  // New format: left_qty / right_qty
+  if (opt.left_qty > 0 || opt.right_qty > 0) {
+    const sides = formatSides(opt.left_qty || 0, opt.right_qty || 0);
+    return sides ? `${name} · ${sides}` : name;
+  }
+  // Legacy format: left / right
   if (opt.left > 0 || opt.right > 0) {
     const sides = formatSides(opt.left || 0, opt.right || 0);
     return sides ? `${name} · ${sides}` : name;
@@ -60,6 +65,10 @@ export function formatSavedOptionPill(opt: any): string {
   // If sides string is stored
   if (opt.sides) {
     return `${name} · ${opt.sides}`;
+  }
+  // Non-side quantity (e.g. Neckbar ×2)
+  if (opt.quantity && opt.quantity > 1) {
+    return `${name} ×${opt.quantity}`;
   }
   return name;
 }
