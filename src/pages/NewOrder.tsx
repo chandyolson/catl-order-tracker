@@ -540,8 +540,8 @@ export default function NewOrder() {
                 />
               ))}
             </div>
-          </FormRow>
-        )}
+            </div>
+          )}
 
         <FormRow label="Build Short" error={errors.buildShorthand}>
           <input
