@@ -719,15 +719,15 @@ export default function NewOrder() {
         )}
 
         {/* SECTION 6: Inventory */}
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setInventoryOpen(!inventoryOpen)}
-            className="flex items-center gap-1.5 w-full text-left"
-          >
-            <ChevronDown size={16} className={cn("text-catl-navy transition-transform", inventoryOpen && "rotate-180")} />
-            <span className="text-[13px] font-bold text-catl-navy uppercase tracking-wide">Inventory Details</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setInventoryOpen(!inventoryOpen)}
+          className="-mx-4 mt-6 mb-3 px-4 py-2 flex items-center justify-between w-[calc(100%+2rem)]"
+          style={{ background: "#F5F5F0" }}
+        >
+          <span className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Inventory Details</span>
+          <ChevronDown size={14} className={cn("transition-transform", inventoryOpen && "rotate-180")} style={{ color: "#717182" }} />
+        </button>
           {inventoryOpen && (
             <div className="mt-3 space-y-4">
               <FormRow label="From Inv.">
@@ -747,7 +747,6 @@ export default function NewOrder() {
               )}
             </div>
           )}
-        </div>
 
         {/* SECTION 7: Notes */}
         <SectionHeader title="Notes" />
