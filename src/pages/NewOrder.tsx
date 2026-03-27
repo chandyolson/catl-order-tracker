@@ -612,6 +612,15 @@ export default function NewOrder() {
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
     if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Customer price must be greater than 0";
     if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Our cost must be greater than 0";
+    // Pivot validation
+    const controlsSelId = pickOneSelections.get("Controls");
+    if (controlsSelId) {
+      const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
+      if (controlsOpt?.name.toLowerCase().includes("pivot")) {
+        if (!pivotType) e.pivotType = "Select pivot type";
+        if (!pivotSide) e.pivotSide = "Select a side";
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -628,18 +637,21 @@ export default function NewOrder() {
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
+        const isPivot = s.pivotType != null;
         return {
           option_id: s.option.id,
           name: s.option.name,
           short_code: s.option.short_code,
           cost_price_each: s.option.cost_price,
           retail_price_each: s.option.retail_price,
-          sides: (() => {
-            const parts: string[] = [];
-            if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
-            if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
-            return parts.join(", ");
-          })(),
+          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide } : {
+            sides: (() => {
+              const parts: string[] = [];
+              if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
+              if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
+              return parts.join(", ");
+            })(),
+          }),
           quantity: qty,
           total_cost: s.option.cost_price * qty,
           total_retail: s.option.retail_price * qty,
