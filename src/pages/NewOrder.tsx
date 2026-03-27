@@ -1436,19 +1436,13 @@ export default function NewOrder() {
       {/* Price Summary Bar */}
       <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 -mx-4 md:mx-0 md:rounded-xl md:border overflow-hidden">
         {selectedBaseModel ? (
-          <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
-            <div>
-              Base: ${fmtCurrency(selectedBaseModel.retail_price)}
-              {optionCount > 0 && <> + {optionCount} option{optionCount !== 1 ? "s" : ""}: ${fmtCurrency(optionRetailTotal)}</>}
-              {" = "}
-              <span className="font-semibold text-foreground">${fmtCurrency(calcRetail)}</span>
-            </div>
-            <div>
-              Cost: ${fmtCurrency(calcCost)}
-              {margin && (
-                <> · Margin: <span style={{ color: marginColor }}>${fmtCurrency(margin.amount)} ({margin.percent.toFixed(1)}%)</span></>
-              )}
-            </div>
+          <div className="flex items-center justify-between text-sm mb-3 flex-wrap gap-1">
+            <span className="font-semibold" style={{ color: "#1A1A1A" }}>${fmtCurrency(customerPrice)}</span>
+            {margin && (
+              <span className="text-xs font-semibold" style={{ color: marginColor }}>
+                {margin.percent.toFixed(1)}% margin
+              </span>
+            )}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground mb-3">Select a base model to see pricing</div>
