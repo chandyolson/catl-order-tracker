@@ -38,6 +38,7 @@ type FullOption = {
   model_restriction: string[] | null;
   is_upgrade_of: string | null;
   is_included: boolean | null;
+  sort_order: number | null;
 };
 
 type OptionSelection = {
