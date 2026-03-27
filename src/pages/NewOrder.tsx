@@ -151,6 +151,8 @@ export default function NewOrder() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
+  const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
 
   // Queries
   const manufacturersQuery = useQuery({
@@ -299,12 +301,16 @@ export default function NewOrder() {
 
   // All selected options (for pricing, summary, submit)
   const selectedOptionsList = useMemo(() => {
-    const result: { option: FullOption; quantity: number; left: number; right: number }[] = [];
+    const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
     // pick_one selections
-    for (const [, optId] of pickOneSelections) {
+    for (const [group, optId] of pickOneSelections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
-        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
+        const isPivot = group === "Controls" && opt.name.toLowerCase().includes("pivot");
+        result.push({
+          option: opt, quantity: 1, left: 0, right: 0,
+          ...(isPivot ? { pivotType: pivotType || undefined, pivotSide: pivotSide || undefined } : {}),
+        });
       }
     }
     // Other selections
@@ -319,7 +325,7 @@ export default function NewOrder() {
       }
     }
     return result;
-  }, [selections, pickOneSelections, optionsQuery.data]);
+  }, [selections, pickOneSelections, optionsQuery.data, pivotType, pivotSide]);
 
   // Side conflict logic: WTD right blocks side exit right (non-extended only)
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
