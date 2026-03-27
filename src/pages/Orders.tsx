@@ -207,7 +207,12 @@ export default function Orders() {
                   <span className={`text-[15px] font-semibold ${customer?.name ? '' : 'italic'}`} style={{ color: customer?.name ? "#F0F0F0" : "#717182" }}>
                     {customer?.name ?? "Unassigned"}
                   </span>
-                  <StatusBadge status={order.status} />
+                  <div className="flex flex-col items-end">
+                    <StatusBadge status={order.status} />
+                    {order.source_type === "direct_order" && (
+                      <span className="text-[9px] mt-0.5" style={{ color: "rgba(240,240,240,0.35)" }}>DIRECT</span>
+                    )}
+                  </div>
                 </div>
                 {/* Row 2 */}
                 <p className="text-[13px] font-medium text-catl-teal mt-0.5">{order.build_shorthand}</p>
