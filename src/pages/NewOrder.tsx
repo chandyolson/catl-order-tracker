@@ -851,7 +851,7 @@ export default function NewOrder() {
           <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
             <input type="radio" name={`pickone-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-              {opt.name}{opt.is_included ? " — included" : ""}
+              {opt.display_name || opt.name}{opt.is_included ? " — included" : ""}
             </span>
             {!opt.is_included && (
               <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
@@ -883,7 +883,7 @@ export default function NewOrder() {
               <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
                 <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
                 <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-                  {opt.name}{opt.is_included ? " — included" : ""}
+                  {opt.display_name || opt.name}{opt.is_included ? " — included" : ""}
                   {isDual ? " (both sides)" : ""}
                 </span>
                 {!opt.is_included && (
@@ -954,7 +954,7 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
           />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {opt.name.replace(/\s*\(per sidegate\)/i, "")}
+            {(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")}
             {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
@@ -1042,7 +1042,7 @@ export default function NewOrder() {
             className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
           />
           <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-            {opt.name}
+            {opt.display_name || opt.name}
             {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
@@ -1082,7 +1082,7 @@ export default function NewOrder() {
           onChange={() => toggleSimpleOption(opt.id)}
           className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
         />
-        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name}</span>
+        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
         <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
       </label>
     );
