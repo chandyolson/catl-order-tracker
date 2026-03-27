@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,6 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +15,36 @@ const STATUS_OPTIONS = [
   "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed",
 ];
 
-type OptionItem = {
+// Group display order
+const GROUP_ORDER = [
+  "Controls", "Squeeze", "Head / Neck", "Doors / Exits",
+  "Floor / Pan", "Power", "Scales", "Carrier", "Misc",
+];
+
+type FullOption = {
   id: string;
   name: string;
   short_code: string;
   option_group: string | null;
   retail_price: number;
   cost_price: number;
+  selection_type: string | null;
+  allows_quantity: boolean | null;
+  max_per_side: number | null;
+  requires_extended: boolean | null;
+  requires_options: string[] | null;
+  conflicts_with: string[] | null;
+  model_restriction: string[] | null;
+  is_upgrade_of: string | null;
+  is_included: boolean | null;
+};
+
+// Represents how an option is selected
+type OptionSelection = {
+  optionId: string;
+  left: number;   // quantity on left side (0 = not selected)
+  right: number;  // quantity on right side
+  selected: boolean; // for simple/pick_one
 };
 
 function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
@@ -69,48 +91,30 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-function OptionGroup({ group, options, checked, onToggle }: {
-  group: string;
-  options: OptionItem[];
-  checked: Set<string>;
-  onToggle: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(true);
-  return (
-    <div className="mb-3">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 w-full text-left text-xs font-bold text-catl-navy uppercase tracking-wide mb-1.5"
-      >
-        <ChevronDown size={14} className={cn("transition-transform", !open && "-rotate-90")} />
-        {group}
-      </button>
-      {open && (
-        <div className="space-y-1 pl-1">
-          {options.map((opt) => (
-            <label
-              key={opt.id}
-              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[36px]"
-            >
-              <Checkbox
-                checked={checked.has(opt.id)}
-                onCheckedChange={() => onToggle(opt.id)}
-                className="h-5 w-5"
-              />
-              <span className="text-sm text-foreground flex-1">
-                {opt.name} ({opt.short_code}) — ${opt.retail_price.toLocaleString()}
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function fmtCurrency(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+// Side picker pill
+function SidePill({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+        active
+          ? "border-catl-teal/30 text-catl-teal"
+          : disabled
+          ? "border-border text-muted-foreground/40 line-through cursor-not-allowed"
+          : "border-border text-muted-foreground hover:border-catl-teal/30"
+      )}
+      style={active ? { background: "rgba(85,186,170,0.12)" } : undefined}
+    >
+      {label}
+    </button>
+  );
 }
 
 export default function NewOrder() {
@@ -121,7 +125,8 @@ export default function NewOrder() {
   const [manufacturerId, setManufacturerId] = useState("");
   const [baseModelId, setBaseModelId] = useState("");
   const [quickBuildId, setQuickBuildId] = useState("");
-  const [checkedOptions, setCheckedOptions] = useState<Set<string>>(new Set());
+  const [selections, setSelections] = useState<Map<string, OptionSelection>>(new Map());
+  const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map()); // group -> optionId
   const [buildShorthand, setBuildShorthand] = useState("");
   const [buildShorthandManual, setBuildShorthandManual] = useState(false);
   const [customerPrice, setCustomerPrice] = useState("");
@@ -160,12 +165,9 @@ export default function NewOrder() {
     queryKey: ["base_models", manufacturerId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("base_models")
-        .select("*")
-        .eq("manufacturer_id", manufacturerId)
-        .eq("is_active", true)
-        .order("sort_order")
-        .order("name");
+        .from("base_models").select("*")
+        .eq("manufacturer_id", manufacturerId).eq("is_active", true)
+        .order("sort_order").order("name");
       if (error) throw error;
       return data;
     },
@@ -176,14 +178,11 @@ export default function NewOrder() {
     queryKey: ["quick_builds", manufacturerId],
     queryFn: async () => {
       if (!baseModelsQuery.data) return [];
-      const modelIds = baseModelsQuery.data.map((m) => m.id);
-      if (modelIds.length === 0) return [];
+      const ids = baseModelsQuery.data.map((m) => m.id);
+      if (!ids.length) return [];
       const { data, error } = await supabase
-        .from("quick_builds")
-        .select("*")
-        .in("base_model_id", modelIds)
-        .eq("is_active", true)
-        .order("sort_order");
+        .from("quick_builds").select("*").in("base_model_id", ids)
+        .eq("is_active", true).order("sort_order");
       if (error) throw error;
       return data;
     },
@@ -191,17 +190,16 @@ export default function NewOrder() {
   });
 
   const optionsQuery = useQuery({
-    queryKey: ["model_options", manufacturerId],
+    queryKey: ["model_options_full", manufacturerId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("model_options")
-        .select("id, name, short_code, option_group, retail_price, cost_price")
+        .select("id, name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included")
         .eq("manufacturer_id", manufacturerId)
         .eq("is_active", true)
-        .order("option_group")
-        .order("sort_order");
+        .order("option_group").order("sort_order");
       if (error) throw error;
-      return data as OptionItem[];
+      return data as FullOption[];
     },
     enabled: !!manufacturerId,
   });
@@ -229,36 +227,176 @@ export default function NewOrder() {
   // Derived
   const selectedBaseModel = baseModelsQuery.data?.find((m) => m.id === baseModelId);
   const selectedQuickBuild = quickBuildsQuery.data?.find((q) => q.id === quickBuildId);
-  const checkedOptionsList = useMemo(
-    () => (optionsQuery.data || []).filter((o) => checkedOptions.has(o.id)),
-    [optionsQuery.data, checkedOptions]
-  );
 
-  const groupedOptions = useMemo(() => {
+  // Is the "Extended Chute" option selected?
+  const extendedChuteOption = useMemo(() =>
+    optionsQuery.data?.find((o) => o.short_code.toLowerCase() === "ext" || o.name.toLowerCase().includes("extended chute")),
+    [optionsQuery.data]
+  );
+  const isExtendedSelected = extendedChuteOption
+    ? (selections.get(extendedChuteOption.id)?.selected ?? false)
+    : false;
+
+  // Filter options based on model restrictions, requires_extended, requires_options
+  const visibleOptions = useMemo(() => {
     if (!optionsQuery.data) return [];
-    const groups = new Map<string, OptionItem[]>();
-    for (const opt of optionsQuery.data) {
-      const g = opt.option_group || "Other";
+    const selectedModel = selectedBaseModel;
+    return optionsQuery.data.filter((opt) => {
+      // Model restriction
+      if (opt.model_restriction && opt.model_restriction.length > 0 && selectedModel) {
+        if (!opt.model_restriction.includes(selectedModel.short_name)) return false;
+      }
+      // Requires extended
+      if (opt.requires_extended && !isExtendedSelected) return false;
+      // Requires other options
+      if (opt.requires_options && opt.requires_options.length > 0) {
+        const allRequired = opt.requires_options.every((reqId) => {
+          const sel = selections.get(reqId);
+          return sel && (sel.selected || sel.left > 0 || sel.right > 0);
+        });
+        if (!allRequired) return false;
+      }
+      return true;
+    });
+  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections]);
+
+  // Group visible options
+  const groupedOptions = useMemo(() => {
+    const groups = new Map<string, FullOption[]>();
+    for (const opt of visibleOptions) {
+      const g = opt.option_group || "Misc";
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g)!.push(opt);
     }
-    return Array.from(groups.entries());
-  }, [optionsQuery.data]);
+    // Sort by GROUP_ORDER
+    const sorted: [string, FullOption[]][] = [];
+    for (const g of GROUP_ORDER) {
+      if (groups.has(g)) {
+        sorted.push([g, groups.get(g)!]);
+        groups.delete(g);
+      }
+    }
+    // Any remaining groups
+    for (const [g, opts] of groups) sorted.push([g, opts]);
+    return sorted;
+  }, [visibleOptions]);
 
-  // Auto-calculate prices
+  // Helpers to check if an option is selected (any form)
+  const isOptionSelected = useCallback((optId: string): boolean => {
+    const sel = selections.get(optId);
+    if (!sel) return false;
+    return sel.selected || sel.left > 0 || sel.right > 0;
+  }, [selections]);
+
+  // Get total quantity for an option
+  const getOptionQuantity = useCallback((optId: string): number => {
+    const sel = selections.get(optId);
+    if (!sel) return 0;
+    if (sel.selected && sel.left === 0 && sel.right === 0) return 1; // simple
+    return sel.left + sel.right;
+  }, [selections]);
+
+  // All selected options (for pricing, summary, submit)
+  const selectedOptionsList = useMemo(() => {
+    const result: { option: FullOption; quantity: number; left: number; right: number }[] = [];
+    // pick_one selections
+    for (const [, optId] of pickOneSelections) {
+      const opt = optionsQuery.data?.find((o) => o.id === optId);
+      if (opt && opt.is_included !== true) {
+        result.push({ option: opt, quantity: 1, left: 0, right: 0 });
+      }
+    }
+    // Other selections
+    for (const [optId, sel] of selections) {
+      const opt = optionsQuery.data?.find((o) => o.id === optId);
+      if (!opt) continue;
+      // Skip if this option is in a pick_one group (handled above)
+      if (opt.selection_type === "pick_one") continue;
+      const qty = sel.selected ? Math.max(1, sel.left + sel.right) : sel.left + sel.right;
+      if (qty > 0) {
+        result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
+      }
+    }
+    return result;
+  }, [selections, pickOneSelections, optionsQuery.data]);
+
+  // Side conflict logic: WTD right blocks side exit right (non-extended only)
+  const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
+    if (isExtendedSelected) return null;
+    const opt = optionsQuery.data?.find((o) => o.id === optId);
+    if (!opt) return null;
+    const isWTD = opt.short_code === "WD" || opt.name.toLowerCase().includes("walk-through");
+    const isSideExit = opt.short_code === "SE" || opt.short_code === "SSH" || opt.short_code === "HE" ||
+      opt.name.toLowerCase().includes("side exit") || opt.name.toLowerCase().includes("slam shut") || opt.name.toLowerCase().includes("hydraulic exit");
+
+    if (isWTD && side === "right") {
+      // Check if any side exit has right selected
+      const exits = optionsQuery.data?.filter((o) =>
+        o.short_code === "SE" || o.short_code === "SSH" || o.short_code === "HE" ||
+        o.name.toLowerCase().includes("side exit") || o.name.toLowerCase().includes("slam shut") || o.name.toLowerCase().includes("hydraulic exit")
+      ) || [];
+      for (const ex of exits) {
+        const exSel = selections.get(ex.id);
+        if (exSel && exSel.right > 0) return `Right blocked — ${ex.name} on right (non-extended chute)`;
+      }
+    }
+    if (isSideExit && side === "right") {
+      // Check if WTD has right selected
+      const wtds = optionsQuery.data?.filter((o) =>
+        o.short_code === "WD" || o.name.toLowerCase().includes("walk-through")
+      ) || [];
+      for (const w of wtds) {
+        const wSel = selections.get(w.id);
+        if (wSel && wSel.right > 0) return `Right blocked — walk-through door on right (non-extended chute)`;
+      }
+    }
+    return null;
+  }, [isExtendedSelected, optionsQuery.data, selections]);
+
+  // When extended chute is deselected, remove extended-only options
+  useEffect(() => {
+    if (!extendedChuteOption) return;
+    if (isExtendedSelected) return;
+    // Remove any extended-only options that are selected
+    const opts = optionsQuery.data || [];
+    let changed = false;
+    const newSelections = new Map(selections);
+    const newPickOne = new Map(pickOneSelections);
+    for (const opt of opts) {
+      if (opt.requires_extended) {
+        if (newSelections.has(opt.id)) {
+          newSelections.delete(opt.id);
+          changed = true;
+        }
+        // Check pick_one groups
+        for (const [group, selId] of newPickOne) {
+          if (selId === opt.id) {
+            newPickOne.delete(group);
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      setSelections(newSelections);
+      setPickOneSelections(newPickOne);
+      toast.info("Extended options removed");
+    }
+  }, [isExtendedSelected]);
+
+  // Auto-calculate prices with quantities
   const calcRetail = useMemo(() => {
     let total = selectedBaseModel?.retail_price || 0;
-    for (const o of checkedOptionsList) total += o.retail_price;
+    for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
     return total;
-  }, [selectedBaseModel, checkedOptionsList]);
+  }, [selectedBaseModel, selectedOptionsList]);
 
   const calcCost = useMemo(() => {
     let total = selectedBaseModel?.cost_price || 0;
-    for (const o of checkedOptionsList) total += o.cost_price;
+    for (const { option, quantity } of selectedOptionsList) total += option.cost_price * quantity;
     return total;
-  }, [selectedBaseModel, checkedOptionsList]);
+  }, [selectedBaseModel, selectedOptionsList]);
 
-  // Sync auto-calculated prices when not manually overridden
   useEffect(() => {
     if (!customerPriceManual && calcRetail > 0) setCustomerPrice(String(calcRetail));
   }, [calcRetail, customerPriceManual]);
@@ -267,32 +405,48 @@ export default function NewOrder() {
     if (!ourCostManual && calcCost > 0) setOurCost(String(calcCost));
   }, [calcCost, ourCostManual]);
 
-  // Auto-generate build shorthand
+  // Auto-generate build shorthand with side info
   useEffect(() => {
     if (buildShorthandManual) return;
     if (!selectedBaseModel) { setBuildShorthand(""); return; }
+    const parts: string[] = [];
     if (selectedQuickBuild) {
-      const qbOptionIds = new Set(selectedQuickBuild.included_option_ids || []);
-      const extras = checkedOptionsList.filter((o) => !qbOptionIds.has(o.id));
-      const parts = [selectedQuickBuild.name];
-      if (extras.length > 0) parts.push(...extras.map((o) => o.short_code));
-      setBuildShorthand(parts.join(", "));
+      parts.push(selectedQuickBuild.name);
+      const qbIds = new Set(selectedQuickBuild.included_option_ids || []);
+      for (const { option, left, right } of selectedOptionsList) {
+        if (qbIds.has(option.id)) continue;
+        let code = option.short_code;
+        if (left > 0 || right > 0) {
+          const sides: string[] = [];
+          if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
+          if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
+          code += ` · ${sides.join(", ")}`;
+        }
+        parts.push(code);
+      }
     } else {
-      const codes = checkedOptionsList.map((o) => o.short_code);
-      setBuildShorthand(
-        codes.length > 0
-          ? `${selectedBaseModel.short_name} · ${codes.join(", ")}`
-          : selectedBaseModel.short_name
-      );
+      parts.push(selectedBaseModel.short_name);
+      for (const { option, left, right } of selectedOptionsList) {
+        let code = option.short_code;
+        if (left > 0 || right > 0) {
+          const sides: string[] = [];
+          if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
+          if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
+          code += ` · ${sides.join(", ")}`;
+        }
+        parts.push(code);
+      }
     }
-  }, [selectedBaseModel, selectedQuickBuild, checkedOptionsList, buildShorthandManual]);
+    setBuildShorthand(parts.join(", "));
+  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList, buildShorthandManual]);
 
   // Handlers
   function handleManufacturerChange(id: string) {
     setManufacturerId(id);
     setBaseModelId("");
     setQuickBuildId("");
-    setCheckedOptions(new Set());
+    setSelections(new Map());
+    setPickOneSelections(new Map());
     setCustomerPriceManual(false);
     setOurCostManual(false);
     setBuildShorthandManual(false);
@@ -300,7 +454,8 @@ export default function NewOrder() {
 
   function handleBaseModelChange(id: string) {
     setBaseModelId(id);
-    setCheckedOptions(new Set());
+    setSelections(new Map());
+    setPickOneSelections(new Map());
     setQuickBuildId("");
     setCustomerPriceManual(false);
     setOurCostManual(false);
@@ -310,23 +465,85 @@ export default function NewOrder() {
   function handleQuickBuildChange(id: string) {
     setQuickBuildId(id);
     if (!id) {
-      setCheckedOptions(new Set());
+      setSelections(new Map());
+      setPickOneSelections(new Map());
       return;
     }
     const qb = quickBuildsQuery.data?.find((q) => q.id === id);
     if (qb) {
       if (qb.base_model_id) setBaseModelId(qb.base_model_id);
-      setCheckedOptions(new Set(qb.included_option_ids || []));
+      // Set all quick build options as selected (simple)
+      const newSel = new Map<string, OptionSelection>();
+      for (const optId of qb.included_option_ids || []) {
+        newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true });
+      }
+      setSelections(newSel);
+      setPickOneSelections(new Map());
       setCustomerPriceManual(false);
       setOurCostManual(false);
       setBuildShorthandManual(false);
     }
   }
 
-  function toggleOption(id: string) {
-    setCheckedOptions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+  function toggleSimpleOption(optId: string) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId);
+      if (existing?.selected) {
+        next.delete(optId);
+      } else {
+        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true });
+      }
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function toggleSideOption(optId: string) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId);
+      if (existing && (existing.left > 0 || existing.right > 0)) {
+        next.delete(optId);
+      } else if (!existing) {
+        // Default to left side
+        next.set(optId, { optionId: optId, left: 1, right: 0, selected: false });
+      } else {
+        next.delete(optId);
+      }
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function cycleSide(optId: string, side: "left" | "right", maxPerSide: number) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false };
+      const current = side === "left" ? existing.left : existing.right;
+      const newVal = current >= maxPerSide ? 0 : current + 1;
+      const updated = { ...existing, [side]: newVal };
+      if (updated.left === 0 && updated.right === 0) {
+        next.delete(optId);
+      } else {
+        next.set(optId, updated);
+      }
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function selectPickOne(group: string, optId: string | null) {
+    setPickOneSelections((prev) => {
+      const next = new Map(prev);
+      if (optId) next.set(group, optId);
+      else next.delete(group);
       return next;
     });
     setCustomerPriceManual(false);
@@ -381,7 +598,6 @@ export default function NewOrder() {
     },
   });
 
-  // Validate
   function validate() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Manufacturer is required";
@@ -393,7 +609,6 @@ export default function NewOrder() {
     return Object.keys(e).length === 0;
   }
 
-  // Submit
   async function handleSubmit() {
     if (!validate()) return;
     setSubmitting(true);
@@ -403,15 +618,16 @@ export default function NewOrder() {
 
       const priceNum = parseFloat(customerPrice);
       const costNum = parseFloat(ourCost);
-      const marginAmount = priceNum - costNum;
-      const marginPercent = (marginAmount / priceNum) * 100;
 
-      const selectedOptionsJson = checkedOptionsList.map((o) => ({
-        option_id: o.id,
-        name: o.name,
-        short_code: o.short_code,
-        cost_price: o.cost_price,
-        retail_price: o.retail_price,
+      const selectedOptionsJson = selectedOptionsList.map((s) => ({
+        option_id: s.option.id,
+        name: s.option.name,
+        short_code: s.option.short_code,
+        cost_price: s.option.cost_price,
+        retail_price: s.option.retail_price,
+        quantity: s.quantity,
+        left: s.left,
+        right: s.right,
       }));
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
@@ -424,8 +640,6 @@ export default function NewOrder() {
         build_description: notes || null,
         customer_price: priceNum,
         our_cost: costNum,
-        margin_amount: marginAmount,
-        margin_percent: marginPercent,
         freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
         catl_number: catl_number || null,
         serial_number: serialNumber || null,
@@ -463,9 +677,223 @@ export default function NewOrder() {
     }
   }
 
-  // Price summary
-  const optionCount = checkedOptionsList.length;
-  const optionRetailTotal = checkedOptionsList.reduce((s, o) => s + o.retail_price, 0);
+  // Option counts for header
+  const optionCount = selectedOptionsList.length;
+  const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
+
+  // Render pick_one group
+  function renderPickOneGroup(group: string, options: FullOption[]) {
+    const selectedId = pickOneSelections.get(group) || null;
+    const hasIncluded = options.some((o) => o.is_included);
+    return (
+      <div className="space-y-1">
+        {!hasIncluded && (
+          <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+            <input
+              type="radio"
+              name={`pickone-${group}`}
+              checked={selectedId === null}
+              onChange={() => selectPickOne(group, null)}
+              className="w-[18px] h-[18px] accent-catl-teal"
+            />
+            <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
+          </label>
+        )}
+        {options.map((opt) => {
+          const isSelected = selectedId === opt.id;
+          const priceLabel = opt.is_included ? "included" : `$${fmtCurrency(opt.retail_price)}`;
+          return (
+            <div key={opt.id}>
+              <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+                <input
+                  type="radio"
+                  name={`pickone-${group}`}
+                  checked={isSelected}
+                  onChange={() => selectPickOne(group, opt.id)}
+                  className="w-[18px] h-[18px] accent-catl-teal"
+                />
+                <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
+                  {opt.name}{opt.is_included ? " — included" : ""}
+                </span>
+                {!opt.is_included && (
+                  <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+                )}
+              </label>
+              {/* Controls-specific: side picker for Pivot */}
+              {isSelected && group === "Controls" && opt.name.toLowerCase().includes("pivot") && (
+                <div className="ml-[26px] mt-1 mb-1 flex items-center gap-2">
+                  {renderControlsSidePicker(opt)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Controls side picker for Pivot
+  function renderControlsSidePicker(opt: FullOption) {
+    const sel = selections.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
+    const leftActive = sel.left > 0;
+    const rightActive = sel.right > 0;
+    return (
+      <div className="flex items-center gap-2">
+        <SidePill label="Left" active={leftActive} onClick={() => {
+          setSelections((prev) => {
+            const next = new Map(prev);
+            const cur = next.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
+            next.set(opt.id, { ...cur, left: cur.left > 0 ? 0 : 1, right: 0 });
+            return next;
+          });
+        }} />
+        <SidePill label="Right" active={rightActive} onClick={() => {
+          setSelections((prev) => {
+            const next = new Map(prev);
+            const cur = next.get(opt.id) || { optionId: opt.id, left: 0, right: 0, selected: false };
+            next.set(opt.id, { ...cur, right: cur.right > 0 ? 0 : 1, left: 0 });
+            return next;
+          });
+        }} />
+      </div>
+    );
+  }
+
+  // Render side option
+  function renderSideOption(opt: FullOption) {
+    const sel = selections.get(opt.id);
+    const isChecked = sel && (sel.left > 0 || sel.right > 0);
+    const maxSide = opt.max_per_side || 1;
+    const leftConflict = getSideConflicts(opt.id, "left");
+    const rightConflict = getSideConflicts(opt.id, "right");
+    const totalQty = (sel?.left || 0) + (sel?.right || 0);
+    const totalPrice = totalQty * opt.retail_price;
+
+    function sideLabel(side: "left" | "right") {
+      const val = side === "left" ? sel?.left || 0 : sel?.right || 0;
+      const label = side === "left" ? "Left" : "Right";
+      if (maxSide > 1 && val > 0) return `${label} ×${val}`;
+      return label;
+    }
+
+    return (
+      <div key={opt.id} className="mb-1">
+        <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+          <input
+            type="checkbox"
+            checked={!!isChecked}
+            onChange={() => toggleSideOption(opt.id)}
+            className="w-[18px] h-[18px] accent-catl-teal rounded"
+          />
+          <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
+            {opt.name}
+            {opt.allows_quantity && maxSide > 1 ? " — " : " — "}
+            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
+          </span>
+        </label>
+        {isChecked && (
+          <div className="ml-[26px] mt-1 mb-2 space-y-1">
+            <div className="flex items-center gap-2">
+              <SidePill
+                label={sideLabel("left")}
+                active={(sel?.left || 0) > 0}
+                disabled={!!leftConflict}
+                onClick={() => {
+                  if (leftConflict) return;
+                  cycleSide(opt.id, "left", maxSide);
+                }}
+              />
+              <SidePill
+                label={sideLabel("right")}
+                active={(sel?.right || 0) > 0}
+                disabled={!!rightConflict}
+                onClick={() => {
+                  if (rightConflict) return;
+                  cycleSide(opt.id, "right", maxSide);
+                }}
+              />
+            </div>
+            {rightConflict && (
+              <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>
+            )}
+            {leftConflict && (
+              <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>
+            )}
+            {totalQty > 0 && (
+              <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>
+                {totalQty} {totalQty === 1 ? "unit" : "units"} · ${fmtCurrency(totalPrice)}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Render simple option
+  function renderSimpleOption(opt: FullOption) {
+    const isChecked = selections.get(opt.id)?.selected ?? false;
+    return (
+      <label
+        key={opt.id}
+        className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]"
+      >
+        <input
+          type="checkbox"
+          checked={isChecked}
+          onChange={() => toggleSimpleOption(opt.id)}
+          className="w-[18px] h-[18px] accent-catl-teal rounded"
+        />
+        <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>{opt.name}</span>
+        <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+      </label>
+    );
+  }
+
+  // Render a group card
+  function renderGroupCard(group: string, options: FullOption[]) {
+    // Determine if this is a pick_one group
+    const isPick = options.every((o) => o.selection_type === "pick_one");
+    const hasSide = options.some((o) => o.selection_type === "side");
+
+    return (
+      <div key={group} className="border rounded-lg p-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
+        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group}</h4>
+        {isPick ? (
+          renderPickOneGroup(group, options)
+        ) : (
+          <div className="space-y-0.5">
+            {options.map((opt) => {
+              if (opt.selection_type === "side") return renderSideOption(opt);
+              if (opt.selection_type === "pick_one") {
+                // Mixed group with a pick_one item — render as simple for now
+                return renderSimpleOption(opt);
+              }
+              return renderSimpleOption(opt);
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Build summary pills
+  const summaryPills = useMemo(() => {
+    const pills: { label: string; variant: "base" | "standard" | "addon" }[] = [];
+    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
+    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
+    for (const { option, left, right } of selectedOptionsList) {
+      let label = option.short_code;
+      if (left > 0 || right > 0) {
+        const sides: string[] = [];
+        if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
+        if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
+        label += ` · ${sides.join(", ")}`;
+      }
+      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
+    }
+    return pills;
+  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
 
   return (
     <div className="mx-auto pb-40 overflow-x-hidden">
@@ -480,7 +908,7 @@ export default function NewOrder() {
       {/* Form card */}
       <div className="bg-card border border-border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto overflow-x-hidden">
 
-        {/* SECTION 1: Equipment */}
+        {/* EQUIPMENT */}
         <SectionHeader title="Equipment" />
 
         <FormRow label="Manufacturer" error={errors.manufacturer}>
@@ -527,57 +955,89 @@ export default function NewOrder() {
           </FormRow>
         )}
 
-        <SectionHeader title="Options" subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined} />
-        {groupedOptions.length > 0 && (
-          <div className="border border-border rounded-lg p-3 bg-card max-h-[400px] overflow-y-auto">
-            {groupedOptions.map(([group, opts]) => (
-              <OptionGroup
-                key={group}
-                group={group}
-                options={opts}
-                checked={checkedOptions}
-                onToggle={toggleOption}
-              />
-            ))}
+        {/* OPTIONS */}
+        <SectionHeader
+          title="Options"
+          subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined}
+        />
+
+        {/* Extended Chute toggle */}
+        {extendedChuteOption && (
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
+            <input
+              type="checkbox"
+              checked={isExtendedSelected}
+              onChange={() => toggleSimpleOption(extendedChuteOption.id)}
+              className="w-[18px] h-[18px] accent-catl-teal rounded"
+            />
+            <span className="text-[13px] font-semibold flex-1" style={{ color: "#0E2646" }}>Extended Chute</span>
+            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
 
+        {groupedOptions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {groupedOptions.map(([group, opts]) => {
+              // Don't render extended chute in the grid, it's shown above
+              const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
+              if (filtered.length === 0) return null;
+              return renderGroupCard(group, filtered);
+            })}
+          </div>
+        )}
+
+        {/* BUILD SUMMARY */}
         <SectionHeader title="Build Summary" />
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {summaryPills.map((pill, i) => (
+            <span
+              key={i}
+              className="px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{
+                background: pill.variant === "base" ? "#0E2646" : pill.variant === "standard" ? "rgba(85,186,170,0.15)" : "rgba(243,209,42,0.2)",
+                color: pill.variant === "base" ? "#F0F0F0" : pill.variant === "standard" ? "#55BAAA" : "#8B7A1A",
+              }}
+            >
+              {pill.label}
+            </span>
+          ))}
+        </div>
+
         <FormRow label="Build Short" error={errors.buildShorthand}>
           <input
             value={buildShorthand}
-            onChange={(e) => {
-              setBuildShorthand(e.target.value);
-              setBuildShorthandManual(true);
-            }}
+            onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }}
             placeholder="Auto-generated from selections"
             className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none"
             style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }}
           />
         </FormRow>
 
-        {/* SECTION 2: Pricing */}
+        {selectedBaseModel && (
+          <div className="text-xs space-y-0.5 px-1" style={{ color: "#717182" }}>
+            <div>
+              Base: ${fmtCurrency(selectedBaseModel.retail_price)}
+              {optionCount > 0 && <> + {optionCount} option{optionCount !== 1 ? "s" : ""}: ${fmtCurrency(optionRetailTotal)}</>}
+              {" = "}
+              <span className="font-semibold text-foreground">${fmtCurrency(calcRetail)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* PRICING */}
         <SectionHeader title="Pricing" />
 
         <FormRow label="Cust. Price" error={errors.customerPrice}>
-          <CurrencyInput
-            value={customerPrice}
-            onChange={(v) => { setCustomerPrice(v); setCustomerPriceManual(true); }}
-          />
+          <CurrencyInput value={customerPrice} onChange={(v) => { setCustomerPrice(v); setCustomerPriceManual(true); }} />
         </FormRow>
 
         <FormRow label="Our Cost" error={errors.ourCost}>
-          <CurrencyInput
-            value={ourCost}
-            onChange={(v) => { setOurCost(v); setOurCostManual(true); }}
-          />
+          <CurrencyInput value={ourCost} onChange={(v) => { setOurCost(v); setOurCostManual(true); }} />
         </FormRow>
 
         <FormRow label="Margin">
           <div className="py-2.5 text-sm font-semibold" style={{ color: marginColor }}>
-            {margin
-              ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)`
-              : "—"}
+            {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
           </div>
         </FormRow>
 
@@ -585,28 +1045,18 @@ export default function NewOrder() {
           <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} />
         </FormRow>
 
-        {/* SECTION 3: Tracking */}
+        {/* TRACKING */}
         <SectionHeader title="Tracking" />
 
         <FormRow label="CATL #">
-          <input
-            value={catl_number}
-            onChange={(e) => setCatlNumber(e.target.value)}
-            placeholder="e.g. CATL-2026-042"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-          />
+          <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
         </FormRow>
 
         <FormRow label="Serial #">
-          <input
-            value={serialNumber}
-            onChange={(e) => setSerialNumber(e.target.value)}
-            placeholder="Assigned when manufactured"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-          />
+          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
         </FormRow>
 
-        {/* SECTION 4: Status */}
+        {/* STATUS */}
         <SectionHeader title="Status" />
 
         <FormRow label="Status">
@@ -643,7 +1093,7 @@ export default function NewOrder() {
           </Popover>
         </FormRow>
 
-        {/* SECTION 5: Customer */}
+        {/* CUSTOMER */}
         <SectionHeader title="Customer" />
         <p className="text-xs text-muted-foreground italic -mt-2 mb-3">Optional — can be assigned later</p>
 
@@ -651,11 +1101,7 @@ export default function NewOrder() {
           <div className="relative">
             <input
               value={selectedCustomer ? selectedCustomer.name : customerSearch}
-              onChange={(e) => {
-                setCustomerSearch(e.target.value);
-                setCustomerId("");
-                setShowCustomerDropdown(true);
-              }}
+              onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
               onFocus={() => setShowCustomerDropdown(true)}
               placeholder="Search customers..."
               className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
@@ -663,27 +1109,12 @@ export default function NewOrder() {
             {showCustomerDropdown && (
               <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
                 {filteredCustomers.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setCustomerId(c.id);
-                      setCustomerSearch(c.name);
-                      setShowCustomerDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm"
-                  >
+                  <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
                     <span className="font-medium">{c.name}</span>
-                    {c.address_city && (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        {c.address_city}, {c.address_state}
-                      </span>
-                    )}
+                    {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
                   </button>
                 ))}
-                <button
-                  onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }}
-                  className="w-full text-left px-3 py-2.5 text-sm font-semibold text-catl-teal flex items-center gap-1 border-t border-border"
-                >
+                <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold text-catl-teal flex items-center gap-1 border-t border-border">
                   <Plus size={14} /> Add New Customer
                 </button>
               </div>
@@ -692,7 +1123,7 @@ export default function NewOrder() {
         </FormRow>
 
         {showNewCustomerForm && (
-          <div className="ml-[93px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5">
+          <div className="ml-[128px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5">
             <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
             <div className="grid grid-cols-2 gap-2">
               <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
@@ -718,7 +1149,7 @@ export default function NewOrder() {
           </div>
         )}
 
-        {/* SECTION 6: Inventory */}
+        {/* INVENTORY */}
         <button
           type="button"
           onClick={() => setInventoryOpen(!inventoryOpen)}
@@ -728,27 +1159,22 @@ export default function NewOrder() {
           <span className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Inventory Details</span>
           <ChevronDown size={14} className={cn("transition-transform", inventoryOpen && "rotate-180")} style={{ color: "#717182" }} />
         </button>
-          {inventoryOpen && (
-            <div className="mt-3 space-y-4">
-              <FormRow label="From Inv.">
-                <div className="flex items-center h-[42px]">
-                  <Switch checked={fromInventory} onCheckedChange={setFromInventory} />
-                </div>
+        {inventoryOpen && (
+          <div className="mt-3 space-y-4">
+            <FormRow label="From Inv.">
+              <div className="flex items-center h-[42px]">
+                <Switch checked={fromInventory} onCheckedChange={setFromInventory} />
+              </div>
+            </FormRow>
+            {fromInventory && (
+              <FormRow label="Inv. Location">
+                <input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
               </FormRow>
-              {fromInventory && (
-                <FormRow label="Inv. Location">
-                  <input
-                    value={inventoryLocation}
-                    onChange={(e) => setInventoryLocation(e.target.value)}
-                    placeholder="e.g. Warehouse Bay 3"
-                    className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
-                  />
-                </FormRow>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-        {/* SECTION 7: Notes */}
+        {/* NOTES */}
         <SectionHeader title="Notes" />
         <FormRow label="Notes">
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none" />
