@@ -130,10 +130,8 @@ export default function EditOrder() {
   const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
   const [buildShorthand, setBuildShorthand] = useState("");
   const [buildShorthandManual, setBuildShorthandManual] = useState(true); // start manual for edit
-  const [customerPrice, setCustomerPrice] = useState("");
-  const [customerPriceManual, setCustomerPriceManual] = useState(true);
-  const [ourCost, setOurCost] = useState("");
-  const [ourCostManual, setOurCostManual] = useState(true);
+  const [discountType, setDiscountType] = useState<"$" | "%">("$");
+  const [discountAmount, setDiscountAmount] = useState("");
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
