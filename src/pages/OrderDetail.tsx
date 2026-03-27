@@ -308,7 +308,12 @@ export default function OrderDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <StatusBadge status={order.status} />
+            <div className="flex flex-col items-end">
+              <StatusBadge status={order.status} />
+              {order.source_type === "direct_order" && (
+                <span className="text-[9px] mt-0.5" style={{ color: "rgba(240,240,240,0.35)" }}>DIRECT</span>
+              )}
+            </div>
           </div>
         </div>
         {/* Option pills */}
