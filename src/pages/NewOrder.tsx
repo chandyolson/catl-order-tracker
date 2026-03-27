@@ -172,7 +172,7 @@ export default function NewOrder() {
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [status, setStatus] = useState("estimate");
+  const [status, setStatus] = useState(isDirectOrder ? "ordered" : "estimate");
   const [estimateDate, setEstimateDate] = useState<Date>(new Date());
   const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState("");
@@ -1150,7 +1150,7 @@ export default function NewOrder() {
         <button onClick={() => navigate(-1)} className="text-catl-teal p-1">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-[17px] font-bold text-foreground">New Order</h1>
+        <h1 className="text-[17px] font-bold text-foreground">{isDirectOrder ? "New order" : "New estimate"}</h1>
       </div>
 
       {/* Form card */}
