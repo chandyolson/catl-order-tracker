@@ -1165,6 +1165,65 @@ export default function NewOrder() {
       {/* ─── Form Card ──────────────────────────────────────── */}
       <div className="bg-white border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
+        {/* ── CUSTOMER (estimates only — shown first) ─────────── */}
+        {!isDirectOrder && (
+          <>
+            <SectionHeader title="Customer" />
+
+            <FormRow label="Customer">
+              <div className="relative">
+                <input
+                  value={selectedCustomer ? selectedCustomer.name : customerSearch}
+                  onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  placeholder="Search customers..."
+                  className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+                />
+                {showCustomerDropdown && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
+                    {filteredCustomers.map((c) => (
+                      <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
+                        <span className="font-medium">{c.name}</span>
+                        {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
+                      </button>
+                    ))}
+                    <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}>
+                      <Plus size={14} /> Add New Customer
+                    </button>
+                  </div>
+                )}
+              </div>
+            </FormRow>
+
+            {showNewCustomerForm && (
+              <div className="ml-[128px] border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
+                <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                  <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                  <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                </div>
+                <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
+                  <option value="">Type (optional)</option>
+                  <option value="rancher">Rancher</option>
+                  <option value="feedlot">Feedlot</option>
+                  <option value="dealer">Dealer</option>
+                  <option value="other">Other</option>
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>
+                    {addCustomerMutation.isPending ? "Saving..." : "Save Customer"}
+                  </button>
+                  <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <SectionHeader title="Equipment" />
 
