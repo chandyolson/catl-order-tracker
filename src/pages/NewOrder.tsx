@@ -715,8 +715,8 @@ export default function NewOrder() {
       const { data: orderNumber, error: rpcError } = await supabase.rpc("generate_order_number");
       if (rpcError) throw rpcError;
 
-      const priceNum = parseFloat(customerPrice);
-      const costNum = parseFloat(ourCost);
+      const priceNum = customerPrice;
+      const costNum = ourCost;
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
