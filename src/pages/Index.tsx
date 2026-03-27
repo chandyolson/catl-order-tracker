@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ClipboardList, Calendar, FileCheck } from "lucide-react";
+import { AlertTriangle, ClipboardList, Calendar, FileCheck, Plus } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { attentionConfig } from "@/components/AttentionBadge";
+import NewOrderPicker from "@/components/NewOrderPicker";
 import {
   useActiveOrdersCount,
+  useEstimateVsOrderCounts,
   useAttentionItems,
   useDueThisMonth,
   useReadyToInvoice,
@@ -15,11 +18,13 @@ function KpiCard({
   value,
   icon: Icon,
   loading,
+  subtitle,
 }: {
   label: string;
   value: number;
   icon: React.ElementType;
   loading: boolean;
+  subtitle?: string;
 }) {
   return (
     <div
@@ -32,6 +37,7 @@ function KpiCard({
       <div>
         <p className="text-2xl font-bold">{loading ? "–" : value}</p>
         <p className="text-sm text-white/70">{label}</p>
+        {subtitle && <p className="text-[11px] text-white/50 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -39,21 +45,39 @@ function KpiCard({
 
 export default function Index() {
   const navigate = useNavigate();
+  const [showPicker, setShowPicker] = useState(false);
   const activeOrders = useActiveOrdersCount();
+  const eoCounts = useEstimateVsOrderCounts();
   const attentionItems = useAttentionItems();
   const dueThisMonth = useDueThisMonth();
   const readyToInvoice = useReadyToInvoice();
   const recentOrders = useRecentOrders();
 
   const attentionCount = attentionItems.data?.length ?? 0;
+  const estCount = eoCounts.data?.estimates ?? 0;
+  const ordCount = eoCounts.data?.orders ?? 0;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+    <div className="space-y-6 overflow-x-hidden">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <button
+          onClick={() => setShowPicker(true)}
+          className="w-10 h-10 rounded-full bg-catl-gold text-catl-navy flex items-center justify-center active:scale-[0.95] transition-transform"
+        >
+          <Plus size={20} />
+        </button>
+      </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Active Orders" value={activeOrders.data ?? 0} icon={ClipboardList} loading={activeOrders.isLoading} />
+        <KpiCard
+          label="Active"
+          value={activeOrders.data ?? 0}
+          icon={ClipboardList}
+          loading={activeOrders.isLoading}
+          subtitle={!activeOrders.isLoading && !eoCounts.isLoading ? `${estCount} estimates · ${ordCount} orders` : undefined}
+        />
         <KpiCard label="Needs Attention" value={attentionCount} icon={AlertTriangle} loading={attentionItems.isLoading} />
         <KpiCard label="Due This Month" value={dueThisMonth.data ?? 0} icon={Calendar} loading={dueThisMonth.isLoading} />
         <KpiCard label="Ready to Invoice" value={readyToInvoice.data ?? 0} icon={FileCheck} loading={readyToInvoice.isLoading} />
@@ -145,6 +169,8 @@ export default function Index() {
               })}
         </div>
       </div>
+
+      <NewOrderPicker open={showPicker} onClose={() => setShowPicker(false)} />
     </div>
   );
 }
