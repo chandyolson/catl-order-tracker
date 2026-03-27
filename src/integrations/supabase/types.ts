@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      base_models: {
+        Row: {
+          category: string | null
+          cost_price: number
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          manufacturer_id: string | null
+          margin_percent: number | null
+          name: string
+          notes: string | null
+          retail_price: number
+          short_name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          cost_price: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          margin_percent?: number | null
+          name: string
+          notes?: string | null
+          retail_price: number
+          short_name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          cost_price?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          margin_percent?: number | null
+          name?: string
+          notes?: string | null
+          retail_price?: number
+          short_name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "base_models_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_orders: {
         Row: {
           all_applied: boolean | null
@@ -263,6 +319,104 @@ export type Database = {
         }
         Relationships: []
       }
+      model_option_availability: {
+        Row: {
+          base_model_id: string | null
+          id: string
+          is_default: boolean | null
+          option_id: string | null
+          price_override_cost: number | null
+          price_override_retail: number | null
+        }
+        Insert: {
+          base_model_id?: string | null
+          id?: string
+          is_default?: boolean | null
+          option_id?: string | null
+          price_override_cost?: number | null
+          price_override_retail?: number | null
+        }
+        Update: {
+          base_model_id?: string | null
+          id?: string
+          is_default?: boolean | null
+          option_id?: string | null
+          price_override_cost?: number | null
+          price_override_retail?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_option_availability_base_model_id_fkey"
+            columns: ["base_model_id"]
+            isOneToOne: false
+            referencedRelation: "base_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_option_availability_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "model_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      model_options: {
+        Row: {
+          cost_price: number
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          manufacturer_id: string | null
+          margin_percent: number | null
+          name: string
+          notes: string | null
+          option_group: string | null
+          retail_price: number
+          short_code: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cost_price: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          margin_percent?: number | null
+          name: string
+          notes?: string | null
+          option_group?: string | null
+          retail_price: number
+          short_code: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          margin_percent?: number | null
+          name?: string
+          notes?: string | null
+          option_group?: string | null
+          retail_price?: number
+          short_code?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_options_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_timeline: {
         Row: {
           created_at: string | null
@@ -306,8 +460,10 @@ export type Database = {
           actual_completion_date: string | null
           approved_date: string | null
           base_model: string | null
+          base_model_id: string | null
           build_description: string | null
           build_shorthand: string
+          catl_number: string | null
           created_at: string | null
           current_estimate_version: number | null
           customer_id: string | null
@@ -334,6 +490,7 @@ export type Database = {
           qb_estimate_id: string | null
           qb_invoice_id: string | null
           qb_po_id: string | null
+          selected_options: Json | null
           serial_number: string | null
           so_received_date: string | null
           status: string
@@ -343,8 +500,10 @@ export type Database = {
           actual_completion_date?: string | null
           approved_date?: string | null
           base_model?: string | null
+          base_model_id?: string | null
           build_description?: string | null
           build_shorthand: string
+          catl_number?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
@@ -371,6 +530,7 @@ export type Database = {
           qb_estimate_id?: string | null
           qb_invoice_id?: string | null
           qb_po_id?: string | null
+          selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
           status?: string
@@ -380,8 +540,10 @@ export type Database = {
           actual_completion_date?: string | null
           approved_date?: string | null
           base_model?: string | null
+          base_model_id?: string | null
           build_description?: string | null
           build_shorthand?: string
+          catl_number?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
@@ -408,12 +570,20 @@ export type Database = {
           qb_estimate_id?: string | null
           qb_invoice_id?: string | null
           qb_po_id?: string | null
+          selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
           status?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_base_model_id_fkey"
+            columns: ["base_model_id"]
+            isOneToOne: false
+            referencedRelation: "base_models"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
@@ -476,6 +646,47 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quick_builds: {
+        Row: {
+          base_model_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          included_option_ids: string[] | null
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          base_model_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          included_option_ids?: string[] | null
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          base_model_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          included_option_ids?: string[] | null
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_builds_base_model_id_fkey"
+            columns: ["base_model_id"]
+            isOneToOne: false
+            referencedRelation: "base_models"
             referencedColumns: ["id"]
           },
         ]
