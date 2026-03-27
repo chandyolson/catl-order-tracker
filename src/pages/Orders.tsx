@@ -67,7 +67,7 @@ export default function Orders() {
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
-        .select("*, customers!inner(name, address_city, address_state)", { count: "exact" });
+        .select("*, customers(name, address_city, address_state)", { count: "exact" });
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
