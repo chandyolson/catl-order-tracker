@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronDown, Plus } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,7 +16,6 @@ const STATUS_OPTIONS = [
   "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed",
 ];
 
-// Group display order
 const GROUP_ORDER = [
   "Controls", "Squeeze", "Head / Neck", "Doors / Exits",
   "Floor / Pan", "Power", "Scales", "Carrier", "Misc",
@@ -40,22 +39,22 @@ type FullOption = {
   is_included: boolean | null;
 };
 
-// Represents how an option is selected
 type OptionSelection = {
   optionId: string;
-  left: number;   // quantity on left side (0 = not selected)
-  right: number;  // quantity on right side
-  selected: boolean; // for simple/pick_one
+  left: number;
+  right: number;
+  selected: boolean;
+  quantity: number; // for non-side quantity options like Neckbar
 };
 
 function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
   return (
-    <div>
+    <div className="overflow-hidden">
       <div className="flex items-start gap-2">
-        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 whitespace-nowrap" style={{ width: 120 }}>
+        <label className="text-sm font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>
           {label}
         </label>
-        <div className={cn("flex-1", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
+        <div className={cn("flex-1 min-w-0", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
       </div>
       {error && <p className="text-xs mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
     </div>
@@ -75,7 +74,7 @@ function CurrencyInput({ value, onChange, placeholder }: { value: string; onChan
           onChange(raw);
         }}
         placeholder={placeholder}
-        className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground"
+        className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0"
       />
     </div>
   );
@@ -96,7 +95,6 @@ function fmtCurrency(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-// Side picker pill
 function SidePill({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
   return (
     <button
@@ -118,16 +116,50 @@ function SidePill({ label, active, disabled, onClick }: { label: string; active:
   );
 }
 
+// Quantity stepper component
+function QtyStepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={value <= min}
+        className="flex items-center justify-center border rounded-md transition-colors"
+        style={{
+          width: 28, height: 28,
+          borderColor: "#D4D4D0",
+          opacity: value <= min ? 0.3 : 1,
+        }}
+      >
+        <Minus size={14} />
+      </button>
+      <span className="text-center font-semibold text-sm" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="flex items-center justify-center border rounded-md transition-colors"
+        style={{
+          width: 28, height: 28,
+          borderColor: "#D4D4D0",
+          opacity: value >= max ? 0.3 : 1,
+        }}
+      >
+        <Plus size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function NewOrder() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Form state
   const [manufacturerId, setManufacturerId] = useState("");
   const [baseModelId, setBaseModelId] = useState("");
   const [quickBuildId, setQuickBuildId] = useState("");
   const [selections, setSelections] = useState<Map<string, OptionSelection>>(new Map());
-  const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map()); // group -> optionId
+  const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
   const [buildShorthand, setBuildShorthand] = useState("");
   const [buildShorthandManual, setBuildShorthandManual] = useState(false);
   const [customerPrice, setCustomerPrice] = useState("");
@@ -227,11 +259,9 @@ export default function NewOrder() {
     }
   }, [manufacturersQuery.data]);
 
-  // Derived
   const selectedBaseModel = baseModelsQuery.data?.find((m) => m.id === baseModelId);
   const selectedQuickBuild = quickBuildsQuery.data?.find((q) => q.id === quickBuildId);
 
-  // Is the "Extended Chute" option selected?
   const extendedChuteOption = useMemo(() =>
     optionsQuery.data?.find((o) => o.short_code.toLowerCase() === "ext" || o.name.toLowerCase().includes("extended chute")),
     [optionsQuery.data]
@@ -240,7 +270,6 @@ export default function NewOrder() {
     ? (selections.get(extendedChuteOption.id)?.selected ?? false)
     : false;
 
-  // Helpers to identify standard vs extended carrier/scales options
   const isExtendedVariant = (opt: FullOption) =>
     /\(ext(ended)?\)/i.test(opt.name) || opt.requires_extended;
   const isCarrierOption = (opt: FullOption) =>
@@ -252,24 +281,23 @@ export default function NewOrder() {
   const isExtendedCarrierOrScales = (opt: FullOption) =>
     (isCarrierOption(opt) || isScalesOption(opt)) && isExtendedVariant(opt);
 
-  // Filter options based on model restrictions, requires_extended, requires_options
+  // Is this a neckbar-type option (quantity but no side)?
+  const isQuantityOnlyOption = (opt: FullOption) =>
+    opt.allows_quantity && opt.selection_type !== "side";
+
   const visibleOptions = useMemo(() => {
     if (!optionsQuery.data) return [];
     const selectedModel = selectedBaseModel;
     return optionsQuery.data.filter((opt) => {
-      // Model restriction
       if (opt.model_restriction && opt.model_restriction.length > 0 && selectedModel) {
         if (!opt.model_restriction.includes(selectedModel.short_name)) return false;
       }
-      // Carrier/Scales extended toggle: show one set or the other, never both
       if (isExtendedSelected) {
-        if (isStandardCarrierOrScales(opt)) return false; // hide standard when extended
+        if (isStandardCarrierOrScales(opt)) return false;
       } else {
-        if (isExtendedCarrierOrScales(opt)) return false; // hide extended when standard
+        if (isExtendedCarrierOrScales(opt)) return false;
       }
-      // Requires extended (for non-carrier/scales options)
       if (opt.requires_extended && !isExtendedSelected && !isCarrierOption(opt) && !isScalesOption(opt)) return false;
-      // Requires other options
       if (opt.requires_options && opt.requires_options.length > 0) {
         const allRequired = opt.requires_options.every((reqId) => {
           const sel = selections.get(reqId);
@@ -281,7 +309,6 @@ export default function NewOrder() {
     });
   }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections]);
 
-  // Group visible options
   const groupedOptions = useMemo(() => {
     const groups = new Map<string, FullOption[]>();
     for (const opt of visibleOptions) {
@@ -289,7 +316,6 @@ export default function NewOrder() {
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g)!.push(opt);
     }
-    // Sort by GROUP_ORDER
     const sorted: [string, FullOption[]][] = [];
     for (const g of GROUP_ORDER) {
       if (groups.has(g)) {
@@ -297,30 +323,26 @@ export default function NewOrder() {
         groups.delete(g);
       }
     }
-    // Any remaining groups
     for (const [g, opts] of groups) sorted.push([g, opts]);
     return sorted;
   }, [visibleOptions]);
 
-  // Helpers to check if an option is selected (any form)
   const isOptionSelected = useCallback((optId: string): boolean => {
     const sel = selections.get(optId);
     if (!sel) return false;
     return sel.selected || sel.left > 0 || sel.right > 0;
   }, [selections]);
 
-  // Get total quantity for an option
-  const getOptionQuantity = useCallback((optId: string): number => {
+  const getOptionTotalQty = useCallback((optId: string): number => {
     const sel = selections.get(optId);
     if (!sel) return 0;
-    if (sel.selected && sel.left === 0 && sel.right === 0) return 1; // simple
+    if (sel.selected && sel.left === 0 && sel.right === 0) return sel.quantity || 1;
     return sel.left + sel.right;
   }, [selections]);
 
-  // All selected options (for pricing, summary, submit)
+  // All selected options for pricing/summary/submit
   const selectedOptionsList = useMemo(() => {
     const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
-    // pick_one selections
     for (const [group, optId] of pickOneSelections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
@@ -331,13 +353,16 @@ export default function NewOrder() {
         });
       }
     }
-    // Other selections
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (!opt) continue;
-      // Skip if this option is in a pick_one group (handled above)
       if (opt.selection_type === "pick_one") continue;
-      const qty = sel.selected ? Math.max(1, sel.left + sel.right) : sel.left + sel.right;
+      let qty: number;
+      if (sel.selected && sel.left === 0 && sel.right === 0) {
+        qty = sel.quantity || 1;
+      } else {
+        qty = sel.left + sel.right;
+      }
       if (qty > 0) {
         result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
       }
@@ -345,7 +370,7 @@ export default function NewOrder() {
     return result;
   }, [selections, pickOneSelections, optionsQuery.data, pivotType, pivotSide]);
 
-  // Side conflict logic: WTD right blocks side exit right (non-extended only)
+  // Side conflict logic
   const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
     if (isExtendedSelected) return null;
     const opt = optionsQuery.data?.find((o) => o.id === optId);
@@ -355,30 +380,28 @@ export default function NewOrder() {
       opt.name.toLowerCase().includes("side exit") || opt.name.toLowerCase().includes("slam shut") || opt.name.toLowerCase().includes("hydraulic exit");
 
     if (isWTD && side === "right") {
-      // Check if any side exit has right selected
       const exits = optionsQuery.data?.filter((o) =>
         o.short_code === "SE" || o.short_code === "SSH" || o.short_code === "HE" ||
         o.name.toLowerCase().includes("side exit") || o.name.toLowerCase().includes("slam shut") || o.name.toLowerCase().includes("hydraulic exit")
       ) || [];
       for (const ex of exits) {
         const exSel = selections.get(ex.id);
-        if (exSel && exSel.right > 0) return `Right blocked — ${ex.name} on right (non-extended chute)`;
+        if (exSel && exSel.right > 0) return `Right blocked — ${ex.name} on right`;
       }
     }
     if (isSideExit && side === "right") {
-      // Check if WTD has right selected
       const wtds = optionsQuery.data?.filter((o) =>
         o.short_code === "WD" || o.name.toLowerCase().includes("walk-through")
       ) || [];
       for (const w of wtds) {
         const wSel = selections.get(w.id);
-        if (wSel && wSel.right > 0) return `Right blocked — walk-through door on right (non-extended chute)`;
+        if (wSel && wSel.right > 0) return `Right blocked — walk-through door on right`;
       }
     }
     return null;
   }, [isExtendedSelected, optionsQuery.data, selections]);
 
-  // When extended chute is toggled, swap carrier/scales sets and remove incompatible selections
+  // Extended chute toggle effect
   useEffect(() => {
     if (!extendedChuteOption) return;
     const opts = optionsQuery.data || [];
@@ -390,7 +413,6 @@ export default function NewOrder() {
 
     for (const opt of opts) {
       if (isExtendedSelected) {
-        // Extended is ON — remove standard carrier/scales selections
         if (isStandardCarrierOrScales(opt)) {
           if (newSelections.has(opt.id)) { newSelections.delete(opt.id); changed = true; removedStandard = true; }
           for (const [group, selId] of newPickOne) {
@@ -398,7 +420,6 @@ export default function NewOrder() {
           }
         }
       } else {
-        // Extended is OFF — remove extended carrier/scales and other extended-only options
         if (isExtendedCarrierOrScales(opt) || opt.requires_extended) {
           if (newSelections.has(opt.id)) { newSelections.delete(opt.id); changed = true; if (isCarrierOption(opt) || isScalesOption(opt)) removedExtended = true; }
           for (const [group, selId] of newPickOne) {
@@ -416,7 +437,7 @@ export default function NewOrder() {
     }
   }, [isExtendedSelected]);
 
-  // Auto-calculate prices with quantities
+  // Auto-calculate prices
   const calcRetail = useMemo(() => {
     let total = selectedBaseModel?.retail_price || 0;
     for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
@@ -437,7 +458,7 @@ export default function NewOrder() {
     if (!ourCostManual && calcCost > 0) setOurCost(String(calcCost));
   }, [calcCost, ourCostManual]);
 
-  // Auto-generate build shorthand with side info
+  // Auto-generate build shorthand
   useEffect(() => {
     if (buildShorthandManual) return;
     if (!selectedBaseModel) { setBuildShorthand(""); return; }
@@ -445,7 +466,7 @@ export default function NewOrder() {
     if (selectedQuickBuild) {
       parts.push(selectedQuickBuild.name);
       const qbIds = new Set(selectedQuickBuild.included_option_ids || []);
-      for (const { option, left, right } of selectedOptionsList) {
+      for (const { option, left, right, quantity } of selectedOptionsList) {
         if (qbIds.has(option.id)) continue;
         let code = option.short_code;
         if (left > 0 || right > 0) {
@@ -453,18 +474,22 @@ export default function NewOrder() {
           if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
           if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
           code += ` · ${sides.join(", ")}`;
+        } else if (quantity > 1) {
+          code += ` ×${quantity}`;
         }
         parts.push(code);
       }
     } else {
       parts.push(selectedBaseModel.short_name);
-      for (const { option, left, right } of selectedOptionsList) {
+      for (const { option, left, right, quantity } of selectedOptionsList) {
         let code = option.short_code;
         if (left > 0 || right > 0) {
           const sides: string[] = [];
           if (left > 0) sides.push(left > 1 ? `L×${left}` : "L");
           if (right > 0) sides.push(right > 1 ? `R×${right}` : "R");
           code += ` · ${sides.join(", ")}`;
+        } else if (quantity > 1) {
+          code += ` ×${quantity}`;
         }
         parts.push(code);
       }
@@ -508,10 +533,9 @@ export default function NewOrder() {
     const qb = quickBuildsQuery.data?.find((q) => q.id === id);
     if (qb) {
       if (qb.base_model_id) setBaseModelId(qb.base_model_id);
-      // Set all quick build options as selected (simple)
       const newSel = new Map<string, OptionSelection>();
       for (const optId of qb.included_option_ids || []) {
-        newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true });
+        newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
       }
       setSelections(newSel);
       setPickOneSelections(new Map());
@@ -528,7 +552,37 @@ export default function NewOrder() {
       if (existing?.selected) {
         next.delete(optId);
       } else {
-        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true });
+        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
+      }
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function toggleQuantityOption(optId: string) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId);
+      if (existing?.selected) {
+        next.delete(optId);
+      } else {
+        next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
+      }
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function setQuantityOptionQty(optId: string, qty: number) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId);
+      if (existing) {
+        next.set(optId, { ...existing, quantity: qty });
       }
       return next;
     });
@@ -544,8 +598,7 @@ export default function NewOrder() {
       if (existing && (existing.left > 0 || existing.right > 0)) {
         next.delete(optId);
       } else if (!existing) {
-        // Default to left side
-        next.set(optId, { optionId: optId, left: 1, right: 0, selected: false });
+        next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 });
       } else {
         next.delete(optId);
       }
@@ -556,18 +609,27 @@ export default function NewOrder() {
     setBuildShorthandManual(false);
   }
 
-  function cycleSide(optId: string, side: "left" | "right", maxPerSide: number) {
+  function toggleSide(optId: string, side: "left" | "right") {
     setSelections((prev) => {
       const next = new Map(prev);
-      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false };
+      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
       const current = side === "left" ? existing.left : existing.right;
-      const newVal = current >= maxPerSide ? 0 : current + 1;
+      const newVal = current > 0 ? 0 : 1; // toggle on/off
       const updated = { ...existing, [side]: newVal };
-      if (updated.left === 0 && updated.right === 0) {
-        next.delete(optId);
-      } else {
-        next.set(optId, updated);
-      }
+      next.set(optId, updated);
+      return next;
+    });
+    setCustomerPriceManual(false);
+    setOurCostManual(false);
+    setBuildShorthandManual(false);
+  }
+
+  function setSideQty(optId: string, side: "left" | "right", qty: number) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 };
+      const updated = { ...existing, [side]: qty };
+      next.set(optId, updated);
       return next;
     });
     setCustomerPriceManual(false);
@@ -582,7 +644,6 @@ export default function NewOrder() {
       else next.delete(group);
       return next;
     });
-    // Reset pivot state when Controls selection changes
     if (group === "Controls") {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (!opt || !opt.name.toLowerCase().includes("pivot")) {
@@ -649,13 +710,19 @@ export default function NewOrder() {
     if (!buildShorthand.trim()) e.buildShorthand = "Build shorthand is required";
     if (!customerPrice || parseFloat(customerPrice) <= 0) e.customerPrice = "Customer price must be greater than 0";
     if (!ourCost || parseFloat(ourCost) <= 0) e.ourCost = "Our cost must be greater than 0";
-    // Pivot validation
     const controlsSelId = pickOneSelections.get("Controls");
     if (controlsSelId) {
       const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
       if (controlsOpt?.name.toLowerCase().includes("pivot")) {
         if (!pivotType) e.pivotType = "Select pivot type";
         if (!pivotSide) e.pivotSide = "Select a side";
+      }
+    }
+    // Validate side options: if checked but no side selected
+    for (const [optId, sel] of selections) {
+      const opt = optionsQuery.data?.find((o) => o.id === optId);
+      if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected) {
+        e[`side_${optId}`] = "Select a side";
       }
     }
     setErrors(e);
@@ -682,18 +749,12 @@ export default function NewOrder() {
           cost_price_each: s.option.cost_price,
           retail_price_each: s.option.retail_price,
           ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide } : {
-            sides: (() => {
-              const parts: string[] = [];
-              if (s.left > 0) parts.push(s.left > 1 ? `Left ×${s.left}` : "Left");
-              if (s.right > 0) parts.push(s.right > 1 ? `Right ×${s.right}` : "Right");
-              return parts.join(", ");
-            })(),
+            left_qty: s.left,
+            right_qty: s.right,
           }),
           quantity: qty,
           total_cost: s.option.cost_price * qty,
           total_retail: s.option.retail_price * qty,
-          left: s.left,
-          right: s.right,
         };
       });
 
@@ -744,11 +805,9 @@ export default function NewOrder() {
     }
   }
 
-  // Option counts for header
   const optionCount = selectedOptionsList.length;
   const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
 
-  // Check if any overhead scales option is selected
   const isOverheadScalesSelected = useMemo(() => {
     const opts = optionsQuery.data || [];
     const scalesOpts = opts.filter((o) =>
@@ -760,7 +819,6 @@ export default function NewOrder() {
     });
   }, [optionsQuery.data, pickOneSelections]);
 
-  // Find "Pivot on Overhead Scales" option
   const pivotOnScalesOption = useMemo(() =>
     optionsQuery.data?.find((o) => o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")),
     [optionsQuery.data]
@@ -773,7 +831,8 @@ export default function NewOrder() {
     return opt?.name.toLowerCase().includes("pivot") ?? false;
   }, [controlsSelectedId, optionsQuery.data]);
 
-  // Render pick_one group — special case for Controls
+  // --- Render helpers ---
+
   function renderPickOneGroup(group: string, options: FullOption[]) {
     if (group === "Controls") return renderControlsGroup(options);
     const selectedId = pickOneSelections.get(group) || null;
@@ -782,47 +841,28 @@ export default function NewOrder() {
       <div className="space-y-1">
         {!hasIncluded && (
           <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input
-              type="radio"
-              name={`pickone-${group}`}
-              checked={selectedId === null}
-              onChange={() => selectPickOne(group, null)}
-              className="w-[18px] h-[18px] accent-catl-teal"
-            />
+            <input type="radio" name={`pickone-${group}`} checked={selectedId === null} onChange={() => selectPickOne(group, null)} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
           </label>
         )}
-        {options.map((opt) => {
-          const isSelected = selectedId === opt.id;
-          return (
-            <div key={opt.id}>
-              <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-                <input
-                  type="radio"
-                  name={`pickone-${group}`}
-                  checked={isSelected}
-                  onChange={() => selectPickOne(group, opt.id)}
-                  className="w-[18px] h-[18px] accent-catl-teal"
-                />
-                <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
-                  {opt.name}{opt.is_included ? " — included" : ""}
-                </span>
-                {!opt.is_included && (
-                  <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
-                )}
-              </label>
-            </div>
-          );
-        })}
+        {options.map((opt) => (
+          <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+            <input type="radio" name={`pickone-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
+            <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
+              {opt.name}{opt.is_included ? " — included" : ""}
+            </span>
+            {!opt.is_included && (
+              <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+            )}
+          </label>
+        ))}
       </div>
     );
   }
 
-  // Controls group with pivot sub-selections
   function renderControlsGroup(options: FullOption[]) {
     const selectedId = pickOneSelections.get("Controls") || null;
     const hasIncluded = options.some((o) => o.is_included);
-    // Filter out "Pivot on Overhead Scales" — it's rendered conditionally below
     const mainOptions = options.filter((o) => !(o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")));
     return (
       <div className="space-y-1">
@@ -840,20 +880,19 @@ export default function NewOrder() {
             <div key={opt.id}>
               <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
                 <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
-                <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
+                <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
                   {opt.name}{opt.is_included ? " — included" : ""}
                   {isDual ? " (both sides)" : ""}
                 </span>
                 {!opt.is_included && (
-                  <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+                  <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
                 )}
               </label>
-              {/* Pivot sub-selections */}
               {isSelected && isPivot && (
                 <div className="ml-[26px] mt-2 mb-2 p-3 rounded-lg border space-y-3" style={{ borderColor: "#D4D4D0" }}>
                   <div>
                     <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Pivot type:</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <SidePill label="Side-to-Side" active={pivotType === "side_to_side"} onClick={() => setPivotType("side_to_side")} />
                       <SidePill label="Front-to-Back" active={pivotType === "front_to_back"} onClick={() => setPivotType("front_to_back")} />
                     </div>
@@ -874,7 +913,6 @@ export default function NewOrder() {
             </div>
           );
         })}
-        {/* Pivot on Overhead Scales — only when pivot + overhead scales */}
         {isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && (
           <div className="mt-2 border-t border-border pt-2">
             <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
@@ -884,8 +922,8 @@ export default function NewOrder() {
                 onChange={() => toggleSimpleOption(pivotOnScalesOption.id)}
                 className="w-[18px] h-[18px] accent-catl-teal rounded"
               />
-              <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.name}</span>
-              <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(pivotOnScalesOption.retail_price)}</span>
+              <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.name}</span>
+              <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(pivotOnScalesOption.retail_price)}</span>
             </label>
           </div>
         )}
@@ -893,72 +931,89 @@ export default function NewOrder() {
     );
   }
 
-  // Render side option
+  // Render side option with side pills + optional quantity steppers
   function renderSideOption(opt: FullOption) {
     const sel = selections.get(opt.id);
-    const isChecked = sel && (sel.left > 0 || sel.right > 0);
+    const isChecked = sel != null; // present in map = checked
+    const hasAnySide = sel && (sel.left > 0 || sel.right > 0);
     const maxSide = opt.max_per_side || 1;
     const leftConflict = getSideConflicts(opt.id, "left");
     const rightConflict = getSideConflicts(opt.id, "right");
     const totalQty = (sel?.left || 0) + (sel?.right || 0);
     const totalPrice = totalQty * opt.retail_price;
 
-    function sideLabel(side: "left" | "right") {
-      const val = side === "left" ? sel?.left || 0 : sel?.right || 0;
-      const label = side === "left" ? "Left" : "Right";
-      if (maxSide > 1 && val > 0) return `${label} ×${val}`;
-      return label;
-    }
-
     return (
-      <div key={opt.id} className="mb-1">
+      <div key={opt.id} className="mb-1 overflow-hidden">
         <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
           <input
             type="checkbox"
-            checked={!!isChecked}
+            checked={isChecked}
             onChange={() => toggleSideOption(opt.id)}
-            className="w-[18px] h-[18px] accent-catl-teal rounded"
+            className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
           />
-          <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>
+          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
             {opt.name.replace(/\s*\(per sidegate\)/i, "")}
             {" — "}
             <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
           </span>
         </label>
         {isChecked && (
-          <div className="ml-[26px] mt-1 mb-2 space-y-1">
-            <div className="flex items-center gap-2">
+          <div className="ml-[26px] mt-1 mb-2 space-y-2 overflow-hidden">
+            {/* Side pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Sides:</span>
               <SidePill
-                label={sideLabel("left")}
+                label="Left"
                 active={(sel?.left || 0) > 0}
                 disabled={!!leftConflict}
                 onClick={() => {
                   if (leftConflict) return;
-                  cycleSide(opt.id, "left", maxSide);
+                  toggleSide(opt.id, "left");
                 }}
               />
               <SidePill
-                label={sideLabel("right")}
+                label="Right"
                 active={(sel?.right || 0) > 0}
                 disabled={!!rightConflict}
                 onClick={() => {
                   if (rightConflict) return;
-                  cycleSide(opt.id, "right", maxSide);
+                  toggleSide(opt.id, "right");
                 }}
               />
             </div>
-            {totalQty === 0 && (
+
+            {/* Quantity steppers per side (only if max_per_side > 1) */}
+            {maxSide > 1 && (sel?.left || 0) > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Left:</span>
+                <QtyStepper
+                  value={sel?.left || 1}
+                  min={1}
+                  max={maxSide}
+                  onChange={(v) => setSideQty(opt.id, "left", v)}
+                />
+              </div>
+            )}
+            {maxSide > 1 && (sel?.right || 0) > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Right:</span>
+                <QtyStepper
+                  value={sel?.right || 1}
+                  min={1}
+                  max={maxSide}
+                  onChange={(v) => setSideQty(opt.id, "right", v)}
+                />
+              </div>
+            )}
+
+            {!hasAnySide && (
               <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>
             )}
-            {rightConflict && (
-              <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>
-            )}
-            {leftConflict && (
-              <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>
-            )}
+            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
+            {leftConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>}
             {totalQty > 0 && (
               <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>
-                {totalQty} {totalQty === 1 ? "unit" : "units"} · ${fmtCurrency(totalPrice)}
+                Total: {totalQty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}
               </p>
             )}
           </div>
@@ -967,7 +1022,51 @@ export default function NewOrder() {
     );
   }
 
-  // Render simple option
+  // Render quantity-only option (like Neckbar)
+  function renderQuantityOption(opt: FullOption) {
+    const sel = selections.get(opt.id);
+    const isChecked = sel?.selected ?? false;
+    const qty = sel?.quantity || 1;
+    const maxQty = opt.max_per_side || 4; // use max_per_side as max qty for non-side options
+    const totalPrice = qty * opt.retail_price;
+
+    return (
+      <div key={opt.id} className="mb-1 overflow-hidden">
+        <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => toggleQuantityOption(opt.id)}
+            className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
+          />
+          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
+            {opt.name}
+            {" — "}
+            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
+          </span>
+        </label>
+        {isChecked && (
+          <div className="ml-[26px] mt-1 mb-2 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold" style={{ color: "#717182", width: 28 }}>Qty:</span>
+              <QtyStepper
+                value={qty}
+                min={1}
+                max={maxQty}
+                onChange={(v) => setQuantityOptionQty(opt.id, v)}
+              />
+            </div>
+            {qty > 1 && (
+              <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>
+                Total: {qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(totalPrice)}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderSimpleOption(opt: FullOption) {
     const isChecked = selections.get(opt.id)?.selected ?? false;
     return (
@@ -979,22 +1078,19 @@ export default function NewOrder() {
           type="checkbox"
           checked={isChecked}
           onChange={() => toggleSimpleOption(opt.id)}
-          className="w-[18px] h-[18px] accent-catl-teal rounded"
+          className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
         />
-        <span className="text-[13px] flex-1" style={{ color: "#1A1A1A" }}>{opt.name}</span>
-        <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.name}</span>
+        <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
       </label>
     );
   }
 
-  // Render a group card
   function renderGroupCard(group: string, options: FullOption[]) {
-    // Determine if this is a pick_one group
     const isPick = options.every((o) => o.selection_type === "pick_one");
-    const hasSide = options.some((o) => o.selection_type === "side");
 
     return (
-      <div key={group} className="border rounded-lg p-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
+      <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
         <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group}</h4>
         {isPick ? (
           renderPickOneGroup(group, options)
@@ -1002,10 +1098,8 @@ export default function NewOrder() {
           <div className="space-y-0.5">
             {options.map((opt) => {
               if (opt.selection_type === "side") return renderSideOption(opt);
-              if (opt.selection_type === "pick_one") {
-                // Mixed group with a pick_one item — render as simple for now
-                return renderSimpleOption(opt);
-              }
+              if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
+              if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
               return renderSimpleOption(opt);
             })}
           </div>
@@ -1020,10 +1114,9 @@ export default function NewOrder() {
     if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
     const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
     for (const item of selectedOptionsList) {
-      const { option, left, right, pivotType: pt, pivotSide: ps } = item;
+      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
       let label: string;
       if (pt) {
-        // Pivot Controls with detail
         const typeLabel = pt === "side_to_side" ? "Side-to-Side" : pt === "front_to_back" ? "Front-to-Back" : "";
         const parts = [getOptionDisplayName(option.name)];
         if (typeLabel) parts.push(typeLabel);
@@ -1031,8 +1124,12 @@ export default function NewOrder() {
         label = parts.join(" · ");
       } else if (option.name.toLowerCase().includes("dual control")) {
         label = getOptionDisplayName(option.name);
-      } else {
+      } else if (left > 0 || right > 0) {
         label = formatOptionPillLabel(option.name, left, right);
+      } else if (quantity > 1) {
+        label = `${getOptionDisplayName(option.name)} ×${quantity}`;
+      } else {
+        label = getOptionDisplayName(option.name);
       }
       pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon" });
     }
@@ -1040,7 +1137,7 @@ export default function NewOrder() {
   }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
 
   return (
-    <div className="mx-auto pb-40 overflow-x-hidden">
+    <div className="mx-auto pb-40 overflow-x-hidden max-w-full">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <button onClick={() => navigate(-1)} className="text-catl-teal p-1">
@@ -1107,22 +1204,21 @@ export default function NewOrder() {
 
         {/* Extended Chute toggle */}
         {extendedChuteOption && (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
             <input
               type="checkbox"
               checked={isExtendedSelected}
               onChange={() => toggleSimpleOption(extendedChuteOption.id)}
-              className="w-[18px] h-[18px] accent-catl-teal rounded"
+              className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0"
             />
-            <span className="text-[13px] font-semibold flex-1" style={{ color: "#0E2646" }}>Extended Chute</span>
-            <span className="text-xs" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
+            <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
+            <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
 
         {groupedOptions.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {groupedOptions.map(([group, opts]) => {
-              // Don't render extended chute in the grid, it's shown above
               const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
               if (filtered.length === 0) return null;
               return renderGroupCard(group, filtered);
@@ -1132,11 +1228,11 @@ export default function NewOrder() {
 
         {/* BUILD SUMMARY */}
         <SectionHeader title="Build Summary" />
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
           {summaryPills.map((pill, i) => (
             <span
               key={i}
-              className="px-2.5 py-1 rounded-full text-xs font-semibold"
+              className="px-2.5 py-1 rounded-full text-xs font-semibold break-words"
               style={{
                 background: pill.variant === "base" ? "#0E2646" : pill.variant === "standard" ? "rgba(85,186,170,0.15)" : "rgba(243,209,42,0.2)",
                 color: pill.variant === "base" ? "#F0F0F0" : pill.variant === "standard" ? "#55BAAA" : "#8B7A1A",
@@ -1152,7 +1248,7 @@ export default function NewOrder() {
             value={buildShorthand}
             onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }}
             placeholder="Auto-generated from selections"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none"
+            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0"
             style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "hsl(168, 37%, 53%)" : undefined }}
           />
         </FormRow>
@@ -1193,11 +1289,11 @@ export default function NewOrder() {
         <SectionHeader title="Tracking" />
 
         <FormRow label="CATL #">
-          <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
+          <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
         </FormRow>
 
         <FormRow label="Serial #">
-          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
+          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
         </FormRow>
 
         {/* STATUS */}
@@ -1248,7 +1344,7 @@ export default function NewOrder() {
               onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
               onFocus={() => setShowCustomerDropdown(true)}
               placeholder="Search customers..."
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none"
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0"
             />
             {showCustomerDropdown && (
               <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
@@ -1267,15 +1363,15 @@ export default function NewOrder() {
         </FormRow>
 
         {showNewCustomerForm && (
-          <div className="ml-[128px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5">
+          <div className="ml-[128px] border border-catl-teal/30 rounded-lg p-3 space-y-2 bg-catl-teal/5 overflow-hidden">
             <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
-              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
+              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
+              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
-              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none" />
+              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
+              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0" />
             </div>
             <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none">
               <option value="">Type (optional)</option>
@@ -1312,7 +1408,7 @@ export default function NewOrder() {
             </FormRow>
             {fromInventory && (
               <FormRow label="Inv. Location">
-                <input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none" />
+                <input value={inventoryLocation} onChange={(e) => setInventoryLocation(e.target.value)} placeholder="e.g. Warehouse Bay 3" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0" />
               </FormRow>
             )}
           </div>
@@ -1321,12 +1417,12 @@ export default function NewOrder() {
         {/* NOTES */}
         <SectionHeader title="Notes" />
         <FormRow label="Notes">
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none" />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0" />
         </FormRow>
       </div>
 
       {/* Price Summary Bar */}
-      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 -mx-4 md:mx-0 md:rounded-xl md:border">
+      <div className="sticky bottom-0 mt-4 bg-catl-cream border-t border-border px-4 py-3 -mx-4 md:mx-0 md:rounded-xl md:border overflow-hidden">
         {selectedBaseModel ? (
           <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
             <div>
