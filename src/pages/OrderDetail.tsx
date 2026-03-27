@@ -170,21 +170,30 @@ export default function OrderDetail() {
             <ChevronLeft size={24} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-[17px] font-bold truncate" style={{ color: "#F0F0F0" }}>
-                {customer?.name || <span className="italic" style={{ color: "rgba(240,240,240,0.45)" }}>No customer</span>}
-              </h1>
-              <button
-                onClick={() => navigate(`/orders/${id}/edit`)}
-                className="shrink-0 hover:opacity-80"
-                style={{ color: "rgba(240,240,240,0.45)" }}
-              >
-                <Edit2 size={16} />
-              </button>
-            </div>
+            <h1 className="text-[17px] font-bold truncate" style={{ color: "#F0F0F0" }}>
+              {customer?.name || <span className="italic" style={{ color: "rgba(240,240,240,0.45)" }}>No customer</span>}
+            </h1>
             <p className="text-sm font-medium" style={{ color: "#55BAAA" }}>{order.build_shorthand}</p>
           </div>
-          <div className="ml-auto shrink-0">
+          <div className="ml-auto shrink-0 flex items-center gap-2">
+            <button
+              onClick={() => navigate(`/orders/${id}/edit`)}
+              className="flex items-center justify-center rounded-lg active:scale-[0.95] transition-all"
+              style={{
+                width: 36, height: 36,
+                color: "rgba(240,240,240,0.5)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#F0F0F0";
+                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "rgba(240,240,240,0.5)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <Edit2 size={16} />
+            </button>
             <StatusBadge status={order.status} />
           </div>
         </div>
