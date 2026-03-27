@@ -163,10 +163,8 @@ export default function NewOrder() {
   const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
   const [buildShorthand, setBuildShorthand] = useState("");
   const [buildShorthandManual, setBuildShorthandManual] = useState(false);
-  const [customerPrice, setCustomerPrice] = useState("");
-  const [customerPriceManual, setCustomerPriceManual] = useState(false);
-  const [ourCost, setOurCost] = useState("");
-  const [ourCostManual, setOurCostManual] = useState(false);
+  const [discountType, setDiscountType] = useState<"$" | "%">("$");
+  const [discountAmount, setDiscountAmount] = useState("");
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
