@@ -238,8 +238,8 @@ export default function EditOrder() {
     setManufacturerId(o.manufacturer_id || "");
     setBaseModelId(o.base_model_id || "");
     setBuildShorthand(o.build_shorthand || "");
-    setCustomerPrice(o.customer_price ? String(o.customer_price) : "");
-    setOurCost(o.our_cost ? String(o.our_cost) : "");
+    setDiscountType(((o as any).discount_type as "$" | "%") || "$");
+    setDiscountAmount((o as any).discount_amount ? String((o as any).discount_amount) : "");
     setFreightEstimate(o.freight_estimate ? String(o.freight_estimate) : "");
     setCatlNumber(o.catl_number || "");
     setSerialNumber(o.serial_number || "");
