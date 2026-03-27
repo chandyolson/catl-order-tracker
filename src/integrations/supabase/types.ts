@@ -363,46 +363,73 @@ export type Database = {
       }
       model_options: {
         Row: {
+          allows_quantity: boolean | null
+          conflicts_with: string[] | null
           cost_price: number
           created_at: string | null
           id: string
           is_active: boolean | null
+          is_included: boolean | null
+          is_upgrade_of: string | null
           manufacturer_id: string | null
           margin_percent: number | null
+          max_per_side: number | null
+          model_restriction: string[] | null
           name: string
           notes: string | null
           option_group: string | null
+          requires_extended: boolean | null
+          requires_options: string[] | null
           retail_price: number
+          selection_type: string | null
           short_code: string
           sort_order: number | null
           updated_at: string | null
         }
         Insert: {
+          allows_quantity?: boolean | null
+          conflicts_with?: string[] | null
           cost_price: number
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_included?: boolean | null
+          is_upgrade_of?: string | null
           manufacturer_id?: string | null
           margin_percent?: number | null
+          max_per_side?: number | null
+          model_restriction?: string[] | null
           name: string
           notes?: string | null
           option_group?: string | null
+          requires_extended?: boolean | null
+          requires_options?: string[] | null
           retail_price: number
+          selection_type?: string | null
           short_code: string
           sort_order?: number | null
           updated_at?: string | null
         }
         Update: {
+          allows_quantity?: boolean | null
+          conflicts_with?: string[] | null
           cost_price?: number
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_included?: boolean | null
+          is_upgrade_of?: string | null
           manufacturer_id?: string | null
           margin_percent?: number | null
+          max_per_side?: number | null
+          model_restriction?: string[] | null
           name?: string
           notes?: string | null
           option_group?: string | null
+          requires_extended?: boolean | null
+          requires_options?: string[] | null
           retail_price?: number
+          selection_type?: string | null
           short_code?: string
           sort_order?: number | null
           updated_at?: string | null
