@@ -82,6 +82,64 @@ export default function OrderDetail() {
       toast.error("Failed to delete order: " + err.message);
     },
   });
+
+  const convertToOrderMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").update({
+        status: "ordered",
+        ordered_date: format(new Date(), "yyyy-MM-dd"),
+      }).eq("id", id!);
+      if (error) throw error;
+      await supabase.from("order_timeline").insert({
+        order_id: id,
+        event_type: "status_change",
+        title: "Estimate converted to order",
+        description: `New order placed with ${manufacturer?.name || "manufacturer"}`,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+      queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
+      toast.success("Estimate converted to order");
+      setShowConvertModal(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Count compatible equipment for conversion modal
+  const onOrderCountQuery = useQuery({
+    queryKey: ["on-order-count", id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("source_type", "direct_order")
+        .is("customer_id", null)
+        .in("status", ["ordered", "so_received", "in_production"])
+        .eq("manufacturer_id", order?.manufacturer_id || "");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!order?.manufacturer_id && order?.source_type === "estimate",
+  });
+
+  const inventoryCountQuery = useQuery({
+    queryKey: ["inventory-count", id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("source_type", "direct_order")
+        .is("customer_id", null)
+        .in("status", ["completed", "freight_arranged"])
+        .eq("from_inventory", true)
+        .eq("manufacturer_id", order?.manufacturer_id || "");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!order?.manufacturer_id && order?.source_type === "estimate",
+  });
+
   // ─── QUERIES ────────────────────────────────────────────
   const orderQuery = useQuery({
     queryKey: ["order", id],
