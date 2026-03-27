@@ -520,7 +520,6 @@ export default function NewOrder() {
     setQuickBuildId("");
     setSelections(new Map());
     setPickOneSelections(new Map());
-    setPivotType("");
     setPivotSide("");
     setBuildShorthandManual(false);
   }
@@ -529,7 +528,6 @@ export default function NewOrder() {
     setBaseModelId(id);
     setSelections(new Map());
     setPickOneSelections(new Map());
-    setPivotType("");
     setPivotSide("");
     setQuickBuildId("");
     setBuildShorthandManual(false);
@@ -644,8 +642,7 @@ export default function NewOrder() {
     });
     if (group === "Controls") {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (!opt || !opt.name.toLowerCase().includes("pivot")) {
-        setPivotType("");
+      if (!opt || (opt.short_code !== "PC" && opt.short_code !== "PC-FB")) {
         setPivotSide("");
       }
     }
@@ -696,9 +693,8 @@ export default function NewOrder() {
     const controlsSelId = pickOneSelections.get("Controls");
     if (controlsSelId) {
       const controlsOpt = optionsQuery.data?.find((o) => o.id === controlsSelId);
-      if (controlsOpt?.name.toLowerCase().includes("pivot")) {
-        if (!pivotType) e.pivotType = "Select pivot type";
-        if (!pivotSide) e.pivotSide = "Select a side";
+      if (controlsOpt?.short_code === "PC" || controlsOpt?.short_code === "PC-FB") {
+        if (!pivotSide) e.pivotSide = controlsOpt.short_code === "PC" ? "Select dominant side" : "Select mounted side";
       }
     }
     // Validate side options: if checked but no side selected
@@ -855,48 +851,61 @@ export default function NewOrder() {
     const mainOptions = options.filter((o) => !(o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")));
     return (
       <div className="space-y-1">
-        {hasIncluded ? null : (
+        {/* Standard (included) option */}
+        {hasIncluded && (() => {
+          const stdOpt = mainOptions.find((o) => o.is_included);
+          return stdOpt ? (
+            <div>
+              <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+                <input type="radio" name="pickone-Controls" checked={selectedId === stdOpt.id || selectedId === null} onChange={() => { selectPickOne("Controls", stdOpt.id); setPivotSide(""); }} className="w-[18px] h-[18px] accent-catl-teal mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Standard controls (included)</span>
+                  <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Default. One side, fixed position. No additional cost.</p>
+                </div>
+              </label>
+            </div>
+          ) : null;
+        })()}
+        {!hasIncluded && (
           <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="radio" name="pickone-Controls" checked={selectedId === null} onChange={() => selectPickOne("Controls", null)} className="w-[18px] h-[18px] accent-catl-teal" />
+            <input type="radio" name="pickone-Controls" checked={selectedId === null} onChange={() => { selectPickOne("Controls", null); setPivotSide(""); }} className="w-[18px] h-[18px] accent-catl-teal" />
             <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
           </label>
         )}
-        {mainOptions.map((opt) => {
+        {/* Non-included, non-POS options */}
+        {mainOptions.filter((o) => !o.is_included).map((opt) => {
           const isSelected = selectedId === opt.id;
-          const isPivot = opt.name.toLowerCase().includes("pivot");
-          const isDual = opt.name.toLowerCase().includes("dual");
+          const isSTS = opt.short_code === "PC";
+          const isFTB = opt.short_code === "PC-FB";
+          const isDual = opt.short_code === "DC" || opt.name.toLowerCase().includes("dual");
+          const isPivot = isSTS || isFTB;
+
           return (
             <div key={opt.id}>
-              <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-                <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => selectPickOne("Controls", opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
-                <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>
-                  {opt.display_name || opt.name}{opt.is_included ? " — included" : ""}
-                  {isDual ? " (both sides)" : ""}
-                </span>
+              <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
+                <input type="radio" name="pickone-Controls" checked={isSelected} onChange={() => { selectPickOne("Controls", opt.id); if (!isPivot) setPivotSide(""); }} className="w-[18px] h-[18px] accent-catl-teal mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>
+                    {isSTS ? "Pivot · Side-to-Side" : isFTB ? "Pivot · Front-to-Back" : (opt.display_name || opt.name)}
+                  </span>
+                  {isDual && <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides. No side picker needed.</p>}
+                  {isSTS && <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Swivels side to side. Pick which side is dominant.</p>}
+                  {isFTB && <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Swivels front to back. Pick which side it's mounted on.</p>}
+                </div>
                 {!opt.is_included && (
-                  <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
+                  <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>
                 )}
               </label>
               {isSelected && isPivot && (
-                <div className="ml-[26px] mt-2 mb-2 p-3 rounded-lg border space-y-3" style={{ borderColor: "#D4D4D0" }}>
-                  <div>
-                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Pivot type:</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <SidePill label="Side-to-Side" active={pivotType === "side_to_side"} onClick={() => setPivotType("side_to_side")} />
-                      <SidePill label="Front-to-Back" active={pivotType === "front_to_back"} onClick={() => setPivotType("front_to_back")} />
-                    </div>
-                    {errors.pivotType && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotType}</p>}
+                <div className="ml-[26px] mt-2 mb-2 p-3 rounded-lg border space-y-1" style={{ borderColor: "#D4D4D0" }}>
+                  <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>
+                    {isSTS ? "Dominant side:" : "Mounted on:"}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <SidePill label="Left" active={pivotSide === "Left"} onClick={() => setPivotSide("Left")} />
+                    <SidePill label="Right" active={pivotSide === "Right"} onClick={() => setPivotSide("Right")} />
                   </div>
-                  <div>
-                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>
-                      {pivotType === "front_to_back" ? "Mounted on:" : "Dominant side:"}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <SidePill label="Left" active={pivotSide === "Left"} onClick={() => setPivotSide("Left")} />
-                      <SidePill label="Right" active={pivotSide === "Right"} onClick={() => setPivotSide("Right")} />
-                    </div>
-                    {errors.pivotSide && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotSide}</p>}
-                  </div>
+                  {errors.pivotSide && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotSide}</p>}
                 </div>
               )}
             </div>
@@ -911,7 +920,7 @@ export default function NewOrder() {
                 onChange={() => toggleSimpleOption(pivotOnScalesOption.id)}
                 className="w-[18px] h-[18px] accent-catl-teal rounded"
               />
-              <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.name}</span>
+              <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.display_name || pivotOnScalesOption.name}</span>
               <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(pivotOnScalesOption.retail_price)}</span>
             </label>
           </div>
