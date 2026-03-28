@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
-import { Edit2, Check, X, Phone, Mail, ArrowRightCircle } from "lucide-react";
+import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -25,6 +25,7 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const queryClient = useQueryClient();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(order.notes || "");
+  const [creatingPO, setCreatingPO] = useState(false);
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {
@@ -68,12 +69,51 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", order.id] });
       queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+      queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] });
       toast.success("Estimate converted to order");
+      if (manufacturer?.ordering_portal_url) {
+        window.open(manufacturer.ordering_portal_url, "_blank");
+      }
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to convert");
     },
   });
+
+  async function createQBPurchaseOrder() {
+    setCreatingPO(true);
+    try {
+      const resp = await fetch(
+        `https://dubzwbfqlwhkpmpuejsy.supabase.co/functions/v1/qb-push-po`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: order.id }),
+        }
+      );
+      const data = await resp.json();
+      if (data.success) {
+        if (data.already_exists) {
+          toast.info(`QB PO already exists: #${data.qb_po_doc_number}`);
+        } else {
+          let msg = `QB Purchase Order #${data.qb_po_doc_number} created`;
+          if (data.unmapped_items && data.unmapped_items.length > 0) {
+            msg += ` (${data.unmapped_items.length} items need review in QB)`;
+          }
+          toast.success(msg);
+        }
+        queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+        queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+        queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] });
+      } else {
+        toast.error(data.error || "Failed to create QB PO");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create QB PO");
+    } finally {
+      setCreatingPO(false);
+    }
+  }
 
   const isEstimate = order.source_type === "estimate" && order.status === "estimate";
 
@@ -122,7 +162,60 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               </button>
             )}
 
-            {/* Base model */}
+            {/* Next Steps Banner — shows for purchase_order or order_pending status */}
+            {(order.status === "purchase_order" || order.status === "order_pending") && (
+              <div className="rounded-xl p-4 mb-2" style={{
+                background: order.status === "purchase_order"
+                  ? "linear-gradient(135deg, rgba(85,186,170,0.08), rgba(14,38,70,0.06))"
+                  : "rgba(243,209,42,0.08)",
+                border: order.status === "purchase_order"
+                  ? "1px solid rgba(85,186,170,0.2)"
+                  : "1px solid rgba(243,209,42,0.2)",
+              }}>
+                <p className="text-[14px] font-medium mb-1" style={{ color: "#0E2646" }}>
+                  {order.status === "purchase_order" ? "Next steps" : "Waiting on manufacturer"}
+                </p>
+                <p className="text-[12px] text-muted-foreground mb-3">
+                  {order.status === "purchase_order"
+                    ? "Submit this order on the manufacturer portal, then create the Purchase Order in QuickBooks."
+                    : `Order submitted to ${manufacturer?.short_name || "manufacturer"}. Create the QB Purchase Order while you wait for their SO confirmation.`}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {manufacturer?.ordering_portal_url && order.status === "purchase_order" && (
+                    <button
+                      onClick={() => window.open(manufacturer.ordering_portal_url, "_blank")}
+                      className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
+                      style={{ backgroundColor: "#0E2646", color: "#F0F0F0" }}
+                    >
+                      <ExternalLink size={14} />
+                      Order on {manufacturer.short_name || manufacturer.name} Portal
+                    </button>
+                  )}
+                  <button
+                    onClick={createQBPurchaseOrder}
+                    disabled={creatingPO || !!order.qb_po_id}
+                    className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform disabled:opacity-50"
+                    style={{
+                      backgroundColor: order.qb_po_id ? "#27AE60" : "#F3D12A",
+                      color: order.qb_po_id ? "#FFFFFF" : "#0E2646",
+                    }}
+                  >
+                    {order.qb_po_id ? (
+                      <>
+                        <Check size={14} />
+                        QB PO #{order.qb_po_doc_number}
+                      </>
+                    ) : (
+                      <>
+                        <FileText size={14} />
+                        {creatingPO ? "Creating..." : "Create QB Purchase Order"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {baseModel && (
               <div>
                 <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Base Model</span>
