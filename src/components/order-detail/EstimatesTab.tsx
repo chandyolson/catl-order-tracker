@@ -35,11 +35,11 @@ export default function EstimatesTab({ orderId, estimates, order, queryClient }:
     <div>
       <div className="flex gap-2 mb-4 flex-wrap">
         <button
-          onClick={() => navigate(`/orders/${orderId}/edit`)}
+          onClick={() => navigate(`/orders/${orderId}/edit?forEstimate=true`)}
           className="flex items-center gap-1.5 text-sm font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
           style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
         >
-          <Plus size={14} /> New version
+          <Plus size={14} /> {estimates.length === 0 ? "Create estimate" : "New version"}
         </button>
         {currentEstimate && (
           <button
@@ -54,7 +54,12 @@ export default function EstimatesTab({ orderId, estimates, order, queryClient }:
       </div>
 
       {estimates.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No estimates yet.</p>
+        <div className="text-center py-6">
+          <p className="text-sm text-muted-foreground">No estimates yet.</p>
+          {customer && (
+            <p className="text-xs text-muted-foreground mt-1">Create an estimate to quote {customer.name || "this customer"} on this equipment with add-ons.</p>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           {estimates.map((est) => (

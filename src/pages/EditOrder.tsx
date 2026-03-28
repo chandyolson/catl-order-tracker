@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
@@ -95,6 +95,8 @@ function QtyStepper({ value, min, max, onChange }: { value: number; min: number;
 
 export default function EditOrder() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const forEstimate = searchParams.get("forEstimate") === "true";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -134,7 +136,7 @@ export default function EditOrder() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [showEstimateDialog, setShowEstimateDialog] = useState(false);
   const [showChangeOrderDialog, setShowChangeOrderDialog] = useState(false);
-  const [estimateAction, setEstimateAction] = useState<"update" | "new">("update");
+  const [estimateAction, setEstimateAction] = useState<"update" | "new">(forEstimate ? "new" : "update");
   const [estimateLabel, setEstimateLabel] = useState("");
   const [coSource, setCoSource] = useState<"customer" | "moly" | "internal">("customer");
   const [coRequestedBy, setCoRequestedBy] = useState("");
@@ -596,11 +598,11 @@ export default function EditOrder() {
 
     const configChanged = hasConfigChanged();
 
-    if (!configChanged) {
+    if (!configChanged && !forEstimate) {
       // Path 1: Admin-only changes — save directly
       await doSave();
-    } else if (status === "estimate") {
-      // Path 2: Config changed, still an estimate — show estimate dialog
+    } else if (status === "estimate" || forEstimate) {
+      // Path 2: Config changed or creating estimate for customer — show estimate dialog
       setShowEstimateDialog(true);
     } else {
       // Path 3: Config changed, already ordered — show change order dialog
@@ -1393,7 +1395,7 @@ export default function EditOrder() {
                 <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-right text-[16px]" />
               </div>
             </div>
-            {orderQuery.data?.source_type === "estimate" && (
+            {(orderQuery.data?.source_type === "estimate" || forEstimate) && (
               <div>
                 <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Sales Tax</p>
                 <select

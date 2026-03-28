@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
-import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText } from "lucide-react";
+import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText, Users, Search } from "lucide-react";
 import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -31,6 +31,41 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const [editingContractName, setEditingContractName] = useState(false);
   const [molyContractNum, setMolyContractNum] = useState(order.moly_contract_number || "");
   const [editingMolyNum, setEditingMolyNum] = useState(false);
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [custSearch, setCustSearch] = useState("");
+  const [debouncedCustSearch, setDebouncedCustSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCustSearch(custSearch), 300);
+    return () => clearTimeout(t);
+  }, [custSearch]);
+
+  const custSearchQuery = useQuery({
+    queryKey: ["customer-search-overview", debouncedCustSearch],
+    queryFn: async () => {
+      if (!debouncedCustSearch || debouncedCustSearch.length < 2) return [];
+      const { data } = await supabase
+        .from("customers")
+        .select("id, name, company, address_city, address_state")
+        .or(`name.ilike.%${debouncedCustSearch}%,company.ilike.%${debouncedCustSearch}%`)
+        .limit(6);
+      return data || [];
+    },
+    enabled: debouncedCustSearch.length >= 2,
+  });
+
+  const assignCustomerMutation = useMutation({
+    mutationFn: async (customerId: string) => {
+      const { error } = await supabase.from("orders").update({ customer_id: customerId }).eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+      setShowCustomerSearch(false);
+      setCustSearch("");
+      toast.success("Customer assigned");
+    },
+  });
 
   const isPortalDone = portalOrdered || paperwork.some(
     (p) => p.document_type === "vendor_po_submitted" && p.status === "complete"
@@ -501,6 +536,68 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           </div>
         </div>
       </div>
+
+      {/* ─── CUSTOMER ────────────────────────────────────── */}
+      {!customer && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-2.5" style={{ backgroundColor: "#F5F5F0" }}>
+            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Customer</h3>
+          </div>
+          <div className="p-4">
+            {!showCustomerSearch ? (
+              <button
+                onClick={() => setShowCustomerSearch(true)}
+                className="flex items-center gap-2 text-[13px] font-medium active:scale-[0.97] transition-transform"
+                style={{ color: "#55BAAA" }}
+              >
+                <Users size={14} /> Assign a customer
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={custSearch}
+                    onChange={(e) => setCustSearch(e.target.value)}
+                    placeholder="Search customers..."
+                    className="w-full border border-border rounded-lg pl-9 pr-3 py-2.5 text-[14px] outline-none text-[16px]"
+                    autoFocus
+                  />
+                </div>
+                {custSearchQuery.data && custSearchQuery.data.length > 0 && (
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    {custSearchQuery.data.map((c: any) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border last:border-b-0"
+                        onClick={() => assignCustomerMutation.mutate(c.id)}
+                      >
+                        <div>
+                          <p className="text-[13px] font-medium text-foreground">{c.name}</p>
+                          {(c.address_city || c.company) && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {[c.company, c.address_city, c.address_state].filter(Boolean).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {custSearch.length >= 2 && custSearchQuery.data?.length === 0 && (
+                  <p className="text-[12px] text-muted-foreground">No customers found</p>
+                )}
+                <button
+                  onClick={() => { setShowCustomerSearch(false); setCustSearch(""); }}
+                  className="text-[12px] text-muted-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ─── QUICK ACTIONS ───────────────────────────────── */}
       {customer && (
