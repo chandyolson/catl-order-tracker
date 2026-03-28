@@ -651,14 +651,19 @@ export default function NewOrder() {
 
   /* ─── Customer ─────────────────────────────────────────────── */
 
-  const filteredCustomers = useMemo(() => {
-    if (!customersQuery.data) return [];
-    if (!customerSearch) return customersQuery.data;
-    const q = customerSearch.toLowerCase();
-    return customersQuery.data.filter((c) => c.name.toLowerCase().includes(q));
-  }, [customersQuery.data, customerSearch]);
+  const filteredCustomers = customerSearchQuery.data || [];
 
-  const selectedCustomer = customersQuery.data?.find((c) => c.id === customerId);
+  const selectedCustomer = selectedCustomerQuery.data;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!(e.target as Element).closest("[data-customer-dropdown]")) {
+        setShowCustomerDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const addCustomerMutation = useMutation({
     mutationFn: async () => {
