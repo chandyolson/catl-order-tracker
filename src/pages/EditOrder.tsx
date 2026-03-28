@@ -583,6 +583,22 @@ export default function EditOrder() {
 
   async function handleSubmit() {
     if (!validate()) return;
+
+    const configChanged = hasConfigChanged();
+
+    if (!configChanged) {
+      // Path 1: Admin-only changes — save directly
+      await doSave();
+    } else if (status === "estimate") {
+      // Path 2: Config changed, still an estimate — show estimate dialog
+      setShowEstimateDialog(true);
+    } else {
+      // Path 3: Config changed, already ordered — show change order dialog
+      setShowChangeOrderDialog(true);
+    }
+  }
+
+  async function doSave() {
     setSubmitting(true);
     try {
       const selectedOptionsJson = selectedOptionsList.map((s) => {
