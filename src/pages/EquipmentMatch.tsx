@@ -135,7 +135,7 @@ export default function EquipmentMatch() {
 
       // Timeline on equipment order
       const customerName = (estimate!.customers as any)?.name || "Customer";
-      await supabase.from("order_timeline").insert([
+      const { error: tlErr } = await supabase.from("order_timeline").insert([
         {
           order_id: equipmentOrder.id,
           event_type: "customer_approved",
@@ -149,11 +149,14 @@ export default function EquipmentMatch() {
           description: `Assigned to order #${equipmentOrder.order_number}`,
         },
       ]);
+      if (tlErr) throw tlErr;
 
       return equipmentOrder;
     },
     onSuccess: (equipmentOrder) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order", equipmentOrder.id] });
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
       toast.success(`Customer assigned to order #${equipmentOrder.order_number}`);
       navigate(`/orders/${equipmentOrder.id}`);
     },
