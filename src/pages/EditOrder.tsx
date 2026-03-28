@@ -128,6 +128,14 @@ export default function EditOrder() {
   const [dualChecked, setDualChecked] = useState(false);
   const [pivotChecked, setPivotChecked] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [showEstimateDialog, setShowEstimateDialog] = useState(false);
+  const [showChangeOrderDialog, setShowChangeOrderDialog] = useState(false);
+  const [estimateAction, setEstimateAction] = useState<"update" | "new">("update");
+  const [estimateLabel, setEstimateLabel] = useState("");
+  const [coSource, setCoSource] = useState<"customer" | "moly" | "internal">("customer");
+  const [coRequestedBy, setCoRequestedBy] = useState("");
+  const [coDescription, setCoDescription] = useState("");
+  const [coRequiresApproval, setCoRequiresApproval] = useState(false);
 
   const [originalStatus, setOriginalStatus] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
