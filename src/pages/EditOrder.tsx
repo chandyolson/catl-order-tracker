@@ -797,6 +797,7 @@ export default function EditOrder() {
       if (timelineInserts.length > 0) await supabase.from("order_timeline").insert(timelineInserts);
 
       queryClient.invalidateQueries({ queryKey: ["order", id] });
+      queryClient.invalidateQueries({ queryKey: ["order-edit", id] });
       queryClient.invalidateQueries({ queryKey: ["estimates", id] });
       queryClient.invalidateQueries({ queryKey: ["change_orders", id] });
       queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
