@@ -13,10 +13,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
-const STATUS_OPTIONS = ["estimate", "on_order", "building", "ready", "delivered", "closed"];
+const STATUS_OPTIONS = ["estimate", "purchase_order", "order_pending", "building", "ready", "delivered", "closed"];
 const STATUS_LABELS: Record<string, string> = {
   estimate: "Estimate",
-  on_order: "Purchase order",
+  purchase_order: "Purchase order",
+  order_pending: "Order pending",
   building: "Building",
   ready: "Ready",
   delivered: "Delivered",
@@ -1215,7 +1216,7 @@ export default function NewOrder() {
     setBuildShorthandManual(false);
   }
 
-  const showCompletionDate = ["on_order", "building", "ready", "delivered", "closed"].includes(status);
+  const showCompletionDate = ["purchase_order", "order_pending", "building", "ready", "delivered", "closed"].includes(status);
 
   /* ─── RENDER ───────────────────────────────────────────────── */
 

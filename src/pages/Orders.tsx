@@ -11,15 +11,11 @@ import { formatSavedOptionPill } from "@/lib/optionDisplay";
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "estimate", label: "Estimate" },
-  { value: "approved", label: "Approved" },
-  { value: "ordered", label: "Ordered" },
-  { value: "so_received", label: "SO Received" },
-  { value: "in_production", label: "In Production" },
-  { value: "completed", label: "Completed" },
-  { value: "freight_arranged", label: "Freight Arranged" },
+  { value: "purchase_order", label: "Purchase order" },
+  { value: "order_pending", label: "Order pending" },
+  { value: "building", label: "Building" },
+  { value: "ready", label: "Ready" },
   { value: "delivered", label: "Delivered" },
-  { value: "invoiced", label: "Invoiced" },
-  { value: "paid", label: "Paid" },
   { value: "closed", label: "Closed" },
 ];
 

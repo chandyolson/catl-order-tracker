@@ -53,7 +53,7 @@ const MATCH_BADGE: Record<MatchType, { bg: string; text: string; label: string }
 export default function EquipmentMatch() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const pool = searchParams.get("pool") || "on_order";
+  const pool = searchParams.get("pool") || "purchase_order";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmEquipment, setConfirmEquipment] = useState<any>(null);
@@ -84,8 +84,8 @@ export default function EquipmentMatch() {
         .is("customer_id", null)
         .eq("manufacturer_id", estimate!.manufacturer_id!);
 
-      if (pool === "on_order") {
-        query = query.in("status", ["on_order", "building"])
+      if (pool === "purchase_order") {
+        query = query.in("status", ["purchase_order", "order_pending", "building"])
           .order("est_completion_date", { ascending: true });
       } else {
         query = query.in("status", ["ready"])
@@ -250,7 +250,7 @@ export default function EquipmentMatch() {
 
                 {/* Row 3 — detail */}
                 <p className="text-[11px] mt-2" style={{ color: "rgba(240,240,240,0.45)" }}>
-                  {pool === "on_order" ? (
+                  {pool === "purchase_order" ? (
                     <>
                       {eq.est_completion_date && `ETA: ${fmtDate(eq.est_completion_date)} (${differenceInDays(new Date(eq.est_completion_date + "T00:00:00"), new Date())} days)`}
                       {eq.est_completion_date && " · "}In production

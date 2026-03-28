@@ -43,7 +43,7 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
       const today = format(new Date(), "yyyy-MM-dd");
       // Update order status
       const { error: orderErr } = await supabase.from("orders").update({
-        status: "on_order",
+        status: "purchase_order",
         ordered_date: today,
         approved_date: today,
       }).eq("id", order.id);
