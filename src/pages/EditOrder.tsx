@@ -143,6 +143,7 @@ export default function EditOrder() {
   const [originalOptionsJson, setOriginalOptionsJson] = useState("");
   const [originalBaseModelId, setOriginalBaseModelId] = useState("");
   const [originalSelectedOptions, setOriginalSelectedOptions] = useState("");
+  const [originalOrder, setOriginalOrder] = useState<any>(null);
 
   /* ─── Queries ──────────────────────────────────────────────── */
 
