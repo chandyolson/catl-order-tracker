@@ -117,15 +117,11 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   async function handleCreateQBPO() {
     setCreatingPO(true);
     try {
-      const resp = await fetch(
-        `https://dubzwbfqlwhkpmpuejsy.supabase.co/functions/v1/qb-push-po`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order_id: order.id }),
-        }
-      );
-      const data = await resp.json();
+      const { data, error: fnError } = await supabase.functions.invoke("qb-push-po", {
+        body: { order_id: order.id },
+      });
+      if (fnError) throw new Error(fnError.message);
+      if (!data) throw new Error("No response from QB PO function");
       if (data.success) {
         if (data.already_exists) {
           toast.info(`QB PO already exists: #${data.qb_po_doc_number}`);
