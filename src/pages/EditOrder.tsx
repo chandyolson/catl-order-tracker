@@ -1165,6 +1165,12 @@ export default function EditOrder() {
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p></div>
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p><p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p></div>
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p></div>
+            {taxRate > 0 && (
+              <div>
+                <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Total w/ tax ({taxState} {taxRate}%)</p>
+                <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(totalWithTax)}</p>
+              </div>
+            )}
           </div>
           <div className="text-right"><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p><p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</p></div>
         </div>
