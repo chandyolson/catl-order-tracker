@@ -395,6 +395,8 @@ export default function OrderDetail() {
           manufacturer={manufacturer}
           baseModel={baseModelQuery.data}
           paperwork={paperworkQuery.data || []}
+          margin={margin}
+          marginColor={marginColor}
         />
       )}
       {activeTab === "estimates" && (

@@ -17,9 +17,11 @@ interface OverviewTabProps {
   manufacturer: any;
   baseModel: { name: string; short_name: string } | null | undefined;
   paperwork: any[];
+  margin?: { amount: number; percent: number } | null;
+  marginColor?: string;
 }
 
-export default function OverviewTab({ order, customer, manufacturer, baseModel, paperwork }: OverviewTabProps) {
+export default function OverviewTab({ order, customer, manufacturer, baseModel, paperwork, margin, marginColor = "#717182" }: OverviewTabProps) {
   const queryClient = useQueryClient();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(order.notes || "");
