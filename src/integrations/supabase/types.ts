@@ -78,15 +78,23 @@ export type Database = {
           applied_mfg_order: boolean | null
           applied_qb_estimate: boolean | null
           applied_qb_po: boolean | null
+          approved: boolean | null
+          approved_by: string | null
+          approved_date: string | null
           change_number: number
+          changes_summary: Json | null
           created_at: string | null
           description: string
           id: string
+          new_config: Json | null
           new_total: number | null
           order_id: string | null
+          previous_config: Json | null
           price_impact: number | null
           requested_by: string
           requested_via: string | null
+          requires_approval: boolean | null
+          source: string | null
           updated_at: string | null
         }
         Insert: {
@@ -96,15 +104,23 @@ export type Database = {
           applied_mfg_order?: boolean | null
           applied_qb_estimate?: boolean | null
           applied_qb_po?: boolean | null
+          approved?: boolean | null
+          approved_by?: string | null
+          approved_date?: string | null
           change_number: number
+          changes_summary?: Json | null
           created_at?: string | null
           description: string
           id?: string
+          new_config?: Json | null
           new_total?: number | null
           order_id?: string | null
+          previous_config?: Json | null
           price_impact?: number | null
           requested_by: string
           requested_via?: string | null
+          requires_approval?: boolean | null
+          source?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -114,15 +130,23 @@ export type Database = {
           applied_mfg_order?: boolean | null
           applied_qb_estimate?: boolean | null
           applied_qb_po?: boolean | null
+          approved?: boolean | null
+          approved_by?: string | null
+          approved_date?: string | null
           change_number?: number
+          changes_summary?: Json | null
           created_at?: string | null
           description?: string
           id?: string
+          new_config?: Json | null
           new_total?: number | null
           order_id?: string | null
+          previous_config?: Json | null
           price_impact?: number | null
           requested_by?: string
           requested_via?: string | null
+          requires_approval?: boolean | null
+          source?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -245,16 +269,21 @@ export type Database = {
           approved_date: string | null
           build_shorthand: string
           created_at: string | null
+          discount_amount: number | null
+          discount_type: string | null
           emailed_at: string | null
           emailed_to: string | null
           id: string
           is_approved: boolean | null
           is_current: boolean | null
+          label: string | null
           line_items: Json
           notes: string | null
           order_id: string | null
+          our_cost: number | null
           qb_doc_number: string | null
           qb_estimate_id: string | null
+          selected_options: Json | null
           signed: boolean | null
           signed_date: string | null
           tax_amount: number | null
@@ -268,16 +297,21 @@ export type Database = {
           approved_date?: string | null
           build_shorthand: string
           created_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
+          label?: string | null
           line_items?: Json
           notes?: string | null
           order_id?: string | null
+          our_cost?: number | null
           qb_doc_number?: string | null
           qb_estimate_id?: string | null
+          selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
           tax_amount?: number | null
@@ -291,16 +325,21 @@ export type Database = {
           approved_date?: string | null
           build_shorthand?: string
           created_at?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
+          label?: string | null
           line_items?: Json
           notes?: string | null
           order_id?: string | null
+          our_cost?: number | null
           qb_doc_number?: string | null
           qb_estimate_id?: string | null
+          selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
           tax_amount?: number | null
