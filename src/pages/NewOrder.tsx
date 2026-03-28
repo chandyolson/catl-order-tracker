@@ -183,6 +183,8 @@ export default function NewOrder() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [taxState, setTaxState] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<number>(0);
   const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
   const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
   const [dualChecked, setDualChecked] = useState(false);
@@ -501,6 +503,8 @@ export default function NewOrder() {
 
   const customerPrice = calcRetail - discountValue;
   const ourCost = calcCost;
+  const taxAmount = taxRate > 0 ? Math.round(customerPrice * taxRate) / 100 : 0;
+  const totalWithTax = customerPrice + taxAmount;
 
   const margin = useMemo(() => {
     if (customerPrice <= 0 || ourCost <= 0) return null;
@@ -794,6 +798,10 @@ export default function NewOrder() {
         inventory_location: fromInventory ? inventoryLocation || null : null,
         selected_options: selectedOptionsJson,
         notes: notes || null,
+        tax_state: taxState || null,
+        tax_rate: taxRate || 0,
+        tax_amount: taxAmount || 0,
+        total_with_tax: taxRate > 0 ? totalWithTax : null,
       }).select().single();
       if (orderError) throw orderError;
 
@@ -812,6 +820,10 @@ export default function NewOrder() {
         total_price: customerPrice,
         is_current: true,
         line_items: lineItems,
+        tax_state: taxState || null,
+        tax_rate: taxRate || 0,
+        tax_amount: taxAmount || 0,
+        total_with_tax: taxRate > 0 ? totalWithTax : null,
       });
 
       toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${orderNumber} created`);
@@ -1244,6 +1256,12 @@ export default function NewOrder() {
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p></div>
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p><p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p></div>
             <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p></div>
+            {taxRate > 0 && (
+              <div>
+                <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Total w/ tax ({taxState} {taxRate}%)</p>
+                <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(totalWithTax)}</p>
+              </div>
+            )}
           </div>
           <div className="text-right"><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p><p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</p></div>
         </div>
@@ -1462,6 +1480,31 @@ export default function NewOrder() {
                   </select>
                   <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none min-w-0 text-[16px]" />
                 </div>
+              </div>
+            )}
+            {!isDirectOrder && (
+              <div>
+                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Sales Tax</p>
+                <select
+                  value={taxState}
+                  onChange={(e) => {
+                    const st = e.target.value;
+                    setTaxState(st);
+                    if (st === "SD") setTaxRate(4.2);
+                    else if (st === "ND") setTaxRate(3.0);
+                    else { setTaxState(""); setTaxRate(0); }
+                  }}
+                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]"
+                >
+                  <option value="">No tax</option>
+                  <option value="SD">SD (4.2%)</option>
+                  <option value="ND">ND (3.0%)</option>
+                </select>
+                {taxRate > 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                    +${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${totalWithTax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
               </div>
             )}
             <div>
