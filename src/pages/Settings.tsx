@@ -78,6 +78,7 @@ export default function Settings() {
       const { data, error } = await supabase.functions.invoke("qb-sync-customers");
       if (error) throw new Error(error.message);
       toast.success(data?.message || `Synced ${data?.created || 0} new, updated ${data?.updated || 0} customers`);
+      queryClient.invalidateQueries({ queryKey: ["customers_with_stats"] });
     } catch (err: any) {
       toast.error("Sync failed: " + err.message);
     } finally {

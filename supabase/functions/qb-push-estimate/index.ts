@@ -94,20 +94,21 @@ Deno.serve(async (req) => {
 
     // Build QB estimate payload
     const lineItems: any[] = [];
+    const price = order.customer_price ?? estimate.total_price;
 
     // Add base model line
     lineItems.push({
       DetailType: "SalesItemLineDetail",
-      Amount: order.customer_price || estimate.total_price,
+      Amount: price,
       Description: estimate.build_shorthand,
       SalesItemLineDetail: {
-        UnitPrice: order.customer_price || estimate.total_price,
+        UnitPrice: price,
         Qty: 1,
       },
     });
 
     const qbEstimate: any = {
-      TotalAmt: estimate.total_price,
+      TotalAmt: price,
       Line: lineItems,
       TxnDate: new Date().toISOString().split("T")[0],
       PrivateNote: `Order ${order.order_number} - ${estimate.build_shorthand}`,
@@ -134,6 +135,9 @@ Deno.serve(async (req) => {
         const existing = await existingResp.json();
         qbEstimate.Id = estimate.qb_estimate_id;
         qbEstimate.SyncToken = existing.Estimate.SyncToken;
+      } else {
+        const errText = await existingResp.text();
+        throw new Error(`Failed to fetch existing QB estimate for update: ${existingResp.status} - ${errText}`);
       }
     }
 
