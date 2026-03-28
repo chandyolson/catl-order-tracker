@@ -84,12 +84,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
 
   const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
 
-  const margin = order.customer_price && order.our_cost
-    ? { amount: order.customer_price - order.our_cost, percent: ((order.customer_price - order.our_cost) / order.customer_price) * 100 }
-    : null;
-  const marginColor = margin
-    ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
-    : "#717182";
 
   return (
     <div className="space-y-5">
