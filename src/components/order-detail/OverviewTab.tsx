@@ -162,7 +162,60 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               </button>
             )}
 
-            {/* Base model */}
+            {/* Next Steps Banner — shows for purchase_order or order_pending status */}
+            {(order.status === "purchase_order" || order.status === "order_pending") && (
+              <div className="rounded-xl p-4 mb-2" style={{
+                background: order.status === "purchase_order"
+                  ? "linear-gradient(135deg, rgba(85,186,170,0.08), rgba(14,38,70,0.06))"
+                  : "rgba(243,209,42,0.08)",
+                border: order.status === "purchase_order"
+                  ? "1px solid rgba(85,186,170,0.2)"
+                  : "1px solid rgba(243,209,42,0.2)",
+              }}>
+                <p className="text-[14px] font-medium mb-1" style={{ color: "#0E2646" }}>
+                  {order.status === "purchase_order" ? "Next steps" : "Waiting on manufacturer"}
+                </p>
+                <p className="text-[12px] text-muted-foreground mb-3">
+                  {order.status === "purchase_order"
+                    ? "Submit this order on the manufacturer portal, then create the Purchase Order in QuickBooks."
+                    : `Order submitted to ${manufacturer?.short_name || "manufacturer"}. Create the QB Purchase Order while you wait for their SO confirmation.`}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {manufacturer?.ordering_portal_url && order.status === "purchase_order" && (
+                    <button
+                      onClick={() => window.open(manufacturer.ordering_portal_url, "_blank")}
+                      className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
+                      style={{ backgroundColor: "#0E2646", color: "#F0F0F0" }}
+                    >
+                      <ExternalLink size={14} />
+                      Order on {manufacturer.short_name || manufacturer.name} Portal
+                    </button>
+                  )}
+                  <button
+                    onClick={createQBPurchaseOrder}
+                    disabled={creatingPO || !!order.qb_po_id}
+                    className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform disabled:opacity-50"
+                    style={{
+                      backgroundColor: order.qb_po_id ? "#27AE60" : "#F3D12A",
+                      color: order.qb_po_id ? "#FFFFFF" : "#0E2646",
+                    }}
+                  >
+                    {order.qb_po_id ? (
+                      <>
+                        <Check size={14} />
+                        QB PO #{order.qb_po_doc_number}
+                      </>
+                    ) : (
+                      <>
+                        <FileText size={14} />
+                        {creatingPO ? "Creating..." : "Create QB Purchase Order"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {baseModel && (
               <div>
                 <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Base Model</span>
