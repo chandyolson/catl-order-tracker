@@ -584,8 +584,12 @@ export type Database = {
           file_type: string | null
           file_url: string | null
           id: string
+          is_unmatched: boolean | null
           manufacturer_ref: string | null
+          match_attempted_at: string | null
+          match_keywords: string[] | null
           order_id: string | null
+          resend_email_id: string | null
           source: string | null
           source_email_date: string | null
           source_email_from: string | null
@@ -602,8 +606,12 @@ export type Database = {
           file_type?: string | null
           file_url?: string | null
           id?: string
+          is_unmatched?: boolean | null
           manufacturer_ref?: string | null
+          match_attempted_at?: string | null
+          match_keywords?: string[] | null
           order_id?: string | null
+          resend_email_id?: string | null
           source?: string | null
           source_email_date?: string | null
           source_email_from?: string | null
@@ -620,8 +628,12 @@ export type Database = {
           file_type?: string | null
           file_url?: string | null
           id?: string
+          is_unmatched?: boolean | null
           manufacturer_ref?: string | null
+          match_attempted_at?: string | null
+          match_keywords?: string[] | null
           order_id?: string | null
+          resend_email_id?: string | null
           source?: string | null
           source_email_date?: string | null
           source_email_from?: string | null

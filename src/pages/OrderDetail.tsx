@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle,
+  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle, ExternalLink,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -288,6 +288,15 @@ export default function OrderDetail() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[160px]">
+                  {manufacturer?.ordering_portal_url && (
+                    <DropdownMenuItem
+                      onClick={() => window.open(manufacturer.ordering_portal_url, "_blank")}
+                      className="cursor-pointer"
+                    >
+                      <ExternalLink size={14} className="mr-2" />
+                      Order on {manufacturer.short_name || manufacturer.name} Portal
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
                     className="text-[#D4183D] focus:text-[#D4183D] focus:bg-red-50 cursor-pointer"
