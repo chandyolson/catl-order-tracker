@@ -38,8 +38,8 @@ export default function NewOrderPicker({ open, onClose }: Props) {
             >
               <FileText size={20} className="text-white" />
             </div>
-            <p className="text-[13px] font-medium" style={{ color: "#085041" }}>New estimate</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "#0F6E56" }}>Customer wants a quote</p>
+            <p className="text-[13px] font-medium" style={{ color: "#085041" }}>Customer Estimate</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "#0F6E56" }}>Customer calling for a quote</p>
           </button>
 
           {/* Order card */}
@@ -54,8 +54,8 @@ export default function NewOrderPicker({ open, onClose }: Props) {
             >
               <ClipboardList size={20} className="text-white" />
             </div>
-            <p className="text-[13px] font-medium" style={{ color: "#633806" }}>New order</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "#854F0B" }}>Order direct from manufacturer</p>
+            <p className="text-[13px] font-medium" style={{ color: "#633806" }}>Direct Order</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "#854F0B" }}>Order from manufacturer for inventory</p>
           </button>
         </div>
       </div>

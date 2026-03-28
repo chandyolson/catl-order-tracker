@@ -78,7 +78,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           className="flex items-center justify-center gap-2 w-full py-3 rounded-full bg-catl-gold text-catl-navy font-bold text-sm active:scale-[0.97] transition-transform"
         >
           <Plus size={18} />
-          New Order
+          New
         </button>
       </div>
 

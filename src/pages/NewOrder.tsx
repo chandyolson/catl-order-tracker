@@ -804,6 +804,9 @@ export default function NewOrder() {
 
       await supabase.from("estimates").insert({
         order_id: order.id,
+        customer_id: customerId || null,
+        base_model_id: baseModelId || null,
+        status: "open",
         version_number: 1,
         build_shorthand: buildShorthand,
         total_price: customerPrice,
