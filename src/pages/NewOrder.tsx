@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -166,7 +167,7 @@ export default function NewOrder() {
   const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", email: "", phone: "", city: "", state: "", type: "" });
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -655,15 +656,6 @@ export default function NewOrder() {
 
   const selectedCustomer = customerId ? selectedCustomerQuery.data ?? null : null;
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (!(e.target as Element).closest("[data-customer-dropdown]")) {
-        setShowCustomerDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const addCustomerMutation = useMutation({
     mutationFn: async () => {
@@ -683,7 +675,7 @@ export default function NewOrder() {
       setCustomerId(data.id);
       setCustomerSearch(data.name);
       setShowNewCustomerForm(false);
-      setShowCustomerDropdown(false);
+      setCustomerPopoverOpen(false);
       setNewCustomer({ name: "", email: "", phone: "", city: "", state: "", type: "" });
     },
   });
@@ -1192,34 +1184,78 @@ export default function NewOrder() {
           <SectionHeader title={isDirectOrder ? "Customer (optional)" : "Customer"} />
 
             <FormRow label="Customer">
-              <div className="relative" data-customer-dropdown>
-                <input
-                  value={selectedCustomer ? selectedCustomer.name : customerSearch}
-                  onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
-                  onFocus={() => { if (customerSearch.length >= 2) setShowCustomerDropdown(true); }}
-                  placeholder="Type 2+ letters to search customers..."
-                  className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-                />
-                {showCustomerDropdown && customerSearch.length >= 2 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
-                    {customerSearchQuery.isLoading ? (
-                      <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
-                    ) : filteredCustomers.length === 0 ? (
-                      <div className="px-3 py-3 text-sm text-muted-foreground">No customers found</div>
-                    ) : (
-                      filteredCustomers.map((c) => (
-                        <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
-                          <span className="font-medium">{c.name}</span>
-                          {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
-                        </button>
-                      ))
+              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                    {selectedCustomer ? selectedCustomer.name : (
+                      <span className="text-muted-foreground">Search customers...</span>
                     )}
-                    <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}>
-                      <Plus size={14} /> Add New Customer
-                    </button>
-                  </div>
-                )}
-              </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Type 2+ letters to search..."
+                      value={customerSearch}
+                      onValueChange={(val) => {
+                        setCustomerSearch(val);
+                        setCustomerId("");
+                      }}
+                    />
+                    <CommandList>
+                      {debouncedCustomerSearch.length < 2 ? (
+                        <div className="px-3 py-3 text-sm text-muted-foreground">
+                          Type 2+ letters to search...
+                        </div>
+                      ) : customerSearchQuery.isLoading ? (
+                        <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
+                      ) : (
+                        <>
+                          <CommandEmpty>No customers found</CommandEmpty>
+                          <CommandGroup>
+                            {filteredCustomers.map((c: any) => (
+                              <CommandItem
+                                key={c.id}
+                                value={c.id}
+                                onSelect={() => {
+                                  setCustomerId(c.id);
+                                  setCustomerSearch(c.name);
+                                  setCustomerPopoverOpen(false);
+                                }}
+                              >
+                                <span className="font-medium">{c.name}</span>
+                                {c.address_city && (
+                                  <span className="text-muted-foreground ml-2 text-xs">
+                                    {c.address_city}, {c.address_state}
+                                  </span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </>
+                      )}
+                      <div className="border-t border-border">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNewCustomerForm(true);
+                            setCustomerPopoverOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1"
+                          style={{ color: "#55BAAA" }}
+                        >
+                          <Plus size={14} /> Add New Customer
+                        </button>
+                      </div>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedCustomer && (
+                <button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">
+                  Clear selection
+                </button>
+              )}
             </FormRow>
 
             {showNewCustomerForm && (
