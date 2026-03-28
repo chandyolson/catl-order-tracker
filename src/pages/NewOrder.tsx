@@ -244,12 +244,9 @@ export default function NewOrder() {
   const customerSearchQuery = useQuery({
     queryKey: ["customer-search", debouncedCustomerSearch],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id, name, email, phone, address_city, address_state, customer_type, qb_customer_id")
-        .ilike("name", `%${debouncedCustomerSearch}%`)
-        .order("name")
-        .limit(30);
+      const { data, error } = await supabase.rpc("search_customers", {
+        search_term: debouncedCustomerSearch,
+      });
       if (error) throw error;
       return data;
     },
