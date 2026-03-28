@@ -26,6 +26,12 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(order.notes || "");
   const [creatingPO, setCreatingPO] = useState(false);
+  const [portalOrdered, setPortalOrdered] = useState(false);
+
+  const isPortalDone = portalOrdered || paperwork.some(
+    (p) => p.document_type === "vendor_po_submitted" && p.status === "complete"
+  );
+  const isQBPODone = !!order.qb_po_id;
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {
@@ -80,7 +86,35 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
     },
   });
 
-  async function createQBPurchaseOrder() {
+  async function handlePlaceOrderOnPortal() {
+    if (manufacturer?.ordering_portal_url) {
+      window.open(manufacturer.ordering_portal_url, "_blank");
+    }
+    try {
+      await supabase.from("paperwork").update({
+        status: "complete",
+        completed_date: new Date().toISOString().split("T")[0],
+        updated_at: new Date().toISOString(),
+      }).eq("order_id", order.id).eq("document_type", "vendor_po_submitted");
+
+      await supabase.from("order_timeline").insert({
+        order_id: order.id,
+        event_type: "note",
+        title: "Order placed on manufacturer portal",
+        description: `Submitted on ${manufacturer?.short_name || manufacturer?.name || "manufacturer"} ordering portal`,
+        created_by: "system",
+      });
+
+      setPortalOrdered(true);
+      queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] });
+      queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+      toast.success("Portal opened — marked as ordered");
+    } catch (err) {
+      toast.error("Portal opened but failed to update paperwork");
+    }
+  }
+
+  async function handleCreateQBPO() {
     setCreatingPO(true);
     try {
       const resp = await fetch(
@@ -97,7 +131,7 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           toast.info(`QB PO already exists: #${data.qb_po_doc_number}`);
         } else {
           let msg = `QB Purchase Order #${data.qb_po_doc_number} created`;
-          if (data.unmapped_items && data.unmapped_items.length > 0) {
+          if (data.unmapped_items?.length > 0) {
             msg += ` (${data.unmapped_items.length} items need review in QB)`;
           }
           toast.success(msg);
@@ -162,45 +196,71 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               </button>
             )}
 
-            {/* Next Steps Banner — shows for purchase_order or order_pending status */}
+            {/* Next Steps Banner */}
             {(order.status === "purchase_order" || order.status === "order_pending") && (
-              <div className="rounded-xl p-4 mb-2" style={{
-                background: order.status === "purchase_order"
-                  ? "linear-gradient(135deg, rgba(85,186,170,0.08), rgba(14,38,70,0.06))"
-                  : "rgba(243,209,42,0.08)",
-                border: order.status === "purchase_order"
-                  ? "1px solid rgba(85,186,170,0.2)"
-                  : "1px solid rgba(243,209,42,0.2)",
-              }}>
-                <p className="text-[14px] font-medium mb-1" style={{ color: "#0E2646" }}>
-                  {order.status === "purchase_order" ? "Next steps" : "Waiting on manufacturer"}
+              <div
+                className="rounded-xl p-4 mb-2"
+                style={{
+                  background:
+                    order.status === "order_pending"
+                      ? "rgba(85,186,170,0.06)"
+                      : "linear-gradient(135deg, rgba(243,209,42,0.06), rgba(14,38,70,0.04))",
+                  border:
+                    order.status === "order_pending"
+                      ? "1px solid rgba(85,186,170,0.2)"
+                      : "1px solid rgba(243,209,42,0.25)",
+                }}
+              >
+                <p
+                  className="text-[14px] font-medium mb-1"
+                  style={{ color: order.status === "order_pending" ? "#0F6E56" : "#0E2646" }}
+                >
+                  {order.status === "order_pending" ? "Waiting on manufacturer" : "Next steps"}
                 </p>
                 <p className="text-[12px] text-muted-foreground mb-3">
-                  {order.status === "purchase_order"
-                    ? "Submit this order on the manufacturer portal, then create the Purchase Order in QuickBooks."
-                    : `Order submitted to ${manufacturer?.short_name || "manufacturer"}. Create the QB Purchase Order while you wait for their SO confirmation.`}
+                  {order.status === "order_pending"
+                    ? `Order submitted to ${manufacturer?.short_name || "manufacturer"}. Waiting for their SO confirmation number.`
+                    : isPortalDone && !isQBPODone
+                    ? "Order placed on portal. Now create the Purchase Order in QuickBooks."
+                    : "Place this order on the manufacturer portal, then create the Purchase Order in QuickBooks."}
                 </p>
                 <div className="flex gap-2 flex-wrap">
-                  {manufacturer?.ordering_portal_url && order.status === "purchase_order" && (
+                  {/* Portal button */}
+                  {manufacturer?.ordering_portal_url && (
                     <button
-                      onClick={() => window.open(manufacturer.ordering_portal_url, "_blank")}
-                      className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform"
-                      style={{ backgroundColor: "#0E2646", color: "#F0F0F0" }}
+                      onClick={isPortalDone ? undefined : handlePlaceOrderOnPortal}
+                      disabled={isPortalDone}
+                      className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform disabled:cursor-default"
+                      style={{
+                        backgroundColor: isPortalDone ? "#27AE60" : "#F3D12A",
+                        color: isPortalDone ? "#FFFFFF" : "#0E2646",
+                      }}
                     >
-                      <ExternalLink size={14} />
-                      Order on {manufacturer.short_name || manufacturer.name} Portal
+                      {isPortalDone ? (
+                        <>
+                          <Check size={14} />
+                          Ordered on {manufacturer.short_name || manufacturer.name} portal
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink size={14} />
+                          Place order from manufacturer
+                        </>
+                      )}
                     </button>
                   )}
+
+                  {/* QB PO button */}
                   <button
-                    onClick={createQBPurchaseOrder}
-                    disabled={creatingPO || !!order.qb_po_id}
-                    className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform disabled:opacity-50"
+                    onClick={isQBPODone ? undefined : handleCreateQBPO}
+                    disabled={creatingPO || isQBPODone}
+                    className="flex items-center gap-1.5 text-[13px] font-semibold rounded-full px-4 py-2 active:scale-[0.97] transition-transform disabled:cursor-default disabled:opacity-100"
                     style={{
-                      backgroundColor: order.qb_po_id ? "#27AE60" : "#F3D12A",
-                      color: order.qb_po_id ? "#FFFFFF" : "#0E2646",
+                      backgroundColor: isQBPODone ? "#27AE60" : "#F3D12A",
+                      color: isQBPODone ? "#FFFFFF" : "#0E2646",
                     }}
                   >
-                    {order.qb_po_id ? (
+                    {isQBPODone ? (
                       <>
                         <Check size={14} />
                         QB PO #{order.qb_po_doc_number}
