@@ -1488,6 +1488,83 @@ export default function EditOrder() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Change Order Dialog */}
+      <Dialog open={showChangeOrderDialog} onOpenChange={setShowChangeOrderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log change order</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-3">
+            This order is already with MOLY. Equipment or option changes require a change order.
+          </p>
+
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Who initiated this?</p>
+            <div className="flex gap-2">
+              {(["customer", "moly", "internal"] as const).map((src) => (
+                <button key={src} onClick={() => setCoSource(src)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{
+                    background: coSource === src ? (src === "customer" ? "#E1F5EE" : src === "moly" ? "#FAEEDA" : "hsl(var(--muted))") : "transparent",
+                    color: coSource === src ? (src === "customer" ? "#085041" : src === "moly" ? "#633806" : "hsl(var(--foreground))") : "hsl(var(--muted-foreground))",
+                    border: `1px solid ${coSource === src ? (src === "customer" ? "rgba(85,186,170,0.3)" : src === "moly" ? "rgba(243,209,42,0.3)" : "hsl(var(--border))") : "hsl(var(--border))"}`,
+                  }}>
+                  {src === "customer" ? "Customer" : src === "moly" ? "MOLY" : "Internal"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Requested by</p>
+            <input value={coRequestedBy} onChange={(e) => setCoRequestedBy(e.target.value)}
+              placeholder="Name of person"
+              className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
+          </div>
+
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>What changed?</p>
+            <textarea value={coDescription} onChange={(e) => setCoDescription(e.target.value)}
+              placeholder="Describe the change..."
+              rows={3}
+              className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none resize-none text-[16px]" />
+          </div>
+
+          <label className="flex items-center gap-2 mb-4 cursor-pointer">
+            <input type="checkbox" checked={coRequiresApproval} onChange={(e) => setCoRequiresApproval(e.target.checked)} />
+            <span className="text-sm">Requires customer approval before applying</span>
+          </label>
+
+          <div className="rounded-lg p-3 mb-4" style={{ background: "rgba(14,38,70,0.04)", border: "1px solid rgba(14,38,70,0.1)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "#717182" }}>Price impact</p>
+            <p className="text-sm font-medium" style={{ color: customerPrice - parseFloat(originalPrice) >= 0 ? "#27AE60" : "#D4183D" }}>
+              {customerPrice - parseFloat(originalPrice) >= 0 ? "+" : ""}${(customerPrice - parseFloat(originalPrice)).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              New total: ${customerPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })} (was ${parseFloat(originalPrice).toLocaleString("en-US", { maximumFractionDigits: 0 })})
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={() => {
+              doSave({
+                changeOrder: {
+                  source: coSource,
+                  requestedBy: coRequestedBy,
+                  description: coDescription,
+                  requiresApproval: coRequiresApproval,
+                }
+              });
+            }} disabled={submitting || !coDescription.trim()}
+              className="flex-1 rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "#F3D12A", color: "#0E2646" }}>
+              {submitting ? "Saving..." : "Save change order"}
+            </button>
+            <button onClick={() => setShowChangeOrderDialog(false)} className="px-4 text-sm text-muted-foreground">Cancel</button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
