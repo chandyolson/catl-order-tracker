@@ -227,9 +227,10 @@ export default function OrderDetail() {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Order not found</div>;
   }
 
+  const hasEstimates = order?.source_type === "estimate" || (estimates && estimates.length > 0);
   const tabs = [
     { key: "overview" as const, label: "Overview" },
-    { key: "estimates" as const, label: "Estimates" },
+    ...(hasEstimates ? [{ key: "estimates" as const, label: "Estimates" }] : []),
     { key: "activity" as const, label: "Activity" },
   ];
 
