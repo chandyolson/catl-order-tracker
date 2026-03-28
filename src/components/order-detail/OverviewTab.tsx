@@ -27,6 +27,10 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const [notes, setNotes] = useState(order.notes || "");
   const [creatingPO, setCreatingPO] = useState(false);
   const [portalOrdered, setPortalOrdered] = useState(false);
+  const [contractName, setContractName] = useState(order.contract_name || "");
+  const [editingContractName, setEditingContractName] = useState(false);
+  const [molyContractNum, setMolyContractNum] = useState(order.moly_contract_number || "");
+  const [editingMolyNum, setEditingMolyNum] = useState(false);
 
   const isPortalDone = portalOrdered || paperwork.some(
     (p) => p.document_type === "vendor_po_submitted" && p.status === "complete"
@@ -42,6 +46,30 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
       queryClient.invalidateQueries({ queryKey: ["order", order.id] });
       setEditingNotes(false);
       toast.success("Notes saved");
+    },
+  });
+
+  const saveContractNameMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").update({ contract_name: contractName || null }).eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+      setEditingContractName(false);
+      toast.success("Contract name saved");
+    },
+  });
+
+  const saveMolyNumMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").update({ moly_contract_number: molyContractNum || null }).eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+      setEditingMolyNum(false);
+      toast.success("MOLY contract # saved");
     },
   });
 
@@ -278,6 +306,68 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
                 <p className="text-[14px] font-medium text-foreground">{baseModel.name}</p>
               </div>
             )}
+
+            {/* Contract Name + MOLY Contract # */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Contract Name</span>
+                {editingContractName ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      value={contractName}
+                      onChange={(e) => setContractName(e.target.value)}
+                      placeholder="e.g. Smith Ranch Chute"
+                      className="flex-1 border border-border rounded-lg px-2.5 py-1.5 text-[13px] outline-none min-w-0 text-[16px]"
+                      autoFocus
+                      onKeyDown={(e) => { if (e.key === "Enter") saveContractNameMutation.mutate(); if (e.key === "Escape") { setContractName(order.contract_name || ""); setEditingContractName(false); } }}
+                    />
+                    <button onClick={() => saveContractNameMutation.mutate()} className="shrink-0 p-1 rounded hover:bg-muted/50">
+                      <Check size={14} style={{ color: "#27AE60" }} />
+                    </button>
+                    <button onClick={() => { setContractName(order.contract_name || ""); setEditingContractName(false); }} className="shrink-0 p-1 rounded hover:bg-muted/50">
+                      <X size={14} style={{ color: "#717182" }} />
+                    </button>
+                  </div>
+                ) : (
+                  <p
+                    className="text-[13px] font-medium cursor-pointer hover:text-[#55BAAA] transition-colors mt-0.5"
+                    style={{ color: order.contract_name ? undefined : "#B4B2A9" }}
+                    onClick={() => setEditingContractName(true)}
+                  >
+                    {order.contract_name || "Click to name"}
+                  </p>
+                )}
+              </div>
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>MOLY Contract #</span>
+                {editingMolyNum ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      value={molyContractNum}
+                      onChange={(e) => setMolyContractNum(e.target.value)}
+                      placeholder="e.g. 45821"
+                      className="flex-1 border border-border rounded-lg px-2.5 py-1.5 text-[13px] outline-none min-w-0 text-[16px]"
+                      autoFocus
+                      onKeyDown={(e) => { if (e.key === "Enter") saveMolyNumMutation.mutate(); if (e.key === "Escape") { setMolyContractNum(order.moly_contract_number || ""); setEditingMolyNum(false); } }}
+                    />
+                    <button onClick={() => saveMolyNumMutation.mutate()} className="shrink-0 p-1 rounded hover:bg-muted/50">
+                      <Check size={14} style={{ color: "#27AE60" }} />
+                    </button>
+                    <button onClick={() => { setMolyContractNum(order.moly_contract_number || ""); setEditingMolyNum(false); }} className="shrink-0 p-1 rounded hover:bg-muted/50">
+                      <X size={14} style={{ color: "#717182" }} />
+                    </button>
+                  </div>
+                ) : (
+                  <p
+                    className="text-[13px] font-medium cursor-pointer hover:text-[#55BAAA] transition-colors mt-0.5"
+                    style={{ color: order.moly_contract_number ? undefined : "#B4B2A9" }}
+                    onClick={() => setEditingMolyNum(true)}
+                  >
+                    {order.moly_contract_number || "Pending"}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Selected options as pills */}
             {options.length > 0 && (
