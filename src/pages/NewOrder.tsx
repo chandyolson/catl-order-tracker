@@ -8,14 +8,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
-const STATUS_OPTIONS = [
-  "estimate", "approved", "ordered", "so_received", "in_production",
-  "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed",
-];
+const STATUS_OPTIONS = ["estimate", "on_order", "building", "ready", "delivered", "closed"];
 
 // Group order is driven by sort_order from the database, not hardcoded.
 
@@ -180,6 +178,7 @@ export default function NewOrder() {
   const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
   const [dualChecked, setDualChecked] = useState(false);
   const [pivotChecked, setPivotChecked] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   /* ─── Queries ──────────────────────────────────────────────── */
 
@@ -1071,45 +1070,116 @@ export default function NewOrder() {
     );
   }
 
-  function renderGroupCard(group: string, options: FullOption[]) {
-    const isPick = options.every((o) => o.selection_type === "pick_one");
-
-    if (group === "Scales") {
-      const platforms = options.filter((o) => o.selection_type === "pick_one");
-      const indicators = options.filter((o) => o.selection_type !== "pick_one");
-      return (
-        <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
-          {platforms.length > 0 && (
-            <div className="mb-2">
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
-              {renderPickOneGroup(group, platforms)}
-            </div>
-          )}
-          {indicators.length > 0 && (
-            <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
-              <div className="space-y-0.5">{indicators.map((opt) => renderSimpleOption(opt))}</div>
-            </div>
-          )}
-        </div>
-      );
+  function getGroupSummary(group: string, options: FullOption[]): { text: string; total: number } {
+    const parts: string[] = [];
+    let total = 0;
+    if (group === "Controls") {
+      if (dualChecked) {
+        const dc = options.find(o => o.short_code === "DC");
+        if (dc) { parts.push("Dual Controls"); total += dc.retail_price; }
+      }
+      if (pivotChecked) {
+        const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
+        const pc = options.find(o => o.short_code === pcCode) || options.find(o => o.short_code === "PC");
+        if (pc) {
+          const label = pivotType === "front_to_back" ? "Pivot F/B" : pivotType === "side_to_side" ? "Pivot S/S" : "Pivot";
+          parts.push(label + (pivotSide ? ` ${pivotSide[0]}` : ""));
+          total += pc.retail_price;
+        }
+      }
+      if (isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && selections.get(pivotOnScalesOption.id)?.selected) {
+        parts.push(pivotOnScalesOption.display_name || pivotOnScalesOption.name);
+        total += pivotOnScalesOption.retail_price;
+      }
+      return { text: parts.length > 0 ? parts.join(", ") : "none", total };
     }
+    for (const opt of options) {
+      if (opt.selection_type === "pick_one") {
+        const selId = pickOneSelections.get(group);
+        if (selId === opt.id) {
+          if (opt.is_included) { parts.push((opt.display_name || opt.name) + " (incl)"); }
+          else { parts.push(opt.display_name || opt.name); total += opt.retail_price; }
+        }
+        continue;
+      }
+      const sel = selections.get(opt.id);
+      if (!sel) continue;
+      const dn = opt.display_name || opt.name;
+      if (opt.selection_type === "side") {
+        if (sel.left > 0 || sel.right > 0) {
+          const qty = sel.left + sel.right;
+          let sideStr = "";
+          if (sel.left > 0 && sel.right > 0) sideStr = " L+R";
+          else if (sel.left > 0) sideStr = " L";
+          else sideStr = " R";
+          parts.push(dn + sideStr);
+          total += opt.retail_price * qty;
+        }
+      } else if (sel.selected) {
+        const qty = sel.quantity || 1;
+        parts.push(qty > 1 ? `${dn} ×${qty}` : dn);
+        total += opt.retail_price * qty;
+      }
+    }
+    return { text: parts.length > 0 ? parts.join(", ") : "none", total };
+  }
 
+  function renderScalesContent(options: FullOption[]) {
+    const platforms = options.filter((o) => o.selection_type === "pick_one");
+    const indicators = options.filter((o) => o.selection_type !== "pick_one");
     return (
-      <div key={group} className="border rounded-lg p-3 overflow-hidden" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-        <h4 className="text-[11px] font-bold uppercase mb-2" style={{ color: "#0E2646" }}>{group.replace(/[-_]/g, " ")}</h4>
-        {isPick ? renderPickOneGroup(group, options) : (
-          <div className="space-y-0.5">
-            {options.map((opt) => {
-              if (opt.selection_type === "side") return renderSideOption(opt);
-              if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
-              if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
-              return renderSimpleOption(opt);
-            })}
+      <>
+        {platforms.length > 0 && (
+          <div className="mb-2">
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
+            {renderPickOneGroup("Scales", platforms)}
           </div>
         )}
-      </div>
+        {indicators.length > 0 && (
+          <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
+            <div className="space-y-0.5">{indicators.map((opt) => renderSimpleOption(opt))}</div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function renderGroupCard(group: string, options: FullOption[]) {
+    const { text: summaryText, total: groupTotal } = getGroupSummary(group, options);
+    const hasSelections = summaryText !== "none";
+    const isOpen = openGroups.has(group);
+    const isPick = options.every((o) => o.selection_type === "pick_one");
+    const groupLabel = group.replace(/[-_]/g, " ");
+    return (
+      <Collapsible key={group} open={isOpen} onOpenChange={(open) => {
+        setOpenGroups(prev => { const next = new Set(prev); if (open) next.add(group); else next.delete(group); return next; });
+      }}>
+        <CollapsibleTrigger asChild>
+          <button type="button" className="w-full flex items-center justify-between py-2.5 border-b border-border text-left">
+            <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "#0E2646", minWidth: 80 }}>{groupLabel}</span>
+            <span className="flex-1 text-[12px] truncate mx-3" style={{ color: hasSelections ? "#55BAAA" : "#717182" }}>{summaryText}</span>
+            <span className="text-[12px] font-medium mr-2" style={{ color: hasSelections ? "#0E2646" : "#717182" }}>
+              {groupTotal > 0 ? `$${fmtCurrency(groupTotal)}` : "—"}
+            </span>
+            <ChevronDown size={14} className={cn("transition-transform", isOpen && "rotate-180")} style={{ color: "#717182" }} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="py-2">
+            {group === "Scales" ? renderScalesContent(options) : isPick ? renderPickOneGroup(group, options) : (
+              <div className="space-y-0.5">
+                {options.map((opt) => {
+                  if (opt.selection_type === "side") return renderSideOption(opt);
+                  if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
+                  if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
+                  return renderSimpleOption(opt);
+                })}
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 
@@ -1133,8 +1203,7 @@ export default function NewOrder() {
     setBuildShorthandManual(false);
   }
 
-  // Status visibility for completion date
-  const showCompletionDate = ["ordered", "so_received", "in_production", "completed", "freight_arranged", "delivered", "invoiced", "paid", "closed"].includes(status);
+  const showCompletionDate = ["on_order", "building", "ready", "delivered", "closed"].includes(status);
 
   /* ─── RENDER ───────────────────────────────────────────────── */
 
@@ -1148,264 +1217,138 @@ export default function NewOrder() {
 
   return (
     <div className="mx-auto pb-40 overflow-x-hidden max-w-full" style={{ background: "#F5F5F0" }}>
-      {/* ─── Sticky Navy Price Bar ──────────────────────────── */}
+      {/* Sticky Navy Price Bar */}
       <div className="sticky top-0 z-10 md:max-w-[680px] md:mx-auto" style={{ background: "#0E2646", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
-        {/* Row 1 */}
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: "rgba(240,240,240,0.45)" }}>
-            {isDirectOrder ? "New order" : "New estimate"}
-          </span>
-          <span className="text-[11px] truncate ml-2" style={{ color: "rgba(240,240,240,0.45)" }}>
-            {modelLabel}
-          </span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: "rgba(240,240,240,0.45)" }}>{isDirectOrder ? "New order" : "New estimate"}</span>
+          <span className="text-[11px] truncate ml-2" style={{ color: "rgba(240,240,240,0.45)" }}>{modelLabel}</span>
         </div>
-        {/* Row 2 — Desktop */}
         <div className="hidden sm:flex items-baseline justify-between gap-4">
           <div className="flex items-baseline gap-4">
-            <div>
-              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p>
-              <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p>
-            </div>
-            <div>
-              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p>
-              <p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p>
-            </div>
-            <div>
-              <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p>
-              <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
-            </div>
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p></div>
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p><p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p></div>
+            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p></div>
           </div>
-          <div className="text-right">
-            <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p>
-            <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>
-              {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-            </p>
-          </div>
+          <div className="text-right"><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p><p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</p></div>
         </div>
-        {/* Row 2 — Mobile */}
         <div className="flex sm:hidden items-baseline justify-between">
           <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
-          <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>
-            {margin ? `${margin.percent.toFixed(1)}%` : "—"}
-          </p>
+          <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `${margin.percent.toFixed(1)}%` : "—"}</p>
         </div>
       </div>
 
-      {/* ─── Page Header ────────────────────────────────────── */}
-      <div className="flex items-center gap-2 mt-3 mb-2 px-4 md:max-w-[680px] md:mx-auto">
-        <button onClick={() => navigate(-1)} className="p-1" style={{ color: "#55BAAA" }}>
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-[22px] font-bold" style={{ color: "#1D9E75" }}>
-          {isDirectOrder ? "New order" : "New estimate"}
-        </h1>
+      {/* Page Header */}
+      <div className="flex items-center gap-2 mt-2 mb-1 px-4 md:max-w-[680px] md:mx-auto">
+        <button onClick={() => navigate(-1)} className="p-1" style={{ color: "#55BAAA" }}><ChevronLeft size={20} /></button>
+        <h1 className="text-[22px] font-bold" style={{ color: "#1D9E75" }}>{isDirectOrder ? "New order" : "New estimate"}</h1>
       </div>
 
-      {/* ─── Form Card ──────────────────────────────────────── */}
-      <div className="bg-white border rounded-xl p-4 space-y-4 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
+      {/* Form Card */}
+      <div className="bg-white border rounded-xl p-4 space-y-3 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
         {/* ── CUSTOMER ─────────────────────────────────────── */}
-        <>
-          <SectionHeader title={isDirectOrder ? "Customer (optional)" : "Customer"} />
+        <div className="mb-3">
+          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>{isDirectOrder ? "Customer (optional)" : "Customer"}</p>
+          <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                {selectedCustomer ? selectedCustomer.name : <span className="text-muted-foreground">Search customers...</span>}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput placeholder="Type 2+ letters to search..." value={customerSearch} onValueChange={(val) => { setCustomerSearch(val); setCustomerId(""); }} />
+                <CommandList>
+                  {debouncedCustomerSearch.length < 2 ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">Type 2+ letters to search...</div>
+                  ) : customerSearchQuery.isLoading ? (
+                    <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
+                  ) : (
+                    <>
+                      <CommandEmpty>No customers found</CommandEmpty>
+                      <CommandGroup>
+                        {filteredCustomers.map((c: any) => (
+                          <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); }}>
+                            <span className="font-medium">{c.name}</span>
+                            {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </>
+                  )}
+                  <div className="border-t border-border">
+                    <button type="button" onClick={() => { setShowNewCustomerForm(true); setCustomerPopoverOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1" style={{ color: "#55BAAA" }}>
+                      <Plus size={14} /> Add New Customer
+                    </button>
+                  </div>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {selectedCustomer && (
+            <button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">Clear</button>
+          )}
+        </div>
 
-            <FormRow label="Customer">
-              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                    {selectedCustomer ? selectedCustomer.name : (
-                      <span className="text-muted-foreground">Search customers...</span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput
-                      placeholder="Type 2+ letters to search..."
-                      value={customerSearch}
-                      onValueChange={(val) => {
-                        setCustomerSearch(val);
-                        setCustomerId("");
-                      }}
-                    />
-                    <CommandList>
-                      {debouncedCustomerSearch.length < 2 ? (
-                        <div className="px-3 py-3 text-sm text-muted-foreground">
-                          Type 2+ letters to search...
-                        </div>
-                      ) : customerSearchQuery.isLoading ? (
-                        <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
-                      ) : (
-                        <>
-                          <CommandEmpty>No customers found</CommandEmpty>
-                          <CommandGroup>
-                            {filteredCustomers.map((c: any) => (
-                              <CommandItem
-                                key={c.id}
-                                value={c.id}
-                                onSelect={() => {
-                                  setCustomerId(c.id);
-                                  setCustomerSearch(c.name);
-                                  setCustomerPopoverOpen(false);
-                                }}
-                              >
-                                <span className="font-medium">{c.name}</span>
-                                {c.address_city && (
-                                  <span className="text-muted-foreground ml-2 text-xs">
-                                    {c.address_city}, {c.address_state}
-                                  </span>
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </>
-                      )}
-                      <div className="border-t border-border">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewCustomerForm(true);
-                            setCustomerPopoverOpen(false);
-                          }}
-                          className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1"
-                          style={{ color: "#55BAAA" }}
-                        >
-                          <Plus size={14} /> Add New Customer
-                        </button>
-                      </div>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {selectedCustomer && (
-                <button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">
-                  Clear selection
-                </button>
-              )}
-            </FormRow>
-
-            {showNewCustomerForm && (
-              <div className="ml-[128px] border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
-                <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                  <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                  <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                </div>
-                <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
-                  <option value="">Type (optional)</option>
-                  <option value="rancher">Rancher</option>
-                  <option value="feedlot">Feedlot</option>
-                  <option value="dealer">Dealer</option>
-                  <option value="other">Other</option>
-                </select>
-                <div className="flex gap-2">
-                  <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>
-                    {addCustomerMutation.isPending ? "Saving..." : "Save Customer"}
-                  </button>
-                  <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
-                </div>
-              </div>
-            )}
-        </>
+        {showNewCustomerForm && (
+          <div className="border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
+            <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
+            <div className="grid grid-cols-2 gap-2">
+              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
+            </div>
+            <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
+              <option value="">Type (optional)</option>
+              <option value="rancher">Rancher</option>
+              <option value="feedlot">Feedlot</option>
+              <option value="dealer">Dealer</option>
+              <option value="other">Other</option>
+            </select>
+            <div className="flex gap-2">
+              <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>{addCustomerMutation.isPending ? "Saving..." : "Save Customer"}</button>
+              <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
+            </div>
+          </div>
+        )}
 
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
-        <SectionHeader title="Equipment" />
-
-        <FormRow label="Manufacturer" error={errors.manufacturer}>
-          <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-            <option value="">Select manufacturer</option>
-            {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </FormRow>
-
-        <FormRow label="Base Model" error={errors.baseModel}>
-          <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-            <option value="">Select base model</option>
-            {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
-          </select>
-        </FormRow>
-
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p>
+            <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+              <option value="">Select manufacturer</option>
+              {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            {errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p>
+            <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+              <option value="">Select base model</option>
+              {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
+            </select>
+            {errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}
+          </div>
+        </div>
         {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
-          <FormRow label="Quick Build">
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p>
             <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
               <option value="">None — custom build</option>
               {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
             </select>
-          </FormRow>
-        )}
-
-        {/* ── OPTIONS ────────────────────────────────────────── */}
-        <SectionHeader
-          title="Options"
-          subtitle={optionCount > 0 ? `${optionCount} selected · $${fmtCurrency(optionRetailTotal)}` : undefined}
-        />
-
-        {extendedChuteOption && (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
-            <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-            <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
-            <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
-
-        {groupedOptions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-            {groupedOptions.map(([group, opts]) => {
-              const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
-              if (filtered.length === 0) return null;
-              return renderGroupCard(group, filtered);
-            })}
-          </div>
-        )}
-
-        {/* ── BUILD SUMMARY ──────────────────────────────────── */}
-        <SectionHeader title="Build Summary" />
-
-        {selectedBaseModel && (
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>
-              {selectedBaseModel.short_name}
-            </span>
-            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
-          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handlePillClick(pill)}
-              className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform"
-              style={{
-                background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
-                border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
-                color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
-              }}
-            >
-              {pill.label}
-            </button>
-          ))}
-        </div>
-
-        <FormRow label="Build Short" error={errors.buildShorthand}>
-          <input
-            value={buildShorthand}
-            onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }}
-            placeholder="Auto-generated from selections"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-            style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }}
-          />
-        </FormRow>
 
         {/* ── NAVY RECEIPT CARD ─────────────────────────────── */}
         {selectedBaseModel && (
-          <div className="rounded-xl p-4 mt-2" style={{ backgroundColor: "#0E2646" }}>
+          <div className="rounded-xl p-4 mb-3" style={{ backgroundColor: "#0E2646" }}>
             <div className="flex justify-between mb-1.5">
-              <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Base model</span>
+              <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Base: {selectedBaseModel.name}</span>
               <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
             </div>
             {optionCount > 0 && (
@@ -1420,9 +1363,7 @@ export default function NewOrder() {
             </div>
             {discountValue > 0 && (
               <div className="flex justify-between mt-1.5">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>
-                  Discount {discountType === "%" ? `(${parseFloat(discountAmount) || 0}%)` : ""}
-                </span>
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Discount {discountType === "%" ? `(${parseFloat(discountAmount) || 0}%)` : ""}</span>
                 <span className="text-[13px]" style={{ color: "#F3D12A" }}>−${fmtCurrency(discountValue)}</span>
               </div>
             )}
@@ -1443,90 +1384,127 @@ export default function NewOrder() {
               </div>
               <div className="flex justify-between mt-0.5">
                 <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>Margin</span>
-                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>
-                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-                </span>
+                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── COMPACT INPUTS — 2-COLUMN GRID ────────────────── */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
-            <div className="flex items-center gap-1.5">
-              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ width: 52 }}>
-                <option value="$">$</option>
-                <option value="%">%</option>
-              </select>
-              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-right text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight estimate</p>
-            <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>CATL #</p>
-            <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. 2026-042" className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Serial #</p>
-            <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="When manufactured" className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Status</p>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-            </select>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. date</p>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={cn("w-full text-left border border-border rounded-md px-2 py-2 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
-                  {estimateDate ? format(estimateDate, "MMM d, yyyy") : "Pick date"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {showCompletionDate && (
-          <div className="mt-3" style={{ maxWidth: "calc(50% - 6px)" }}>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. completion</p>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={cn("w-full text-left border border-border rounded-md px-2 py-2 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
-                  {estCompletionDate ? format(estCompletionDate, "MMM d, yyyy") : "Pick date"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+        {/* ── OPTIONS — collapsible groups ────────────────────── */}
+        {extendedChuteOption && (
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
+            <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
+            <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
+            <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
           </div>
         )}
 
-        {/* ── NOTES ──────────────────────────────────────────── */}
-        <div className="mt-4">
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Notes</p>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        {groupedOptions.length > 0 && (
+          <div>
+            {groupedOptions.map(([group, opts]) => {
+              const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
+              if (filtered.length === 0) return null;
+              return renderGroupCard(group, filtered);
+            })}
+          </div>
+        )}
+
+        {/* ── BUILD SUMMARY ──────────────────────────────────── */}
+        {selectedBaseModel && (
+          <div className="flex items-center gap-2 mt-4 mb-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>{selectedBaseModel.short_name}</span>
+            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
+          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
+            <button key={i} type="button" onClick={() => handlePillClick(pill)} className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform" style={{
+              background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
+              border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
+              color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
+            }}>{pill.label}</button>
+          ))}
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p>
+          <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated from selections" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
+          {errors.buildShorthand && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.buildShorthand}</p>}
+        </div>
+
+        {/* ── DETAILS CARD — 3-column grid ───────────────────── */}
+        <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Discount</p>
+              <div className="flex items-center gap-1">
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-1.5 bg-card text-sm outline-none text-[16px]" style={{ width: 44 }}>
+                  <option value="$">$</option>
+                  <option value="%">%</option>
+                </select>
+                <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-right text-[16px]" />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
+              <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>CATL #</p>
+              <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Serial #</p>
+              <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Est. date</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
+                    {estimateDate ? format(estimateDate, "M/d/yy") : "—"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          {showCompletionDate && (
+            <div className="mb-2" style={{ maxWidth: "calc(33.33% - 6px)" }}>
+              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Completion</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
+                    {estCompletionDate ? format(estCompletionDate, "M/d/yy") : "—"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Notes</p>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded px-2 py-1.5 bg-card text-foreground outline-none resize-none text-[16px]" />
+          </div>
         </div>
       </div>
 
-      {/* ─── Save Button ────────────────────────────────────── */}
+      {/* Save Button */}
       <div className="px-4 mt-4 md:max-w-[680px] md:mx-auto">
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
-          style={{ background: "#F3D12A", color: "#0E2646" }}
-        >
+        <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50" style={{ background: "#F3D12A", color: "#0E2646" }}>
           {submitting ? "Creating..." : isDirectOrder ? "Create order" : "Create estimate"}
         </button>
       </div>
