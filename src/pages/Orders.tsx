@@ -95,7 +95,7 @@ export default function Orders() {
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
-        query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},customers.name.ilike.${s}`);
+        query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},customers.name.ilike.${s},contract_name.ilike.${s},moly_contract_number.ilike.${s}`);
       }
 
       if (statusFilter !== "all") {
@@ -231,8 +231,15 @@ export default function Orders() {
               >
                 {/* Card Header — Navy */}
                 <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[14px] font-bold" style={{ color: "#F0F0F0" }}>{order.order_number}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <span className="text-[14px] font-bold" style={{ color: "#F0F0F0" }}>
+                      {order.contract_name || order.order_number}
+                    </span>
+                    {order.moly_contract_number && (
+                      <span className="text-[12px] font-medium" style={{ color: "rgba(240,240,240,0.5)" }}>
+                        #{order.moly_contract_number}
+                      </span>
+                    )}
                     <StatusBadge status={order.status} />
                   </div>
                   {order.customer_price != null && (
@@ -248,11 +255,16 @@ export default function Orders() {
                     <span className="text-[14px] font-medium text-foreground">
                       {customer?.name || <span className="italic text-muted-foreground">Unassigned</span>}
                     </span>
-                    {manufacturer && (
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
-                        {manufacturer.short_name || manufacturer.name}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {order.contract_name && (
+                        <span className="text-[10px] text-muted-foreground">{order.order_number}</span>
+                      )}
+                      {manufacturer && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                          {manufacturer.short_name || manufacturer.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-[13px]" style={{ color: "#55BAAA" }}>{order.build_shorthand}</p>
 
