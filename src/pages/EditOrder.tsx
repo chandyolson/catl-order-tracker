@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils";
 import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = ["estimate", "on_order", "building", "ready", "delivered", "closed"];
+const STATUS_LABELS: Record<string, string> = {
+  estimate: "Estimate",
+  on_order: "Purchase order",
+  building: "Building",
+  ready: "Ready",
+  delivered: "Delivered",
+  closed: "Closed",
+};
 
 // Group order is driven by sort_order from the database, not hardcoded.
 
@@ -1204,7 +1212,7 @@ export default function EditOrder() {
             <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
               <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
               </select>
             </div>
           </div>
