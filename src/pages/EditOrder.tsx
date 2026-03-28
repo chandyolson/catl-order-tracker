@@ -557,6 +557,20 @@ export default function EditOrder() {
     setErrors(e); return Object.keys(e).length === 0;
   }
 
+  function hasConfigChanged(): boolean {
+    const currentOptionsJson = JSON.stringify(
+      selectedOptionsList.map((s) => ({
+        option_id: s.option.id,
+        left: s.left,
+        right: s.right,
+        quantity: s.quantity,
+        pivotType: s.pivotType,
+        pivotSide: s.pivotSide,
+      }))
+    );
+    return baseModelId !== originalBaseModelId || currentOptionsJson !== originalSelectedOptions;
+  }
+
   /* ─── Submit (UPDATE) ──────────────────────────────────────── */
 
   async function handleSubmit() {
