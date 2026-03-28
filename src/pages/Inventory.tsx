@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 
 type TabKey = "assigned" | "instock" | "onorder";
 
-const ASSIGNED_STATUSES = ["on_order", "building", "ready"];
+const ASSIGNED_STATUSES = ["purchase_order", "order_pending", "building", "ready"];
 const INSTOCK_STATUSES = ["ready"];
-const ONORDER_STATUSES = ["on_order", "building"];
+const ONORDER_STATUSES = ["purchase_order", "order_pending", "building"];
 
 const selectStr = "*, customers(name), manufacturers(name, short_name), base_models:base_model_id(name, short_name)";
 

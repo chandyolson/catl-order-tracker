@@ -151,7 +151,7 @@ export default function OrderDetail() {
   const convertToOrderMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("orders").update({
-        status: "on_order",
+        status: "purchase_order",
         ordered_date: format(new Date(), "yyyy-MM-dd"),
       }).eq("id", id!);
       if (error) throw error;
@@ -179,7 +179,7 @@ export default function OrderDetail() {
         .select("*", { count: "exact", head: true })
         .eq("source_type", "direct_order")
         .is("customer_id", null)
-        .in("status", ["on_order", "building"])
+        .in("status", ["purchase_order", "order_pending", "building"])
         .eq("manufacturer_id", order?.manufacturer_id || "");
       if (error) throw error;
       return count ?? 0;
@@ -480,7 +480,7 @@ export default function OrderDetail() {
               <ChevronRight size={16} style={{ color: "#5DCAA5" }} className="flex-shrink-0" />
             </button>
             <button
-              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=on_order`); }}
+              onClick={() => { setShowConvertModal(false); navigate(`/orders/${id}/match?pool=purchase_order`); }}
               className="w-full text-left rounded-lg p-3 flex items-center gap-3 active:scale-[0.98] transition-transform"
               style={{ backgroundColor: "#E6F1FB", border: "0.5px solid #85B7EB" }}
             >

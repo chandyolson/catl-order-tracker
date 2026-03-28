@@ -10,11 +10,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import StatusBadge from "@/components/StatusBadge";
 
-const ACTIVE_STATUSES = ["estimate", "on_order", "building", "ready", "delivered"];
+const ACTIVE_STATUSES = ["estimate", "purchase_order", "order_pending", "building", "ready", "delivered"];
 
 const BOARD_COLUMNS = [
   { status: "estimate", label: "Estimate", bg: "#F5F5F0", color: "#0E2646" },
-  { status: "on_order", label: "On Order", bg: "#55BAAA", color: "#FFFFFF" },
+  { status: "purchase_order", label: "Purchase Order", bg: "#55BAAA", color: "#FFFFFF" },
+  { status: "order_pending", label: "Order Pending", bg: "#7B93AD", color: "#FFFFFF" },
   { status: "building", label: "Building", bg: "#0E2646", color: "#F0F0F0" },
   { status: "ready", label: "Ready", bg: "#F3D12A", color: "#0E2646" },
   { status: "delivered", label: "Delivered", bg: "#27AE60", color: "#FFFFFF" },
