@@ -1192,22 +1192,28 @@ export default function NewOrder() {
           <SectionHeader title={isDirectOrder ? "Customer (optional)" : "Customer"} />
 
             <FormRow label="Customer">
-              <div className="relative">
+              <div className="relative" data-customer-dropdown>
                 <input
                   value={selectedCustomer ? selectedCustomer.name : customerSearch}
                   onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder="Search customers..."
+                  onFocus={() => { if (customerSearch.length >= 2) setShowCustomerDropdown(true); }}
+                  placeholder="Type 2+ letters to search customers..."
                   className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
                 />
-                {showCustomerDropdown && (
+                {showCustomerDropdown && customerSearch.length >= 2 && (
                   <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
-                    {filteredCustomers.map((c) => (
-                      <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
-                        <span className="font-medium">{c.name}</span>
-                        {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
-                      </button>
-                    ))}
+                    {customerSearchQuery.isLoading ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
+                    ) : filteredCustomers.length === 0 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">No customers found</div>
+                    ) : (
+                      filteredCustomers.map((c) => (
+                        <button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm">
+                          <span className="font-medium">{c.name}</span>
+                          {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
+                        </button>
+                      ))
+                    )}
                     <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}>
                       <Plus size={14} /> Add New Customer
                     </button>
