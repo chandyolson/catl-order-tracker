@@ -125,6 +125,8 @@ export default function EditOrder() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [taxState, setTaxState] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<number>(0);
   const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
   const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
   const [dualChecked, setDualChecked] = useState(false);
@@ -254,6 +256,8 @@ export default function EditOrder() {
     setFromInventory(o.from_inventory || false);
     setInventoryLocation(o.inventory_location || "");
     setNotes(o.notes || "");
+    setTaxState(o.tax_state || "");
+    setTaxRate(o.tax_rate || 0);
     setOriginalStatus(o.status || "");
     setOriginalPrice(o.customer_price ? String(o.customer_price) : "");
     setOriginalCost(o.our_cost ? String(o.our_cost) : "");
@@ -436,6 +440,8 @@ export default function EditOrder() {
 
   const customerPrice = calcRetail - discountValue;
   const ourCost = calcCost;
+  const taxAmount = taxRate > 0 ? Math.round(customerPrice * taxRate) / 100 : 0;
+  const totalWithTax = customerPrice + taxAmount;
 
   const margin = useMemo(() => {
     if (customerPrice <= 0 || ourCost <= 0) return null;
@@ -647,6 +653,10 @@ export default function EditOrder() {
         selected_options: selectedOptionsJson,
         notes: notes || null,
         customer_id: customerId || null,
+        tax_state: taxState || null,
+        tax_rate: taxRate || 0,
+        tax_amount: taxAmount || 0,
+        total_with_tax: taxRate > 0 ? totalWithTax : null,
       }).eq("id", id!);
       if (updateError) throw updateError;
 
@@ -670,11 +680,18 @@ export default function EditOrder() {
         await supabase.from("estimates").insert({
           order_id: id,
           version_number: nextVersion,
-          notes: options.estimateLabel || null,
+          label: options.estimateLabel || null,
           build_shorthand: buildShorthand,
           total_price: customerPrice,
           is_current: true,
           line_items: lineItems,
+          customer_id: orderQuery.data?.customer_id || null,
+          base_model_id: baseModelId || null,
+          status: 'open',
+          tax_state: taxState || null,
+          tax_rate: taxRate || 0,
+          tax_amount: taxAmount || 0,
+          total_with_tax: taxRate > 0 ? totalWithTax : null,
         } as any);
 
         await supabase.from("order_timeline").insert({
@@ -1370,6 +1387,31 @@ export default function EditOrder() {
                 <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-right text-[16px]" />
               </div>
             </div>
+            {orderQuery.data?.source_type === "estimate" && (
+              <div>
+                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Sales Tax</p>
+                <select
+                  value={taxState}
+                  onChange={(e) => {
+                    const st = e.target.value;
+                    setTaxState(st);
+                    if (st === "SD") setTaxRate(4.2);
+                    else if (st === "ND") setTaxRate(3.0);
+                    else { setTaxState(""); setTaxRate(0); }
+                  }}
+                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]"
+                >
+                  <option value="">No tax</option>
+                  <option value="SD">SD (4.2%)</option>
+                  <option value="ND">ND (3.0%)</option>
+                </select>
+                {taxRate > 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                    +${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${totalWithTax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
               <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
