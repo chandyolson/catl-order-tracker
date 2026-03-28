@@ -691,10 +691,14 @@ export type Database = {
           created_at: string | null
           current_estimate_version: number | null
           customer_id: string | null
+          customer_location: string | null
           customer_price: number | null
           delivered_date: string | null
+          delivery_instructions: string | null
           discount_amount: number | null
           discount_type: string | null
+          equip_location: string | null
+          equipment_type: string | null
           est_completion_date: string | null
           estimate_date: string | null
           freight_estimate: number | null
@@ -711,7 +715,9 @@ export type Database = {
           mfg_contract_number: string | null
           mfg_po_number: string | null
           mfg_so_number: string | null
+          moly_contract_number: string | null
           notes: string | null
+          notion_id: string | null
           order_number: string
           ordered_date: string | null
           our_cost: number | null
@@ -743,10 +749,14 @@ export type Database = {
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
+          customer_location?: string | null
           customer_price?: number | null
           delivered_date?: string | null
+          delivery_instructions?: string | null
           discount_amount?: number | null
           discount_type?: string | null
+          equip_location?: string | null
+          equipment_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null
           freight_estimate?: number | null
@@ -763,7 +773,9 @@ export type Database = {
           mfg_contract_number?: string | null
           mfg_po_number?: string | null
           mfg_so_number?: string | null
+          moly_contract_number?: string | null
           notes?: string | null
+          notion_id?: string | null
           order_number: string
           ordered_date?: string | null
           our_cost?: number | null
@@ -795,10 +807,14 @@ export type Database = {
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
+          customer_location?: string | null
           customer_price?: number | null
           delivered_date?: string | null
+          delivery_instructions?: string | null
           discount_amount?: number | null
           discount_type?: string | null
+          equip_location?: string | null
+          equipment_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null
           freight_estimate?: number | null
@@ -815,7 +831,9 @@ export type Database = {
           mfg_contract_number?: string | null
           mfg_po_number?: string | null
           mfg_so_number?: string | null
+          moly_contract_number?: string | null
           notes?: string | null
+          notion_id?: string | null
           order_number?: string
           ordered_date?: string | null
           our_cost?: number | null
