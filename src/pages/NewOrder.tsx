@@ -234,13 +234,40 @@ export default function NewOrder() {
     enabled: !!manufacturerId,
   });
 
-  const customersQuery = useQuery({
-    queryKey: ["customers"],
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCustomerSearch(customerSearch), 300);
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
+
+  const customerSearchQuery = useQuery({
+    queryKey: ["customer-search", debouncedCustomerSearch],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address_city, address_state, customer_type, qb_customer_id")
+        .ilike("name", `%${debouncedCustomerSearch}%`)
+        .order("name")
+        .limit(30);
       if (error) throw error;
       return data;
     },
+    enabled: debouncedCustomerSearch.length >= 2,
+  });
+
+  const selectedCustomerQuery = useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address_city, address_state, customer_type")
+        .eq("id", customerId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!customerId,
   });
 
   /* ─── Derived state ────────────────────────────────────────── */
