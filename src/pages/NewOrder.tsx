@@ -675,7 +675,7 @@ export default function NewOrder() {
       setCustomerId(data.id);
       setCustomerSearch(data.name);
       setShowNewCustomerForm(false);
-      setShowCustomerDropdown(false);
+      setCustomerPopoverOpen(false);
       setNewCustomer({ name: "", email: "", phone: "", city: "", state: "", type: "" });
     },
   });
