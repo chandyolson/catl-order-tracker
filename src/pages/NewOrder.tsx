@@ -588,7 +588,7 @@ export default function NewOrder() {
             left: override.left ?? 0,
             right: override.right ?? 0,
             selected: true,
-            quantity: override.quantity ?? ((override.left ?? 0) + (override.right ?? 0)) || 1,
+            quantity: override.quantity ?? (((override.left ?? 0) + (override.right ?? 0)) || 1),
           });
         } else {
           newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
