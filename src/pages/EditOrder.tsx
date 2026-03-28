@@ -133,6 +133,8 @@ export default function EditOrder() {
   const [originalPrice, setOriginalPrice] = useState("");
   const [originalCost, setOriginalCost] = useState("");
   const [originalOptionsJson, setOriginalOptionsJson] = useState("");
+  const [originalBaseModelId, setOriginalBaseModelId] = useState("");
+  const [originalSelectedOptions, setOriginalSelectedOptions] = useState("");
 
   /* ─── Queries ──────────────────────────────────────────────── */
 
@@ -245,6 +247,8 @@ export default function EditOrder() {
     setOriginalPrice(o.customer_price ? String(o.customer_price) : "");
     setOriginalCost(o.our_cost ? String(o.our_cost) : "");
     setOriginalOptionsJson(JSON.stringify(o.selected_options || []));
+    setOriginalBaseModelId(o.base_model_id || "");
+    setOriginalSelectedOptions(JSON.stringify(o.selected_options || []));
     setInitialized(true);
   }, [orderQuery.data, initialized]);
 
