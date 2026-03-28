@@ -8,7 +8,7 @@ export function useActiveOrdersCount() {
       const { count, error } = await supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
-        .not("status", "in", '("closed","paid")');
+        .not("status", "in", '("closed")');
       if (error) throw error;
       return count ?? 0;
     },
@@ -23,13 +23,13 @@ export function useEstimateVsOrderCounts() {
         .from("orders")
         .select("*", { count: "exact", head: true })
         .eq("source_type", "estimate")
-        .in("status", ["estimate", "approved"]);
+        .in("status", ["estimate"]);
       if (e1) throw e1;
 
       const { count: ordCount, error: e2 } = await supabase
         .from("orders")
         .select("*", { count: "exact", head: true })
-        .not("status", "in", '("closed","paid")')
+        .not("status", "in", '("closed")')
         .not("source_type", "eq", "estimate");
       if (e2) throw e2;
 
@@ -63,7 +63,7 @@ export function useDueThisMonth() {
         .select("*", { count: "exact", head: true })
         .gte("est_completion_date", start)
         .lte("est_completion_date", end)
-        .not("status", "in", '("closed","paid")');
+        .not("status", "in", '("closed")');
       if (error) throw error;
       return count ?? 0;
     },

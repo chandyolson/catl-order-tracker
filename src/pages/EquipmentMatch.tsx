@@ -85,10 +85,10 @@ export default function EquipmentMatch() {
         .eq("manufacturer_id", estimate!.manufacturer_id!);
 
       if (pool === "on_order") {
-        query = query.in("status", ["ordered", "so_received", "in_production"])
+        query = query.in("status", ["on_order", "building"])
           .order("est_completion_date", { ascending: true });
       } else {
-        query = query.in("status", ["completed", "freight_arranged"])
+        query = query.in("status", ["ready"])
           .eq("from_inventory", true)
           .order("created_at", { ascending: false });
       }
@@ -128,7 +128,7 @@ export default function EquipmentMatch() {
       // Update estimate: link and approve
       const { error: e2 } = await supabase.from("orders").update({
         linked_order_id: equipmentOrder.id,
-        status: "approved",
+        status: "estimate",
         approved_date: format(new Date(), "yyyy-MM-dd"),
       }).eq("id", id!);
       if (e2) throw e2;
