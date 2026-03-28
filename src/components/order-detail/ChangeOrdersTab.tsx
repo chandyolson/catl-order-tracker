@@ -62,6 +62,7 @@ export default function ChangeOrdersTab({ orderId, changes, order, queryClient }
       queryClient.invalidateQueries({ queryKey: ["order_timeline", orderId] });
       setShowForm(false);
       setRequestedBy("");
+      setVia("Phone");
       setDescription("");
       setPriceImpact("");
       toast.success("Change order logged");
@@ -126,7 +127,7 @@ export default function ChangeOrdersTab({ orderId, changes, order, queryClient }
           <div className="text-xs text-muted-foreground">New total: {fmtCurrency(newTotal)}</div>
           <div className="flex gap-2">
             <button onClick={() => createChangeMutation.mutate()} disabled={createChangeMutation.isPending || !description} className="px-4 py-2 rounded-full text-sm font-bold active:scale-[0.97] disabled:opacity-50" style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>Save</button>
-            <button onClick={() => setShowForm(false)} className="text-sm text-muted-foreground px-3">Cancel</button>
+            <button onClick={() => { setShowForm(false); setRequestedBy(""); setVia("Phone"); setDescription(""); setPriceImpact(""); }} className="text-sm text-muted-foreground px-3">Cancel</button>
           </div>
         </div>
       )}
