@@ -257,7 +257,11 @@ export type Database = {
           qb_estimate_id: string | null
           signed: boolean | null
           signed_date: string | null
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_state: string | null
           total_price: number
+          total_with_tax: number | null
           version_number: number
         }
         Insert: {
@@ -276,7 +280,11 @@ export type Database = {
           qb_estimate_id?: string | null
           signed?: boolean | null
           signed_date?: string | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_state?: string | null
           total_price: number
+          total_with_tax?: number | null
           version_number: number
         }
         Update: {
@@ -295,7 +303,11 @@ export type Database = {
           qb_estimate_id?: string | null
           signed?: boolean | null
           signed_date?: string | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_state?: string | null
           total_price?: number
+          total_with_tax?: number | null
           version_number?: number
         }
         Relationships: [
@@ -353,6 +365,8 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string | null
+          google_drive_parent_folder_id: string | null
+          google_drive_parent_folder_url: string | null
           id: string
           name: string
           notes: string | null
@@ -365,6 +379,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string | null
+          google_drive_parent_folder_id?: string | null
+          google_drive_parent_folder_url?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -377,6 +393,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string | null
+          google_drive_parent_folder_id?: string | null
+          google_drive_parent_folder_url?: string | null
           id?: string
           name?: string
           notes?: string | null
@@ -513,6 +531,71 @@ export type Database = {
           },
         ]
       }
+      order_documents: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          document_type: string
+          file_name: string | null
+          file_size_bytes: number | null
+          file_type: string | null
+          file_url: string | null
+          id: string
+          manufacturer_ref: string | null
+          order_id: string | null
+          source: string | null
+          source_email_date: string | null
+          source_email_from: string | null
+          source_email_subject: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          document_type: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          manufacturer_ref?: string | null
+          order_id?: string | null
+          source?: string | null
+          source_email_date?: string | null
+          source_email_from?: string | null
+          source_email_subject?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          document_type?: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          manufacturer_ref?: string | null
+          order_id?: string | null
+          source?: string | null
+          source_email_date?: string | null
+          source_email_from?: string | null
+          source_email_subject?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_documents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_timeline: {
         Row: {
           created_at: string | null
@@ -571,6 +654,8 @@ export type Database = {
           estimate_date: string | null
           freight_estimate: number | null
           from_inventory: boolean | null
+          google_drive_folder_id: string | null
+          google_drive_folder_url: string | null
           id: string
           inventory_location: string | null
           invoiced_date: string | null
@@ -578,6 +663,7 @@ export type Database = {
           manufacturer_id: string | null
           margin_amount: number | null
           margin_percent: number | null
+          mfg_contract_number: string | null
           mfg_po_number: string | null
           mfg_so_number: string | null
           notes: string | null
@@ -595,6 +681,10 @@ export type Database = {
           source_type: string | null
           status: string
           subtotal: number | null
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_state: string | null
+          total_with_tax: number | null
           updated_at: string | null
         }
         Insert: {
@@ -616,6 +706,8 @@ export type Database = {
           estimate_date?: string | null
           freight_estimate?: number | null
           from_inventory?: boolean | null
+          google_drive_folder_id?: string | null
+          google_drive_folder_url?: string | null
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
@@ -623,6 +715,7 @@ export type Database = {
           manufacturer_id?: string | null
           margin_amount?: number | null
           margin_percent?: number | null
+          mfg_contract_number?: string | null
           mfg_po_number?: string | null
           mfg_so_number?: string | null
           notes?: string | null
@@ -640,6 +733,10 @@ export type Database = {
           source_type?: string | null
           status?: string
           subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_state?: string | null
+          total_with_tax?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -661,6 +758,8 @@ export type Database = {
           estimate_date?: string | null
           freight_estimate?: number | null
           from_inventory?: boolean | null
+          google_drive_folder_id?: string | null
+          google_drive_folder_url?: string | null
           id?: string
           inventory_location?: string | null
           invoiced_date?: string | null
@@ -668,6 +767,7 @@ export type Database = {
           manufacturer_id?: string | null
           margin_amount?: number | null
           margin_percent?: number | null
+          mfg_contract_number?: string | null
           mfg_po_number?: string | null
           mfg_so_number?: string | null
           notes?: string | null
@@ -685,6 +785,10 @@ export type Database = {
           source_type?: string | null
           status?: string
           subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_state?: string | null
+          total_with_tax?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -838,6 +942,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tax_rates: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          rate_percent: number
+          state_code: string
+          state_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean | null
+          rate_percent: number
+          state_code: string
+          state_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          rate_percent?: number
+          state_code?: string
+          state_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
