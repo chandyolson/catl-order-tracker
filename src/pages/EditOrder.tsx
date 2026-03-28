@@ -163,6 +163,18 @@ export default function EditOrder() {
     enabled: !!id,
   });
 
+  const existingEstimatesQuery = useQuery({
+    queryKey: ["estimates-count", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("estimates").select("id").eq("order_id", id!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id,
+  });
+  const existingEstimateCount = existingEstimatesQuery.data?.length || 0;
+  const isFirstEstimate = forEstimate && existingEstimateCount === 0;
+
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
     queryFn: async () => { const { data, error } = await supabase.from("manufacturers").select("*").order("name"); if (error) throw error; return data; },
@@ -1486,36 +1498,40 @@ export default function EditOrder() {
       <Dialog open={showEstimateDialog} onOpenChange={setShowEstimateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Save estimate changes</DialogTitle>
+            <DialogTitle>{isFirstEstimate ? "Create estimate" : "Save estimate changes"}</DialogTitle>
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            You changed the equipment or options. How do you want to save?
+            {isFirstEstimate
+              ? "Create an estimate for the customer based on this equipment configuration."
+              : "You changed the equipment or options. How do you want to save?"}
           </p>
 
-          <div className="space-y-2">
-            <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("update")}>
-              <input type="radio" checked={estimateAction === "update"} onChange={() => setEstimateAction("update")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Update current estimate</p>
-                <p className="text-xs text-muted-foreground">Overwrite the existing version with the new config</p>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("new")}>
-              <input type="radio" checked={estimateAction === "new"} onChange={() => setEstimateAction("new")} className="mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Save as new estimate version</p>
-                <p className="text-xs text-muted-foreground">Keep the old version and create a new one</p>
-              </div>
-            </label>
-          </div>
+          {!isFirstEstimate && (
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("update")}>
+                <input type="radio" checked={estimateAction === "update"} onChange={() => setEstimateAction("update")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Update current estimate</p>
+                  <p className="text-xs text-muted-foreground">Overwrite the existing version with the new config</p>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("new")}>
+                <input type="radio" checked={estimateAction === "new"} onChange={() => setEstimateAction("new")} className="mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Save as new estimate version</p>
+                  <p className="text-xs text-muted-foreground">Keep the old version and create a new one</p>
+                </div>
+              </label>
+            </div>
+          )}
 
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Name this estimate</p>
             <input
               value={estimateLabel}
               onChange={(e) => setEstimateLabel(e.target.value)}
-              placeholder={estimateAction === "update" ? 'e.g. "Updated quote"' : 'e.g. "With extended chute"'}
+              placeholder={isFirstEstimate ? 'e.g. "Base + gun holders"' : estimateAction === "update" ? 'e.g. "Updated quote"' : 'e.g. "With extended chute"'}
               className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-sm outline-none text-[16px]"
             />
           </div>
@@ -1523,7 +1539,7 @@ export default function EditOrder() {
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={() => {
-                if (estimateAction === "new") {
+                if (isFirstEstimate || estimateAction === "new") {
                   doSave({ createEstimateVersion: true, estimateLabel: estimateLabel || undefined });
                 } else {
                   doSave({ createEstimateVersion: false, estimateLabel: estimateLabel || undefined });
@@ -1533,7 +1549,7 @@ export default function EditOrder() {
               className="flex-1 rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
               style={{ background: "#F3D12A", color: "#0E2646" }}
             >
-              {submitting ? "Saving..." : estimateAction === "new" ? "Create new version" : "Update estimate"}
+              {submitting ? "Saving..." : isFirstEstimate ? "Create estimate" : estimateAction === "new" ? "Create new version" : "Update estimate"}
             </button>
             <button onClick={() => setShowEstimateDialog(false)} className="px-4 text-sm text-muted-foreground">Cancel</button>
           </div>
