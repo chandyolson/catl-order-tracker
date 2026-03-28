@@ -478,7 +478,7 @@ export default function EditOrder() {
 
   const filteredCustomers = customerSearchQuery.data || [];
 
-  const selectedCustomer = selectedCustomerQuery.data;
+  const selectedCustomer = customerId ? selectedCustomerQuery.data ?? null : null;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
