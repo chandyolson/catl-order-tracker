@@ -342,8 +342,12 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               </div>
             )}
 
-            {/* Contract Name + MOLY Contract # */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Order # + Contract Name + MOLY Contract # */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Order #</span>
+                <p className="text-[13px] font-medium text-foreground mt-0.5">{order.order_number}</p>
+              </div>
               <div>
                 <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Contract Name</span>
                 {editingContractName ? (
