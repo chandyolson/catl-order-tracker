@@ -160,7 +160,7 @@ export default function NewOrder() {
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [status, setStatus] = useState(isDirectOrder ? "on_order" : "estimate");
+  const [status, setStatus] = useState("estimate");
   const [estimateDate, setEstimateDate] = useState<Date>(new Date());
   const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState("");
@@ -1439,17 +1439,7 @@ export default function NewOrder() {
 
         {/* ── DETAILS CARD — 3-column grid ───────────────────── */}
         <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Discount</p>
-              <div className="flex items-center gap-1">
-                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-1.5 bg-card text-sm outline-none text-[16px]" style={{ width: 44 }}>
-                  <option value="$">$</option>
-                  <option value="%">%</option>
-                </select>
-                <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-right text-[16px]" />
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
               <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
