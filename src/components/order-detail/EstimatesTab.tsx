@@ -155,7 +155,12 @@ function EstimateCard({ estimate }: { estimate: any }) {
         {isSigned && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#0E2646", backgroundColor: "rgba(14,38,70,0.1)" }}>Signed</span>}
         {!isCurrent && !isApproved && <span className="text-[11px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Superseded</span>}
       </div>
-      <div className="text-sm font-semibold text-foreground">Estimate #{estimate.version_number}</div>
+      <div className="text-sm font-semibold text-foreground">
+        v{estimate.version_number}
+        {estimate.label && (
+          <span className="font-normal text-muted-foreground"> — {estimate.label}</span>
+        )}
+      </div>
       <div className="text-[13px] font-medium" style={{ color: "#55BAAA" }}>{estimate.build_shorthand}</div>
       <div className="text-lg font-medium text-foreground mt-1">{fmtCurrency(estimate.total_price)}</div>
       <div className="text-xs text-muted-foreground">{fmtDate(estimate.created_at?.split("T")[0], true)}</div>

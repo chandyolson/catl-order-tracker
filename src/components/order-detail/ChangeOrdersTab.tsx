@@ -152,7 +152,40 @@ function ChangeOrderCard({ co, orderId, queryClient }: { co: any; orderId: strin
       </div>
       <div className="text-[13px] font-semibold text-foreground">CO #{co.change_number} — {fmtDate(co.created_at?.split("T")[0])}</div>
       <div className="text-xs text-muted-foreground mb-1">By: {co.requested_by}{co.requested_via ? ` (${co.requested_via})` : ""}</div>
+      <div className="flex gap-1.5 flex-wrap mt-1 mb-1">
+        {co.source && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+            style={{
+              background: co.source === "customer" ? "#E1F5EE" : co.source === "moly" ? "#FAEEDA" : "hsl(var(--muted))",
+              color: co.source === "customer" ? "#085041" : co.source === "moly" ? "#633806" : "hsl(var(--muted-foreground))",
+            }}>
+            {co.source === "customer" ? "Customer" : co.source === "moly" ? "MOLY" : "Internal"}
+          </span>
+        )}
+        {co.requires_approval && !co.approved && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#FAEEDA", color: "#633806" }}>
+            Awaiting approval
+          </span>
+        )}
+        {co.approved && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#E1F5EE", color: "#085041" }}>
+            Approved
+          </span>
+        )}
+      </div>
       <p className="text-[13px] text-foreground mb-1">{co.description}</p>
+      {Array.isArray(co.changes_summary) && co.changes_summary.length > 0 && (
+        <div className="mt-2 space-y-0.5 text-[12px]">
+          {co.changes_summary.map((change: any, i: number) => (
+            <div key={i} style={{ color: change.type === "added" ? "#27AE60" : change.type === "removed" ? "#D4183D" : "#B8860B" }}>
+              {change.type === "added" ? "+" : change.type === "removed" ? "−" : "~"}{" "}
+              {change.option || change.field}{change.detail ? ` (${change.detail})` : ""}
+              {change.from && change.to ? `: ${change.from} → ${change.to}` : ""}
+              {change.price ? ` — $${Math.abs(change.price).toLocaleString()}` : ""}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex gap-4 text-sm mb-3">
         <span className="font-medium" style={{ color: (co.price_impact || 0) >= 0 ? "#27AE60" : "#D4183D" }}>
           {(co.price_impact || 0) >= 0 ? "+" : "−"}${Math.abs(co.price_impact || 0).toLocaleString()}
