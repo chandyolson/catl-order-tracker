@@ -598,7 +598,16 @@ export default function EditOrder() {
     }
   }
 
-  async function doSave() {
+  async function doSave(options?: {
+    createEstimateVersion?: boolean;
+    estimateLabel?: string;
+    changeOrder?: {
+      source: string;
+      requestedBy: string;
+      description: string;
+      requiresApproval: boolean;
+    };
+  }) {
     setSubmitting(true);
     try {
       const selectedOptionsJson = selectedOptionsList.map((s) => {
@@ -607,14 +616,18 @@ export default function EditOrder() {
         const pivotDisplayName = s.pivotType === "side_to_side" ? "Pivot · Side-to-Side" : s.pivotType === "front_to_back" ? "Pivot · Front-to-Back" : undefined;
         const sideLabel = s.pivotType === "side_to_side" ? "Dominant side" : s.pivotType === "front_to_back" ? "Mounted on" : undefined;
         return {
-          option_id: s.option.id, display_name: pivotDisplayName || s.option.display_name || s.option.name,
+          option_id: s.option.id,
+          display_name: pivotDisplayName || s.option.display_name || s.option.name,
           name: s.option.name, short_code: s.option.short_code,
           cost_price_each: s.option.cost_price, retail_price_each: s.option.retail_price,
           ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide, side_label: sideLabel } : { left_qty: s.left, right_qty: s.right }),
-          quantity: qty, total_cost: s.option.cost_price * qty, total_retail: s.option.retail_price * qty,
+          quantity: qty,
+          total_cost: s.option.cost_price * qty,
+          total_retail: s.option.retail_price * qty,
         };
       });
 
+      // --- Save the order record (always) ---
       const { error: updateError } = await supabase.from("orders").update({
         manufacturer_id: manufacturerId, base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null, build_shorthand: buildShorthand,
@@ -625,28 +638,132 @@ export default function EditOrder() {
         catl_number: catl_number || null, serial_number: serialNumber || null, status,
         estimate_date: format(estimateDate, "yyyy-MM-dd"),
         est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
-        from_inventory: fromInventory, inventory_location: fromInventory ? inventoryLocation || null : null,
-        selected_options: selectedOptionsJson, notes: notes || null, customer_id: customerId || null,
+        from_inventory: fromInventory,
+        inventory_location: fromInventory ? inventoryLocation || null : null,
+        selected_options: selectedOptionsJson,
+        notes: notes || null,
+        customer_id: customerId || null,
       }).eq("id", id!);
       if (updateError) throw updateError;
 
-      // Timeline entries
+      // --- Path 2: Create estimate version ---
+      if (options?.createEstimateVersion) {
+        const { data: existingEstimates } = await supabase
+          .from("estimates")
+          .select("version_number")
+          .eq("order_id", id!)
+          .order("version_number", { ascending: false })
+          .limit(1);
+        const nextVersion = (existingEstimates?.[0]?.version_number || 0) + 1;
+
+        await supabase.from("estimates").update({ is_current: false }).eq("order_id", id!);
+
+        const lineItems = [
+          { type: "base_model", name: selectedBaseModel?.name, retail_price: selectedBaseModel?.retail_price, cost_price: (selectedBaseModel as any)?.cost_price },
+          ...selectedOptionsJson.map((o: any) => ({ type: "option", ...o })),
+        ];
+
+        await supabase.from("estimates").insert({
+          order_id: id,
+          version_number: nextVersion,
+          notes: options.estimateLabel || null,
+          build_shorthand: buildShorthand,
+          total_price: customerPrice,
+          is_current: true,
+          line_items: lineItems,
+        } as any);
+
+        await supabase.from("order_timeline").insert({
+          order_id: id,
+          event_type: "estimate_revised",
+          title: `Estimate v${nextVersion} created`,
+          description: options.estimateLabel ? `"${options.estimateLabel}"` : null,
+        });
+      }
+
+      // --- Path 3: Create change order ---
+      if (options?.changeOrder) {
+        const { data: existingCOs } = await supabase
+          .from("change_orders")
+          .select("change_number")
+          .eq("order_id", id!)
+          .order("change_number", { ascending: false })
+          .limit(1);
+        const nextNum = (existingCOs?.[0]?.change_number || 0) + 1;
+
+        const previousConfig = {
+          base_model_id: originalBaseModelId,
+          build_shorthand: orderQuery.data?.build_shorthand,
+          selected_options: JSON.parse(originalSelectedOptions || "[]"),
+          customer_price: parseFloat(originalPrice),
+          our_cost: parseFloat(originalCost),
+        };
+
+        const newConfig = {
+          base_model_id: baseModelId,
+          build_shorthand: buildShorthand,
+          selected_options: selectedOptionsJson,
+          customer_price: customerPrice,
+          our_cost: ourCost,
+        };
+
+        const priceImpact = customerPrice - parseFloat(originalPrice);
+
+        const oldOpts = previousConfig.selected_options || [];
+        const newOpts = selectedOptionsJson || [];
+        const changesSummary: any[] = [];
+
+        for (const newOpt of newOpts) {
+          const oldOpt = oldOpts.find((o: any) => o.option_id === newOpt.option_id);
+          if (!oldOpt) {
+            changesSummary.push({ type: "added", option: newOpt.display_name || newOpt.name, price: newOpt.total_retail });
+          }
+        }
+        for (const oldOpt of oldOpts) {
+          const newOpt = newOpts.find((o: any) => o.option_id === oldOpt.option_id);
+          if (!newOpt) {
+            changesSummary.push({ type: "removed", option: oldOpt.display_name || oldOpt.name, price: -(oldOpt.total_retail || 0) });
+          }
+        }
+        for (const newOpt of newOpts) {
+          const oldOpt = oldOpts.find((o: any) => o.option_id === newOpt.option_id);
+          if (oldOpt && JSON.stringify(oldOpt) !== JSON.stringify(newOpt)) {
+            changesSummary.push({ type: "changed", option: newOpt.display_name || newOpt.name, detail: "Configuration changed" });
+          }
+        }
+        if (baseModelId !== originalBaseModelId) {
+          changesSummary.push({ type: "changed", field: "base_model", from: orderQuery.data?.base_model, to: selectedBaseModel?.name });
+        }
+
+        await supabase.from("change_orders").insert({
+          order_id: id,
+          change_number: nextNum,
+          requested_by: options.changeOrder.requestedBy || "internal",
+          requested_via: null,
+          description: options.changeOrder.description,
+          price_impact: priceImpact,
+          new_total: customerPrice,
+          applied_internal: true,
+        } as any);
+
+        await supabase.from("order_timeline").insert({
+          order_id: id,
+          event_type: "change_order",
+          title: `Change order #${nextNum}`,
+          description: options.changeOrder.description,
+        });
+      }
+
+      // --- Timeline entries for admin changes (all paths) ---
       const timelineInserts: any[] = [];
       if (status !== originalStatus) {
-        timelineInserts.push({ order_id: id, event_type: "status_change", title: `Status changed to ${status.replace(/_/g, " ")}`, description: `Changed from ${originalStatus.replace(/_/g, " ")}` });
-      }
-      if (String(customerPrice) !== originalPrice || String(ourCost) !== originalCost) {
-        const parts: string[] = [];
-        if (String(customerPrice) !== originalPrice) parts.push(`Customer price changed from $${Number(originalPrice).toLocaleString()} to $${customerPrice.toLocaleString()}`);
-        if (String(ourCost) !== originalCost) parts.push(`Our cost changed from $${Number(originalCost).toLocaleString()} to $${ourCost.toLocaleString()}`);
-        timelineInserts.push({ order_id: id, event_type: "note", title: "Pricing updated", description: parts.join(". ") });
-      }
-      if (JSON.stringify(selectedOptionsJson) !== originalOptionsJson) {
-        timelineInserts.push({ order_id: id, event_type: "note", title: "Build updated", description: "Options modified" });
+        timelineInserts.push({ order_id: id, event_type: "status_change", title: `Status: ${status.replace(/_/g, " ")}`, description: `Changed from ${originalStatus.replace(/_/g, " ")}` });
       }
       if (timelineInserts.length > 0) await supabase.from("order_timeline").insert(timelineInserts);
 
       queryClient.invalidateQueries({ queryKey: ["order", id] });
+      queryClient.invalidateQueries({ queryKey: ["estimates", id] });
+      queryClient.invalidateQueries({ queryKey: ["change_orders", id] });
       queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast.success("Order updated");
@@ -655,6 +772,8 @@ export default function EditOrder() {
       toast.error(err.message || "Failed to update order");
     } finally {
       setSubmitting(false);
+      setShowEstimateDialog(false);
+      setShowChangeOrderDialog(false);
     }
   }
 
