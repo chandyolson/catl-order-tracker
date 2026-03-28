@@ -236,12 +236,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               <span className="text-[15px] font-semibold text-foreground">{fmtCurrency(order.our_cost)}</span>
             </div>
             <div className="h-px bg-border" />
-            <div className="flex justify-between items-baseline">
-              <span className="text-[13px] text-muted-foreground">Margin</span>
-              <span className="text-[15px] font-semibold" style={{ color: marginColor }}>
-                {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-              </span>
-            </div>
             {order.freight_estimate != null && (
               <div className="flex justify-between items-baseline">
                 <span className="text-[13px] text-muted-foreground">Freight Estimate</span>
@@ -320,6 +314,25 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           </div>
         </div>
       </div>
+
+      {/* ─── INTERNAL (collapsible) ─────────────────────── */}
+      <details className="mt-4">
+        <summary className="text-[12px] font-semibold cursor-pointer select-none" style={{ color: "#717182" }}>
+          Internal (tap to show)
+        </summary>
+        <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(14,38,70,0.05)", border: "1px solid rgba(14,38,70,0.1)" }}>
+          <div className="flex justify-between text-sm mb-1">
+            <span style={{ color: "#717182" }}>Our cost</span>
+            <span style={{ color: "#717182" }}>{fmtCurrency(order.our_cost)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-semibold">
+            <span style={{ color: marginColor }}>Margin</span>
+            <span style={{ color: marginColor }}>
+              {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+            </span>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
