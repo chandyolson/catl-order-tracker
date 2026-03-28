@@ -215,83 +215,86 @@ export default function Paperwork() {
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No documents match your filters.</p>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden">
-          {/* Header */}
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_1.2fr_80px_90px_100px_1fr_90px] gap-2 px-3 py-2.5" style={{ backgroundColor: "#0E2646" }}>
-            {["Order", "Customer", "Document", "Side", "Status", "Date", "Blocked Reason", "Action"].map((h) => (
-              <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {items.map((doc: any, idx: number) => {
-            const order = doc.orders;
-            const customerName = order?.customers?.name || "Unassigned";
-            const sc = STATUS_COLORS[doc.status] || STATUS_COLORS.blocked;
-            const isActionable = doc.status === "missing" || doc.status === "pending";
-
+        <div className="space-y-4">
+          {groupedByOrder.map((group) => {
+            const incompleteCount = group.docs.filter((d: any) => d.status !== "complete").length;
             return (
-              <div
-                key={doc.id}
-                className={cn(
-                  "grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.2fr_80px_90px_100px_1fr_90px] gap-1 sm:gap-2 px-3 py-3 border-b border-border last:border-0 items-center",
-                  idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-card"
-                )}
-              >
-                {/* Order # */}
-                <button
-                  onClick={() => navigate(`/orders/${order?.id}`)}
-                  className="text-[13px] font-semibold text-left truncate"
-                  style={{ color: "#55BAAA" }}
+              <div key={group.orderId} className="rounded-xl border border-border overflow-hidden">
+                {/* Order header */}
+                <div
+                  className="flex items-center justify-between px-4 py-2.5 cursor-pointer"
+                  style={{ backgroundColor: "#0E2646" }}
+                  onClick={() => navigate(`/orders/${group.orderId}`)}
                 >
-                  {order?.order_number || "—"}
-                </button>
-
-                {/* Customer */}
-                <div className="text-[13px] text-foreground truncate">{customerName}</div>
-
-                {/* Document type */}
-                <div className="text-[13px] font-medium text-foreground truncate">
-                  {DOC_NAMES[doc.document_type] || doc.document_type}
-                </div>
-
-                {/* Side */}
-                <div className="text-[12px] text-muted-foreground capitalize">{doc.side}</div>
-
-                {/* Status badge */}
-                <div>
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                    style={{ backgroundColor: sc.bg, color: sc.color }}
-                  >
-                    {statusIcon(doc.status)}
-                    {sc.label}
-                  </span>
-                </div>
-
-                {/* Date */}
-                <div className="text-[12px] text-muted-foreground hidden sm:block">
-                  {doc.status === "complete" ? fmtDate(doc.completed_date) : ""}
-                </div>
-
-                {/* Blocked reason */}
-                <div className="text-[11px] text-muted-foreground italic truncate hidden sm:block">
-                  {doc.status === "blocked" ? doc.blocked_reason || "" : ""}
-                </div>
-
-                {/* Action */}
-                <div>
-                  {isActionable && (
-                    <button
-                      onClick={() => markCompleteMutation.mutate({ docId: doc.id, docType: doc.document_type, orderId: order?.id })}
-                      disabled={markCompleteMutation.isPending}
-                      className="text-[11px] font-semibold rounded-full px-2.5 py-1 active:scale-[0.97] transition-transform disabled:opacity-50"
-                      style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
-                    >
-                      Complete
-                    </button>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-[13px] font-bold text-white">{group.orderNumber}</span>
+                    <span className="text-[12px] truncate" style={{ color: "rgba(240,240,240,0.7)" }}>{group.customerName}</span>
+                  </div>
+                  {incompleteCount > 0 && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(212,24,61,0.2)", color: "#FF6B6B" }}>
+                      {incompleteCount} remaining
+                    </span>
                   )}
                 </div>
+
+                {/* Doc rows */}
+                {group.docs.map((doc: any, idx: number) => {
+                  const sc = STATUS_COLORS[doc.status] || STATUS_COLORS.blocked;
+                  const isActionable = doc.status === "missing" || doc.status === "pending";
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className={cn(
+                        "grid grid-cols-[1.2fr_80px_90px_100px_1fr_90px] gap-2 px-4 py-2.5 border-b border-border last:border-0 items-center",
+                        idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-card"
+                      )}
+                    >
+                      {/* Document type */}
+                      <div className="text-[13px] font-medium text-foreground truncate">
+                        {DOC_NAMES[doc.document_type] || doc.document_type}
+                      </div>
+
+                      {/* Side */}
+                      <div className="text-[12px] text-muted-foreground capitalize">{doc.side}</div>
+
+                      {/* Status badge */}
+                      <div>
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                          style={{ backgroundColor: sc.bg, color: sc.color }}
+                        >
+                          {statusIcon(doc.status)}
+                          {sc.label}
+                        </span>
+                      </div>
+
+                      {/* Date */}
+                      <div className="text-[12px] text-muted-foreground">
+                        {doc.status === "complete" ? fmtDate(doc.completed_date) : ""}
+                      </div>
+
+                      {/* Blocked reason */}
+                      <div className="text-[11px] text-muted-foreground italic truncate">
+                        {doc.status === "blocked" ? doc.blocked_reason || "" : ""}
+                      </div>
+
+                      {/* Action */}
+                      <div>
+                        {isActionable && (
+                          <button
+                            onClick={() => markCompleteMutation.mutate({ docId: doc.id, docType: doc.document_type, orderId: group.orderId })}
+                            disabled={markCompleteMutation.isPending}
+                            className="text-[11px] font-semibold rounded-full px-2.5 py-1 active:scale-[0.97] transition-transform disabled:opacity-50"
+                            style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
+                          >
+                            Complete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
