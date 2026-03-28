@@ -987,6 +987,44 @@ export type Database = {
     }
     Functions: {
       generate_order_number: { Args: never; Returns: string }
+      list_customers_with_stats: {
+        Args: {
+          page_number?: number
+          page_size?: number
+          search_term?: string
+          sort_column?: string
+          sort_direction?: string
+        }
+        Returns: {
+          address_city: string
+          address_state: string
+          company: string
+          created_at: string
+          customer_type: string
+          email: string
+          id: string
+          name: string
+          order_count: number
+          phone: string
+          qb_customer_id: string
+          total_count: number
+          total_revenue: number
+        }[]
+      }
+      search_customers: {
+        Args: { search_term: string }
+        Returns: {
+          address_city: string
+          address_state: string
+          company: string
+          customer_type: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          qb_customer_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
