@@ -175,9 +175,40 @@ export default function EditOrder() {
     enabled: !!manufacturerId,
   });
 
-  const customersQuery = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => { const { data, error } = await supabase.from("customers").select("*").order("name"); if (error) throw error; return data; },
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCustomerSearch(customerSearch), 300);
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
+
+  const customerSearchQuery = useQuery({
+    queryKey: ["customer-search", debouncedCustomerSearch],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address_city, address_state, customer_type, qb_customer_id")
+        .ilike("name", `%${debouncedCustomerSearch}%`)
+        .order("name")
+        .limit(30);
+      if (error) throw error;
+      return data;
+    },
+    enabled: debouncedCustomerSearch.length >= 2,
+  });
+
+  const selectedCustomerQuery = useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address_city, address_state, customer_type")
+        .eq("id", customerId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!customerId,
   });
 
   /* ─── Pre-fill from order ──────────────────────────────────── */
@@ -448,14 +479,19 @@ export default function EditOrder() {
 
   /* ─── Customer ─────────────────────────────────────────────── */
 
-  const filteredCustomers = useMemo(() => {
-    if (!customersQuery.data) return [];
-    if (!customerSearch) return customersQuery.data;
-    const q = customerSearch.toLowerCase();
-    return customersQuery.data.filter((c) => c.name.toLowerCase().includes(q));
-  }, [customersQuery.data, customerSearch]);
+  const filteredCustomers = customerSearchQuery.data || [];
 
-  const selectedCustomer = customersQuery.data?.find((c) => c.id === customerId);
+  const selectedCustomer = selectedCustomerQuery.data;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!(e.target as Element).closest("[data-customer-dropdown]")) {
+        setShowCustomerDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const addCustomerMutation = useMutation({
     mutationFn: async () => {
@@ -466,7 +502,7 @@ export default function EditOrder() {
       if (error) throw error; return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-search"] });
       setCustomerId(data.id); setCustomerSearch(data.name);
       setShowNewCustomerForm(false); setShowCustomerDropdown(false);
       setNewCustomer({ name: "", email: "", phone: "", city: "", state: "", type: "" });
@@ -864,11 +900,17 @@ export default function EditOrder() {
           <>
             <SectionHeader title="Customer" />
             <FormRow label="Customer">
-              <div className="relative">
-                <input value={selectedCustomer ? selectedCustomer.name : customerSearch} onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }} onFocus={() => setShowCustomerDropdown(true)} placeholder="Search customers..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-                {showCustomerDropdown && (
+              <div className="relative" data-customer-dropdown>
+                <input value={selectedCustomer ? selectedCustomer.name : customerSearch} onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(""); setShowCustomerDropdown(true); }} onFocus={() => { if (customerSearch.length >= 2) setShowCustomerDropdown(true); }} placeholder="Type 2+ letters to search customers..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+                {showCustomerDropdown && customerSearch.length >= 2 && (
                   <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-auto">
-                    {filteredCustomers.map((c) => (<button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm"><span className="font-medium">{c.name}</span>{c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}</button>))}
+                    {customerSearchQuery.isLoading ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
+                    ) : filteredCustomers.length === 0 ? (
+                      <div className="px-3 py-3 text-sm text-muted-foreground">No customers found</div>
+                    ) : (
+                      filteredCustomers.map((c) => (<button key={c.id} onClick={() => { setCustomerId(c.id); setCustomerSearch(c.name); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm"><span className="font-medium">{c.name}</span>{c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}</button>))
+                    )}
                     <button onClick={() => { setShowNewCustomerForm(true); setShowCustomerDropdown(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1 border-t border-border" style={{ color: "#55BAAA" }}><Plus size={14} /> Add New Customer</button>
                   </div>
                 )}
