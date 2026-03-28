@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
-import { Edit2, Check, X, Phone, Mail, ArrowRightCircle } from "lucide-react";
+import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -25,6 +25,7 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const queryClient = useQueryClient();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(order.notes || "");
+  const [creatingPO, setCreatingPO] = useState(false);
 
   const saveNotesMutation = useMutation({
     mutationFn: async () => {
@@ -68,12 +69,51 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["order", order.id] });
       queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+      queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] });
       toast.success("Estimate converted to order");
+      if (manufacturer?.ordering_portal_url) {
+        window.open(manufacturer.ordering_portal_url, "_blank");
+      }
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to convert");
     },
   });
+
+  async function createQBPurchaseOrder() {
+    setCreatingPO(true);
+    try {
+      const resp = await fetch(
+        `https://dubzwbfqlwhkpmpuejsy.supabase.co/functions/v1/qb-push-po`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: order.id }),
+        }
+      );
+      const data = await resp.json();
+      if (data.success) {
+        if (data.already_exists) {
+          toast.info(`QB PO already exists: #${data.qb_po_doc_number}`);
+        } else {
+          let msg = `QB Purchase Order #${data.qb_po_doc_number} created`;
+          if (data.unmapped_items && data.unmapped_items.length > 0) {
+            msg += ` (${data.unmapped_items.length} items need review in QB)`;
+          }
+          toast.success(msg);
+        }
+        queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+        queryClient.invalidateQueries({ queryKey: ["order_timeline", order.id] });
+        queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] });
+      } else {
+        toast.error(data.error || "Failed to create QB PO");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create QB PO");
+    } finally {
+      setCreatingPO(false);
+    }
+  }
 
   const isEstimate = order.source_type === "estimate" && order.status === "estimate";
 

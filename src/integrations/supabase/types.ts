@@ -25,6 +25,7 @@ export type Database = {
           margin_percent: number | null
           name: string
           notes: string | null
+          qb_item_name: string | null
           retail_price: number
           short_name: string
           sort_order: number | null
@@ -40,6 +41,7 @@ export type Database = {
           margin_percent?: number | null
           name: string
           notes?: string | null
+          qb_item_name?: string | null
           retail_price: number
           short_name: string
           sort_order?: number | null
@@ -55,6 +57,7 @@ export type Database = {
           margin_percent?: number | null
           name?: string
           notes?: string | null
+          qb_item_name?: string | null
           retail_price?: number
           short_name?: string
           sort_order?: number | null
@@ -411,6 +414,7 @@ export type Database = {
           notes: string | null
           ordering_method: string | null
           ordering_portal_url: string | null
+          qb_vendor_id: string | null
           short_name: string
         }
         Insert: {
@@ -426,6 +430,7 @@ export type Database = {
           notes?: string | null
           ordering_method?: string | null
           ordering_portal_url?: string | null
+          qb_vendor_id?: string | null
           short_name: string
         }
         Update: {
@@ -441,6 +446,7 @@ export type Database = {
           notes?: string | null
           ordering_method?: string | null
           ordering_portal_url?: string | null
+          qb_vendor_id?: string | null
           short_name?: string
         }
         Relationships: []
@@ -505,6 +511,8 @@ export type Database = {
           name: string
           notes: string | null
           option_group: string | null
+          qb_item_name: string | null
+          qb_item_name_by_model: Json | null
           requires_extended: boolean | null
           requires_options: string[] | null
           retail_price: number
@@ -530,6 +538,8 @@ export type Database = {
           name: string
           notes?: string | null
           option_group?: string | null
+          qb_item_name?: string | null
+          qb_item_name_by_model?: Json | null
           requires_extended?: boolean | null
           requires_options?: string[] | null
           retail_price: number
@@ -555,6 +565,8 @@ export type Database = {
           name?: string
           notes?: string | null
           option_group?: string | null
+          qb_item_name?: string | null
+          qb_item_name_by_model?: Json | null
           requires_extended?: boolean | null
           requires_options?: string[] | null
           retail_price?: number
@@ -740,6 +752,7 @@ export type Database = {
           qb_bill_id: string | null
           qb_estimate_id: string | null
           qb_invoice_id: string | null
+          qb_po_doc_number: string | null
           qb_po_id: string | null
           selected_options: Json | null
           serial_number: string | null
@@ -798,6 +811,7 @@ export type Database = {
           qb_bill_id?: string | null
           qb_estimate_id?: string | null
           qb_invoice_id?: string | null
+          qb_po_doc_number?: string | null
           qb_po_id?: string | null
           selected_options?: Json | null
           serial_number?: string | null
@@ -856,6 +870,7 @@ export type Database = {
           qb_bill_id?: string | null
           qb_estimate_id?: string | null
           qb_invoice_id?: string | null
+          qb_po_doc_number?: string | null
           qb_po_id?: string | null
           selected_options?: Json | null
           serial_number?: string | null
