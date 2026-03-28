@@ -566,16 +566,39 @@ export default function NewOrder() {
     setQuickBuildId(id);
     if (!id) { setSelections(new Map()); setPickOneSelections(new Map()); return; }
     const qb = quickBuildsQuery.data?.find((q) => q.id === id);
-    if (qb) {
-      if (qb.base_model_id) setBaseModelId(qb.base_model_id);
-      const newSel = new Map<string, OptionSelection>();
-      for (const optId of qb.included_option_ids || []) {
-        newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
+    if (!qb) return;
+
+    if (qb.base_model_id) setBaseModelId(qb.base_model_id);
+
+    const defaults = (qb.default_selections || {}) as Record<string, { left?: number; right?: number; quantity?: number }>;
+    const allOpts = optionsQuery.data || [];
+    const newSel = new Map<string, OptionSelection>();
+    const newPickOne = new Map<string, string>();
+
+    for (const optId of qb.included_option_ids || []) {
+      const opt = allOpts.find((o) => o.id === optId);
+      const override = defaults[optId];
+
+      if (opt?.selection_type === "pick_one") {
+        newPickOne.set(opt.option_group || "", optId);
+      } else {
+        if (override) {
+          newSel.set(optId, {
+            optionId: optId,
+            left: override.left ?? 0,
+            right: override.right ?? 0,
+            selected: true,
+            quantity: override.quantity ?? ((override.left ?? 0) + (override.right ?? 0)) || 1,
+          });
+        } else {
+          newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
+        }
       }
-      setSelections(newSel);
-      setPickOneSelections(new Map());
-      setBuildShorthandManual(false);
     }
+
+    setSelections(newSel);
+    setPickOneSelections(newPickOne);
+    setBuildShorthandManual(false);
   }
 
   function toggleSimpleOption(optId: string) {
