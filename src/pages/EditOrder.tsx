@@ -874,13 +874,12 @@ export default function EditOrder() {
         </div>
       </div>
 
-      {/* Page Header */}
-      <div className="flex items-center gap-2 my-4 px-4 md:max-w-[680px] md:mx-auto">
+      <div className="flex items-center gap-2 mt-3 mb-2 px-4 md:max-w-[680px] md:mx-auto">
         <button onClick={() => navigate(`/orders/${id}`)} className="p-1 flex items-center gap-1" style={{ color: "#55BAAA" }}>
           <ChevronLeft size={24} />
           <span className="text-sm font-medium">Cancel</span>
         </button>
-        <h1 className="text-[17px] font-bold text-foreground ml-auto">Edit order</h1>
+        <h1 className="text-[22px] font-bold ml-auto" style={{ color: "#1D9E75" }}>Edit order</h1>
         <span className="text-xs text-muted-foreground ml-2">{orderQuery.data.order_number}</span>
       </div>
 
@@ -1040,63 +1039,122 @@ export default function EditOrder() {
         <FormRow label="Build Short" error={errors.buildShorthand}>
           <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
         </FormRow>
+        {/* ── NAVY RECEIPT CARD ─────────────────────────────── */}
         {selectedBaseModel && (
-          <div className="mt-3 pt-3 space-y-2 overflow-hidden" style={{ borderTop: "1px solid #D4D4D0" }}>
-            <div className="flex justify-between text-sm"><span style={{ color: "#1A1A1A" }}>Base model</span><span style={{ color: "#1A1A1A" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span></div>
-            {optionCount > 0 && <div className="flex justify-between text-sm"><span style={{ color: "#1A1A1A" }}>Options ({optionCount})</span><span style={{ color: "#1A1A1A" }}>${fmtCurrency(optionRetailTotal)}</span></div>}
-            <div className="flex justify-between text-sm font-medium pt-1" style={{ borderTop: "1px solid #D4D4D0" }}><span>Subtotal</span><span>${fmtCurrency(calcRetail)}</span></div>
-            <div className="flex justify-between text-sm"><span style={{ color: "#717182" }}>Our Cost</span><span style={{ color: "#717182" }}>${fmtCurrency(ourCost)}</span></div>
-            <div className="flex justify-between text-sm font-semibold"><span style={{ color: marginColor || "#717182" }}>Margin</span><span style={{ color: marginColor || "#717182" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span></div>
+          <div className="rounded-xl p-4 mt-2" style={{ backgroundColor: "#0E2646" }}>
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Base model</span>
+              <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
+            </div>
+            {optionCount > 0 && (
+              <div className="flex justify-between mb-1.5">
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Options ({optionCount})</span>
+                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(optionRetailTotal)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <span className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>Subtotal</span>
+              <span className="text-[15px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(calcRetail)}</span>
+            </div>
+            {discountValue > 0 && (
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>
+                  Discount {discountType === "%" ? `(${parseFloat(discountAmount) || 0}%)` : ""}
+                </span>
+                <span className="text-[13px]" style={{ color: "#F3D12A" }}>−${fmtCurrency(discountValue)}</span>
+              </div>
+            )}
+            {freightEstimate && parseFloat(freightEstimate) > 0 && (
+              <div className="flex justify-between mt-1">
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Freight</span>
+                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 mt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.15)" }}>
+              <span className="text-[14px] font-medium" style={{ color: "#F0F0F0" }}>Customer total</span>
+              <span className="text-[17px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</span>
+            </div>
+            <div className="pt-2 mt-2" style={{ borderTop: "1px dashed rgba(255,255,255,0.1)" }}>
+              <div className="flex justify-between">
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Our cost</span>
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>${fmtCurrency(ourCost)}</span>
+              </div>
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>Margin</span>
+                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>
+                  {margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
-        <SectionHeader title="Discount & Freight" />
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1" style={{ minWidth: 160 }}>
+        {/* ── COMPACT INPUTS — 2-COLUMN GRID ────────────────── */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div>
             <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
             <div className="flex items-center gap-1.5">
-              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ width: 60 }}><option value="$">$</option><option value="%">%</option></select>
-              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-right text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ maxWidth: 120 }} />
+              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ width: 52 }}>
+                <option value="$">$</option>
+                <option value="%">%</option>
+              </select>
+              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-right text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
             </div>
           </div>
-          <div style={{ minWidth: 140 }}>
+          <div>
             <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight estimate</p>
             <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
           </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>CATL #</p>
+            <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. 2026-042" className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Serial #</p>
+            <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="When manufactured" className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Status</p>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-md px-2 py-2 bg-card text-sm outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. date</p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn("w-full text-left border border-border rounded-md px-2 py-2 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
+                  {estimateDate ? format(estimateDate, "MMM d, yyyy") : "Pick date"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
-        <SectionHeader title="Tracking" />
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1" style={{ minWidth: 160 }}><FormRow label="CATL #"><input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="e.g. CATL-2026-042" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" /></FormRow></div>
-          <div className="flex-1" style={{ minWidth: 160 }}><FormRow label="Serial #"><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Assigned when manufactured" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none min-w-0 text-[16px]" /></FormRow></div>
-        </div>
-
-        <SectionHeader title="Status" />
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1" style={{ minWidth: 160 }}>
-            <FormRow label="Status">
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-              </select>
-            </FormRow>
-          </div>
-          <div className="flex-1" style={{ minWidth: 160 }}>
-            <FormRow label="Est. Date" narrow>
-              <Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>{estimateDate ? format(estimateDate, "PPP") : "Pick a date"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" /></PopoverContent></Popover>
-            </FormRow>
-          </div>
-        </div>
         {showCompletionDate && (
-          <FormRow label="Completion" narrow>
-            <Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>{estCompletionDate ? format(estCompletionDate, "PPP") : "Pick a date"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" /></PopoverContent></Popover>
-          </FormRow>
+          <div className="mt-3" style={{ maxWidth: "calc(50% - 6px)" }}>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. completion</p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn("w-full text-left border border-border rounded-md px-2 py-2 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
+                  {estCompletionDate ? format(estCompletionDate, "MMM d, yyyy") : "Pick date"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
         )}
 
-
-
-
-        <SectionHeader title="Notes" />
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        {/* ── NOTES ──────────────────────────────────────────── */}
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Notes</p>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Optional notes..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        </div>
       </div>
 
       {/* Save Button */}
