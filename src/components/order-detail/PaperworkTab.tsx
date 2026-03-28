@@ -5,14 +5,36 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 
 const DOC_NAMES: Record<string, string> = {
-  customer_estimate_signed: "Signed Estimate",
-  customer_deposit: "Deposit Received",
-  customer_invoice_sent: "Invoice Sent",
-  customer_payment_final: "Final Payment",
-  vendor_po_signed: "PO Submitted",
-  vendor_so_received: "SO Received",
-  vendor_invoice_filed: "Vendor Invoice Filed",
-  vendor_bill_entered: "Bill Entered in QB",
+  // Customer side (7)
+  customer_estimate_sent: "Estimate sent",
+  customer_approved: "Customer approved",
+  customer_deposit: "Customer deposit received",
+  customer_contract_signed: "Contract signed",
+  customer_notified: "Customer notified",
+  customer_invoice_sent: "Invoice sent to customer",
+  customer_payment_final: "Final payment received",
+  // Manufacturer side (7)
+  vendor_po_submitted: "PO submitted to MOLY",
+  vendor_deposit_sent: "Deposit sent to MOLY",
+  vendor_so_received: "SO received from MOLY",
+  vendor_in_production: "In production",
+  vendor_equipment_complete: "Equipment complete",
+  vendor_invoice_received: "MOLY invoice received",
+  vendor_bill_paid: "MOLY bill paid",
+  // Logistics (4)
+  logistics_freight_arranged: "Freight arranged",
+  logistics_delivered_to_yard: "Delivered to yard",
+  logistics_ready_for_pickup: "Ready for customer pickup",
+  logistics_delivered_to_customer: "Delivered to customer",
+};
+
+const DOC_SORT: Record<string, number> = {
+  customer_estimate_sent: 1, customer_approved: 2, customer_deposit: 3,
+  customer_contract_signed: 4, customer_notified: 5, customer_invoice_sent: 6, customer_payment_final: 7,
+  vendor_po_submitted: 1, vendor_deposit_sent: 2, vendor_so_received: 3,
+  vendor_in_production: 4, vendor_equipment_complete: 5, vendor_invoice_received: 6, vendor_bill_paid: 7,
+  logistics_freight_arranged: 1, logistics_delivered_to_yard: 2,
+  logistics_ready_for_pickup: 3, logistics_delivered_to_customer: 4,
 };
 
 function fmtDate(d: string | null | undefined) {
@@ -29,8 +51,13 @@ interface PaperworkTabProps {
 export default function PaperworkTab({ orderId, docs, queryClient }: PaperworkTabProps) {
   const complete = docs.filter((d) => d.status === "complete").length;
   const total = docs.length;
-  const customerDocs = docs.filter((d) => d.side === "customer");
-  const vendorDocs = docs.filter((d) => d.side === "vendor");
+
+  const customerDocs = docs.filter((d) => d.document_type?.startsWith("customer_"))
+    .sort((a, b) => (DOC_SORT[a.document_type] || 99) - (DOC_SORT[b.document_type] || 99));
+  const vendorDocs = docs.filter((d) => d.document_type?.startsWith("vendor_"))
+    .sort((a, b) => (DOC_SORT[a.document_type] || 99) - (DOC_SORT[b.document_type] || 99));
+  const logisticsDocs = docs.filter((d) => d.document_type?.startsWith("logistics_"))
+    .sort((a, b) => (DOC_SORT[a.document_type] || 99) - (DOC_SORT[b.document_type] || 99));
 
   const markCompleteMutation = useMutation({
     mutationFn: async ({ docId, docType }: { docId: string; docType: string }) => {
@@ -61,8 +88,9 @@ export default function PaperworkTab({ orderId, docs, queryClient }: PaperworkTa
           <div className="h-full rounded-full transition-all" style={{ width: `${total > 0 ? (complete / total) * 100 : 0}%`, backgroundColor: "#27AE60" }} />
         </div>
       </div>
-      <DocSection title="Customer Side" docs={customerDocs} onComplete={(id, type) => markCompleteMutation.mutate({ docId: id, docType: type })} pending={markCompleteMutation.isPending} />
-      <DocSection title="Vendor Side" docs={vendorDocs} onComplete={(id, type) => markCompleteMutation.mutate({ docId: id, docType: type })} pending={markCompleteMutation.isPending} />
+      <DocSection title="Customer" docs={customerDocs} onComplete={(id, type) => markCompleteMutation.mutate({ docId: id, docType: type })} pending={markCompleteMutation.isPending} />
+      <DocSection title="Manufacturer" docs={vendorDocs} onComplete={(id, type) => markCompleteMutation.mutate({ docId: id, docType: type })} pending={markCompleteMutation.isPending} />
+      <DocSection title="Logistics" docs={logisticsDocs} onComplete={(id, type) => markCompleteMutation.mutate({ docId: id, docType: type })} pending={markCompleteMutation.isPending} />
     </div>
   );
 }
@@ -89,6 +117,8 @@ function DocSection({ title, docs, onComplete, pending }: { title: string; docs:
       </span>
     );
   };
+
+  if (docs.length === 0) return null;
 
   return (
     <div className="mb-5">
