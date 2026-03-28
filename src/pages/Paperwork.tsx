@@ -97,6 +97,23 @@ export default function Paperwork() {
     return filtered;
   }, [paperworkQuery.data, statusFilter, sideFilter, search]);
 
+  // Group items by order
+  const groupedByOrder = useMemo(() => {
+    const groups: { orderId: string; orderNumber: string; customerName: string; docs: any[] }[] = [];
+    const map = new Map<string, typeof groups[0]>();
+    for (const doc of items) {
+      const oid = doc.orders?.id || "unknown";
+      let group = map.get(oid);
+      if (!group) {
+        group = { orderId: oid, orderNumber: doc.orders?.order_number || "—", customerName: doc.orders?.customers?.name || "Unassigned", docs: [] };
+        map.set(oid, group);
+        groups.push(group);
+      }
+      group.docs.push(doc);
+    }
+    return groups;
+  }, [items]);
+
   const allDocs = paperworkQuery.data || [];
   const counts = {
     missing: allDocs.filter((d: any) => d.status === "missing").length,
