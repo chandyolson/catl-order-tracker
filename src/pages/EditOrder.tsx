@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatOptionPillLabel } from "@/lib/optionDisplay";
@@ -1430,6 +1431,63 @@ export default function EditOrder() {
           {submitting ? "Saving..." : "Save changes"}
         </button>
       </div>
+      {/* Estimate Dialog */}
+      <Dialog open={showEstimateDialog} onOpenChange={setShowEstimateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save estimate changes</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            You changed the equipment or options. How do you want to save?
+          </p>
+
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("update")}>
+              <input type="radio" checked={estimateAction === "update"} onChange={() => setEstimateAction("update")} className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Update current estimate</p>
+                <p className="text-xs text-muted-foreground">Overwrite the existing version with the new config</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("new")}>
+              <input type="radio" checked={estimateAction === "new"} onChange={() => setEstimateAction("new")} className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Save as new estimate version</p>
+                <p className="text-xs text-muted-foreground">Keep the old version and create a new one</p>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Name this estimate</p>
+            <input
+              value={estimateLabel}
+              onChange={(e) => setEstimateLabel(e.target.value)}
+              placeholder={estimateAction === "update" ? 'e.g. "Updated quote"' : 'e.g. "With extended chute"'}
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-sm outline-none text-[16px]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              onClick={() => {
+                if (estimateAction === "new") {
+                  doSave({ createEstimateVersion: true, estimateLabel: estimateLabel || undefined });
+                } else {
+                  doSave({ createEstimateVersion: false, estimateLabel: estimateLabel || undefined });
+                }
+              }}
+              disabled={submitting}
+              className="flex-1 rounded-full py-2.5 text-sm font-medium disabled:opacity-50"
+              style={{ background: "#F3D12A", color: "#0E2646" }}
+            >
+              {submitting ? "Saving..." : estimateAction === "new" ? "Create new version" : "Update estimate"}
+            </button>
+            <button onClick={() => setShowEstimateDialog(false)} className="px-4 text-sm text-muted-foreground">Cancel</button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
