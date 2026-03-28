@@ -270,8 +270,10 @@ export type Database = {
       estimates: {
         Row: {
           approved_date: string | null
-          build_shorthand: string
+          base_model_id: string | null
+          build_shorthand: string | null
           created_at: string | null
+          customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           emailed_at: string | null
@@ -280,7 +282,7 @@ export type Database = {
           is_approved: boolean | null
           is_current: boolean | null
           label: string | null
-          line_items: Json
+          line_items: Json | null
           notes: string | null
           order_id: string | null
           our_cost: number | null
@@ -289,17 +291,20 @@ export type Database = {
           selected_options: Json | null
           signed: boolean | null
           signed_date: string | null
+          status: string
           tax_amount: number | null
           tax_rate: number | null
           tax_state: string | null
-          total_price: number
+          total_price: number | null
           total_with_tax: number | null
           version_number: number
         }
         Insert: {
           approved_date?: string | null
-          build_shorthand: string
+          base_model_id?: string | null
+          build_shorthand?: string | null
           created_at?: string | null
+          customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           emailed_at?: string | null
@@ -308,7 +313,7 @@ export type Database = {
           is_approved?: boolean | null
           is_current?: boolean | null
           label?: string | null
-          line_items?: Json
+          line_items?: Json | null
           notes?: string | null
           order_id?: string | null
           our_cost?: number | null
@@ -317,17 +322,20 @@ export type Database = {
           selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
+          status?: string
           tax_amount?: number | null
           tax_rate?: number | null
           tax_state?: string | null
-          total_price: number
+          total_price?: number | null
           total_with_tax?: number | null
           version_number: number
         }
         Update: {
           approved_date?: string | null
-          build_shorthand?: string
+          base_model_id?: string | null
+          build_shorthand?: string | null
           created_at?: string | null
+          customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           emailed_at?: string | null
@@ -336,7 +344,7 @@ export type Database = {
           is_approved?: boolean | null
           is_current?: boolean | null
           label?: string | null
-          line_items?: Json
+          line_items?: Json | null
           notes?: string | null
           order_id?: string | null
           our_cost?: number | null
@@ -345,14 +353,29 @@ export type Database = {
           selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
+          status?: string
           tax_amount?: number | null
           tax_rate?: number | null
           tax_state?: string | null
-          total_price?: number
+          total_price?: number | null
           total_with_tax?: number | null
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "estimates_base_model_id_fkey"
+            columns: ["base_model_id"]
+            isOneToOne: false
+            referencedRelation: "base_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "estimates_order_id_fkey"
             columns: ["order_id"]
