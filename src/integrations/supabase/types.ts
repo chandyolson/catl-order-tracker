@@ -410,6 +410,7 @@ export type Database = {
           name: string
           notes: string | null
           ordering_method: string | null
+          ordering_portal_url: string | null
           short_name: string
         }
         Insert: {
@@ -424,6 +425,7 @@ export type Database = {
           name: string
           notes?: string | null
           ordering_method?: string | null
+          ordering_portal_url?: string | null
           short_name: string
         }
         Update: {
@@ -438,6 +440,7 @@ export type Database = {
           name?: string
           notes?: string | null
           ordering_method?: string | null
+          ordering_portal_url?: string | null
           short_name?: string
         }
         Relationships: []
