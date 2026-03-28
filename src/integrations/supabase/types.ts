@@ -906,6 +906,7 @@ export type Database = {
         Row: {
           base_model_id: string | null
           created_at: string | null
+          default_selections: Json | null
           description: string | null
           id: string
           included_option_ids: string[] | null
@@ -916,6 +917,7 @@ export type Database = {
         Insert: {
           base_model_id?: string | null
           created_at?: string | null
+          default_selections?: Json | null
           description?: string | null
           id?: string
           included_option_ids?: string[] | null
@@ -926,6 +928,7 @@ export type Database = {
         Update: {
           base_model_id?: string | null
           created_at?: string | null
+          default_selections?: Json | null
           description?: string | null
           id?: string
           included_option_ids?: string[] | null
