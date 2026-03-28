@@ -8,6 +8,7 @@ import {
   Factory,
   Users,
   Warehouse,
+  FolderOpen,
   Settings,
   Plus,
   Menu,
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Production", path: "/production", icon: Factory },
   { label: "Customers", path: "/customers", icon: Users },
   { label: "Inventory", path: "/inventory", icon: Warehouse },
+  { label: "Documents", path: "/documents", icon: FolderOpen },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
