@@ -14,6 +14,14 @@ import { cn } from "@/lib/utils";
 import { formatOptionPillLabel } from "@/lib/optionDisplay";
 
 const STATUS_OPTIONS = ["estimate", "on_order", "building", "ready", "delivered", "closed"];
+const STATUS_LABELS: Record<string, string> = {
+  estimate: "Estimate",
+  on_order: "Purchase order",
+  building: "Building",
+  ready: "Ready",
+  delivered: "Delivered",
+  closed: "Closed",
+};
 
 // Group order is driven by sort_order from the database, not hardcoded.
 
@@ -1439,11 +1447,23 @@ export default function NewOrder() {
 
         {/* ── DETAILS CARD — 3-column grid ───────────────────── */}
         <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className={`grid gap-2 mb-2 ${isDirectOrder ? "grid-cols-2" : "grid-cols-3"}`}>
+            {!isDirectOrder && (
+              <div>
+                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Discount</p>
+                <div className="flex items-center gap-1">
+                  <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1 py-1.5 bg-card text-sm outline-none text-[16px]" style={{ width: 44 }}>
+                    <option value="$">$</option>
+                    <option value="%">%</option>
+                  </select>
+                  <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none min-w-0 text-[16px]" />
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]">
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
               </select>
             </div>
             <div>
