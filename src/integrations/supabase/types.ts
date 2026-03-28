@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       base_models: {
         Row: {
           category: string | null
@@ -212,6 +233,154 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      doc_scan_log: {
+        Row: {
+          attachment_filename: string | null
+          attachment_size_bytes: number | null
+          document_id: string | null
+          drive_file_id: string | null
+          drive_file_url: string | null
+          error_message: string | null
+          gmail_message_id: string
+          gmail_thread_id: string | null
+          id: string
+          matched_contract_number: string | null
+          matched_order_id: string | null
+          scanned_at: string | null
+          sender_email: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          attachment_filename?: string | null
+          attachment_size_bytes?: number | null
+          document_id?: string | null
+          drive_file_id?: string | null
+          drive_file_url?: string | null
+          error_message?: string | null
+          gmail_message_id: string
+          gmail_thread_id?: string | null
+          id?: string
+          matched_contract_number?: string | null
+          matched_order_id?: string | null
+          scanned_at?: string | null
+          sender_email?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          attachment_filename?: string | null
+          attachment_size_bytes?: number | null
+          document_id?: string | null
+          drive_file_id?: string | null
+          drive_file_url?: string | null
+          error_message?: string | null
+          gmail_message_id?: string
+          gmail_thread_id?: string | null
+          id?: string
+          matched_contract_number?: string | null
+          matched_order_id?: string | null
+          scanned_at?: string | null
+          sender_email?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_scan_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "order_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doc_scan_log_matched_order_id_fkey"
+            columns: ["matched_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doc_scan_sources: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          id: string
+          is_active: boolean | null
+          manufacturer_id: string | null
+          sender_email: string
+          sender_name: string | null
+          subject_pattern: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type?: string
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          sender_email: string
+          sender_name?: string | null
+          subject_pattern?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          id?: string
+          is_active?: boolean | null
+          manufacturer_id?: string | null
+          sender_email?: string
+          sender_name?: string | null
+          subject_pattern?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doc_scan_sources_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_folders: {
+        Row: {
+          created_at: string | null
+          folder_id: string
+          folder_name: string | null
+          folder_url: string | null
+          id: string
+          manufacturer_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          folder_id: string
+          folder_name?: string | null
+          folder_url?: string | null
+          id?: string
+          manufacturer_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          folder_id?: string
+          folder_name?: string | null
+          folder_url?: string | null
+          id?: string
+          manufacturer_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_folders_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_log: {
         Row: {
@@ -422,6 +591,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      google_tokens: {
+        Row: {
+          access_token: string
+          access_token_expires_at: string
+          account_email: string
+          account_name: string | null
+          id: string
+          refresh_token: string
+          scopes: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          access_token_expires_at: string
+          account_email: string
+          account_name?: string | null
+          id?: string
+          refresh_token: string
+          scopes?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          access_token_expires_at?: string
+          account_email?: string
+          account_name?: string | null
+          id?: string
+          refresh_token?: string
+          scopes?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       manufacturers: {
         Row: {
@@ -738,6 +940,7 @@ export type Database = {
           build_description: string | null
           build_shorthand: string
           catl_number: string | null
+          contract_name: string | null
           created_at: string | null
           current_estimate_version: number | null
           customer_id: string | null
@@ -797,6 +1000,7 @@ export type Database = {
           build_description?: string | null
           build_shorthand: string
           catl_number?: string | null
+          contract_name?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
@@ -856,6 +1060,7 @@ export type Database = {
           build_description?: string | null
           build_shorthand?: string
           catl_number?: string | null
+          contract_name?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null

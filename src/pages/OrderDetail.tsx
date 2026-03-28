@@ -20,6 +20,7 @@ import StatusBadge from "@/components/StatusBadge";
 import OverviewTab from "@/components/order-detail/OverviewTab";
 import EstimatesTab from "@/components/order-detail/EstimatesTab";
 import ActivityTab from "@/components/order-detail/ActivityTab";
+import DocumentsTab from "@/components/order-detail/DocumentsTab";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -38,7 +39,7 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "activity">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "documents" | "activity">("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
 
@@ -231,6 +232,7 @@ export default function OrderDetail() {
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     ...(hasEstimates ? [{ key: "estimates" as const, label: "Estimates" }] : []),
+    { key: "documents" as const, label: "Documents" },
     { key: "activity" as const, label: "Activity" },
   ];
 
@@ -412,6 +414,9 @@ export default function OrderDetail() {
           order={order}
           queryClient={queryClient}
         />
+      )}
+      {activeTab === "documents" && (
+        <DocumentsTab orderId={id!} molyContractNumber={(order as any).moly_contract_number} />
       )}
       {activeTab === "activity" && (
         <ActivityTab

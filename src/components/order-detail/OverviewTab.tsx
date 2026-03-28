@@ -86,7 +86,7 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
 
   const saveContractNameMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("orders").update({ contract_name: contractName || null }).eq("id", order.id);
+      const { error } = await supabase.from("orders").update({ contract_name: contractName || null } as any).eq("id", order.id);
       if (error) throw error;
     },
     onSuccess: () => {
