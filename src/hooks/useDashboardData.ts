@@ -30,7 +30,7 @@ export function useEstimateVsOrderCounts() {
         .from("orders")
         .select("*", { count: "exact", head: true })
         .not("status", "in", '("closed")')
-        .not("source_type", "eq", "estimate");
+        .neq("status", "estimate");
       if (e2) throw e2;
 
       return { estimates: estCount ?? 0, orders: ordCount ?? 0 };
