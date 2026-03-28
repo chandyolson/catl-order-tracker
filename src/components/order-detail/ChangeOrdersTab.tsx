@@ -68,6 +68,40 @@ export default function ChangeOrdersTab({ orderId, changes, order, queryClient }
     },
   });
 
+  const toggleField = useMutation({
+    mutationFn: async ({ coId, field, value }: { coId: string; field: string; value: boolean }) => {
+      const { error } = await supabase.from("change_orders").update({ [field]: value }).eq("id", coId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders", orderId] });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (coId: string) => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { error } = await supabase.from("change_orders").update({
+        approved: true,
+        approved_date: today,
+        approved_by: "Tim Olson",
+      }).eq("id", coId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["change_orders", orderId] });
+      toast.success("Change order approved");
+    },
+  });
+
+  const cascadeItems = [
+    { field: "applied_internal", label: "Internal configurator" },
+    { field: "applied_customer_estimate", label: "Customer estimate" },
+    { field: "applied_qb_estimate", label: "QuickBooks estimate" },
+    { field: "applied_mfg_order", label: "Manufacturer order" },
+    { field: "applied_qb_po", label: "QuickBooks PO" },
+  ];
+
   return (
     <div>
       {!showForm ? (
@@ -101,109 +135,148 @@ export default function ChangeOrdersTab({ orderId, changes, order, queryClient }
         <p className="text-sm text-muted-foreground">No change orders yet.</p>
       ) : (
         <div className="space-y-3">
-          {changes.map((co) => (
-            <ChangeOrderCard key={co.id} co={co} orderId={orderId} queryClient={queryClient} />
-          ))}
+          {changes.map((co) => {
+            const allApplied = co.all_applied;
+
+            if (allApplied) {
+              return (
+                <div key={co.id} className="border rounded-xl p-3.5 bg-card" style={{ borderColor: "#27AE60" }}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={16} color="#27AE60" />
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.1)" }}>All Applied</span>
+                    <span className="text-[13px] font-semibold text-foreground flex-1">CO #{co.change_number}</span>
+                    <span className="text-xs text-muted-foreground">{fmtDate(co.created_at?.split("T")[0])}</span>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap mt-1 mb-1">
+                    {co.source && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{
+                          background: co.source === "customer" ? "#E1F5EE" : co.source === "moly" ? "#FAEEDA" : "hsl(var(--muted))",
+                          color: co.source === "customer" ? "#085041" : co.source === "moly" ? "#633806" : "hsl(var(--muted-foreground))",
+                        }}>
+                        {co.source === "customer" ? "Customer" : co.source === "moly" ? "MOLY" : "Internal"}
+                      </span>
+                    )}
+                    {co.approved && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#E1F5EE", color: "#085041" }}>
+                        Approved{co.approved_date ? ` on ${fmtDate(co.approved_date)}` : ""}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px] text-muted-foreground mt-1">{co.description}</p>
+                  {Array.isArray(co.changes_summary) && co.changes_summary.length > 0 && (
+                    <div className="mt-2 p-2 rounded-lg" style={{ background: "rgba(14,38,70,0.03)", border: "1px solid rgba(14,38,70,0.06)" }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Changes</p>
+                      <div className="space-y-0.5">
+                        {(co.changes_summary as any[]).map((change: any, i: number) => (
+                          <div key={i} className="text-[12px]" style={{
+                            color: change.type === "added" ? "#27AE60" : change.type === "removed" ? "#D4183D" : "#B8860B"
+                          }}>
+                            <span className="font-medium">
+                              {change.type === "added" ? "+ " : change.type === "removed" ? "− " : "~ "}
+                            </span>
+                            {change.option || change.field}
+                            {change.detail ? ` (${change.detail})` : ""}
+                            {change.from && change.to ? `: ${change.from} → ${change.to}` : ""}
+                            {change.price ? ` — $${Math.abs(change.price).toLocaleString()}` : ""}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div key={co.id} className="border rounded-xl p-3.5 bg-card" style={{ borderColor: "#E8863A" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#D4183D", backgroundColor: "rgba(212,24,61,0.1)" }}>Not fully applied</span>
+                </div>
+                <div className="text-[13px] font-semibold text-foreground">CO #{co.change_number} — {fmtDate(co.created_at?.split("T")[0])}</div>
+                <div className="text-xs text-muted-foreground mb-1">By: {co.requested_by}{co.requested_via ? ` (${co.requested_via})` : ""}</div>
+                <div className="flex gap-1.5 flex-wrap mt-1 mb-1">
+                  {co.source && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      style={{
+                        background: co.source === "customer" ? "#E1F5EE" : co.source === "moly" ? "#FAEEDA" : "hsl(var(--muted))",
+                        color: co.source === "customer" ? "#085041" : co.source === "moly" ? "#633806" : "hsl(var(--muted-foreground))",
+                      }}>
+                      {co.source === "customer" ? "Customer" : co.source === "moly" ? "MOLY" : "Internal"}
+                    </span>
+                  )}
+                  {co.requires_approval && !co.approved && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: "#FAEEDA", color: "#633806" }}>
+                      Awaiting approval
+                    </span>
+                  )}
+                  {co.requires_approval && co.approved && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: "#E1F5EE", color: "#085041" }}>
+                      Approved{co.approved_date ? ` on ${fmtDate(co.approved_date)}` : ""}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[13px] text-foreground mb-1">{co.description}</p>
+
+                {/* Changes diff */}
+                {Array.isArray(co.changes_summary) && co.changes_summary.length > 0 && (
+                  <div className="mt-2 mb-2 p-2 rounded-lg" style={{ background: "rgba(14,38,70,0.03)", border: "1px solid rgba(14,38,70,0.06)" }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Changes</p>
+                    <div className="space-y-0.5">
+                      {(co.changes_summary as any[]).map((change: any, i: number) => (
+                        <div key={i} className="text-[12px]" style={{
+                          color: change.type === "added" ? "#27AE60" : change.type === "removed" ? "#D4183D" : "#B8860B"
+                        }}>
+                          <span className="font-medium">
+                            {change.type === "added" ? "+ " : change.type === "removed" ? "− " : "~ "}
+                          </span>
+                          {change.option || change.field}
+                          {change.detail ? ` (${change.detail})` : ""}
+                          {change.from && change.to ? `: ${change.from} → ${change.to}` : ""}
+                          {change.price ? ` — $${Math.abs(change.price).toLocaleString()}` : ""}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Approve button */}
+                {co.requires_approval && !co.approved && (
+                  <button
+                    onClick={() => approveMutation.mutate(co.id)}
+                    disabled={approveMutation.isPending}
+                    className="text-xs font-semibold rounded-full px-4 py-1.5 mt-1 mb-2 active:scale-[0.97] transition-transform disabled:opacity-50"
+                    style={{ background: "#F3D12A", color: "#0E2646" }}
+                  >
+                    Approve change order
+                  </button>
+                )}
+
+                <div className="flex gap-4 text-sm mb-3">
+                  <span className="font-medium" style={{ color: (co.price_impact || 0) >= 0 ? "#27AE60" : "#D4183D" }}>
+                    {(co.price_impact || 0) >= 0 ? "+" : "−"}${Math.abs(co.price_impact || 0).toLocaleString()}
+                  </span>
+                  <span className="font-medium text-foreground">Total: {fmtCurrency(co.new_total)}</span>
+                </div>
+                <div className="space-y-1.5">
+                  {cascadeItems.map((item) => (
+                    <label key={item.field} className="flex items-center gap-2.5 cursor-pointer py-1">
+                      <Checkbox
+                        checked={!!co[item.field]}
+                        onCheckedChange={(checked) => toggleField.mutate({ coId: co.id, field: item.field, value: !!checked })}
+                        className="h-5 w-5"
+                      />
+                      <span className="text-sm text-foreground">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
-    </div>
-  );
-}
-
-function ChangeOrderCard({ co, orderId, queryClient }: { co: any; orderId: string; queryClient: any }) {
-  const allApplied = co.all_applied;
-
-  const toggleField = useMutation({
-    mutationFn: async ({ field, value }: { field: string; value: boolean }) => {
-      const { error } = await supabase.from("change_orders").update({ [field]: value }).eq("id", co.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["change_orders", orderId] });
-    },
-  });
-
-  const cascadeItems = [
-    { field: "applied_internal", label: "Internal configurator" },
-    { field: "applied_customer_estimate", label: "Customer estimate" },
-    { field: "applied_qb_estimate", label: "QuickBooks estimate" },
-    { field: "applied_mfg_order", label: "Manufacturer order" },
-    { field: "applied_qb_po", label: "QuickBooks PO" },
-  ];
-
-  if (allApplied) {
-    return (
-      <div className="border rounded-xl p-3.5 bg-card" style={{ borderColor: "#27AE60" }}>
-        <div className="flex items-center gap-2">
-          <CheckCircle size={16} color="#27AE60" />
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.1)" }}>All Applied</span>
-          <span className="text-[13px] font-semibold text-foreground flex-1">CO #{co.change_number}</span>
-          <span className="text-xs text-muted-foreground">{fmtDate(co.created_at?.split("T")[0])}</span>
-        </div>
-        <p className="text-[12px] text-muted-foreground mt-1">{co.description}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border rounded-xl p-3.5 bg-card" style={{ borderColor: "#E8863A" }}>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#D4183D", backgroundColor: "rgba(212,24,61,0.1)" }}>Not fully applied</span>
-      </div>
-      <div className="text-[13px] font-semibold text-foreground">CO #{co.change_number} — {fmtDate(co.created_at?.split("T")[0])}</div>
-      <div className="text-xs text-muted-foreground mb-1">By: {co.requested_by}{co.requested_via ? ` (${co.requested_via})` : ""}</div>
-      <div className="flex gap-1.5 flex-wrap mt-1 mb-1">
-        {co.source && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-            style={{
-              background: co.source === "customer" ? "#E1F5EE" : co.source === "moly" ? "#FAEEDA" : "hsl(var(--muted))",
-              color: co.source === "customer" ? "#085041" : co.source === "moly" ? "#633806" : "hsl(var(--muted-foreground))",
-            }}>
-            {co.source === "customer" ? "Customer" : co.source === "moly" ? "MOLY" : "Internal"}
-          </span>
-        )}
-        {co.requires_approval && !co.approved && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#FAEEDA", color: "#633806" }}>
-            Awaiting approval
-          </span>
-        )}
-        {co.approved && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "#E1F5EE", color: "#085041" }}>
-            Approved
-          </span>
-        )}
-      </div>
-      <p className="text-[13px] text-foreground mb-1">{co.description}</p>
-      {Array.isArray(co.changes_summary) && co.changes_summary.length > 0 && (
-        <div className="mt-2 space-y-0.5 text-[12px]">
-          {co.changes_summary.map((change: any, i: number) => (
-            <div key={i} style={{ color: change.type === "added" ? "#27AE60" : change.type === "removed" ? "#D4183D" : "#B8860B" }}>
-              {change.type === "added" ? "+" : change.type === "removed" ? "−" : "~"}{" "}
-              {change.option || change.field}{change.detail ? ` (${change.detail})` : ""}
-              {change.from && change.to ? `: ${change.from} → ${change.to}` : ""}
-              {change.price ? ` — $${Math.abs(change.price).toLocaleString()}` : ""}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-4 text-sm mb-3">
-        <span className="font-medium" style={{ color: (co.price_impact || 0) >= 0 ? "#27AE60" : "#D4183D" }}>
-          {(co.price_impact || 0) >= 0 ? "+" : "−"}${Math.abs(co.price_impact || 0).toLocaleString()}
-        </span>
-        <span className="font-medium text-foreground">Total: {fmtCurrency(co.new_total)}</span>
-      </div>
-      <div className="space-y-1.5">
-        {cascadeItems.map((item) => (
-          <label key={item.field} className="flex items-center gap-2.5 cursor-pointer py-1">
-            <Checkbox
-              checked={!!co[item.field]}
-              onCheckedChange={(checked) => toggleField.mutate({ field: item.field, value: !!checked })}
-              className="h-5 w-5"
-            />
-            <span className="text-sm text-foreground">{item.label}</span>
-          </label>
-        ))}
-      </div>
     </div>
   );
 }
