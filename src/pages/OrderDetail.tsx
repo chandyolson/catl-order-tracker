@@ -19,9 +19,7 @@ import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 import OverviewTab from "@/components/order-detail/OverviewTab";
 import EstimatesTab from "@/components/order-detail/EstimatesTab";
-import PaperworkTab from "@/components/order-detail/PaperworkTab";
-import TimelineTab from "@/components/order-detail/TimelineTab";
-import ChangeOrdersTab from "@/components/order-detail/ChangeOrdersTab";
+import ActivityTab from "@/components/order-detail/ActivityTab";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -40,7 +38,7 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "paperwork" | "timeline" | "changes">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "activity">("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
 
@@ -232,9 +230,7 @@ export default function OrderDetail() {
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     { key: "estimates" as const, label: "Estimates" },
-    { key: "paperwork" as const, label: "Paperwork" },
-    { key: "timeline" as const, label: "Timeline" },
-    { key: "changes" as const, label: "Changes" },
+    { key: "activity" as const, label: "Activity" },
   ];
 
   const keyDates = [
@@ -407,23 +403,11 @@ export default function OrderDetail() {
           queryClient={queryClient}
         />
       )}
-      {activeTab === "paperwork" && (
-        <PaperworkTab
+      {activeTab === "activity" && (
+        <ActivityTab
           orderId={id!}
           docs={paperworkQuery.data || []}
-          queryClient={queryClient}
-        />
-      )}
-      {activeTab === "timeline" && (
-        <TimelineTab
-          orderId={id!}
           events={timelineQuery.data || []}
-          queryClient={queryClient}
-        />
-      )}
-      {activeTab === "changes" && (
-        <ChangeOrdersTab
-          orderId={id!}
           changes={changeOrdersQuery.data || []}
           order={order}
           queryClient={queryClient}
