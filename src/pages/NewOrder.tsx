@@ -160,7 +160,7 @@ export default function NewOrder() {
   const [freightEstimate, setFreightEstimate] = useState("");
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [status, setStatus] = useState(isDirectOrder ? "ordered" : "estimate");
+  const [status, setStatus] = useState(isDirectOrder ? "on_order" : "estimate");
   const [estimateDate, setEstimateDate] = useState<Date>(new Date());
   const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState("");
@@ -720,6 +720,10 @@ export default function NewOrder() {
       }
     }
     setErrors(e);
+    if (Object.keys(e).length > 0) {
+      const firstError = Object.values(e)[0];
+      toast.error(firstError);
+    }
     return Object.keys(e).length === 0;
   }
 
@@ -1447,24 +1451,10 @@ export default function NewOrder() {
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
-              <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
-            </div>
-            <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
               <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
               </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>CATL #</p>
-              <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Serial #</p>
-              <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
             </div>
             <div>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Est. date</p>
