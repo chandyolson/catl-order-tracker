@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   FileText,
+  Receipt,
   Factory,
   Users,
   Warehouse,
@@ -18,6 +19,7 @@ import NewOrderPicker from "@/components/NewOrderPicker";
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
   { label: "Orders", path: "/orders", icon: ClipboardList },
+  { label: "Estimates", path: "/estimates", icon: Receipt },
   { label: "Paperwork", path: "/paperwork", icon: FileText },
   { label: "Production", path: "/production", icon: Factory },
   { label: "Customers", path: "/customers", icon: Users },
