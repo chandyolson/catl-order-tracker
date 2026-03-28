@@ -502,7 +502,7 @@ export default function EditOrder() {
       if (error) throw error; return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-search"] });
       setCustomerId(data.id); setCustomerSearch(data.name);
       setShowNewCustomerForm(false); setShowCustomerDropdown(false);
       setNewCustomer({ name: "", email: "", phone: "", city: "", state: "", type: "" });
