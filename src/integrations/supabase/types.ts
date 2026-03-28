@@ -598,6 +598,8 @@ export type Database = {
       }
       order_timeline: {
         Row: {
+          contact_method: string | null
+          contact_with: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -607,6 +609,8 @@ export type Database = {
           title: string
         }
         Insert: {
+          contact_method?: string | null
+          contact_with?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -616,6 +620,8 @@ export type Database = {
           title: string
         }
         Update: {
+          contact_method?: string | null
+          contact_with?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -983,6 +989,25 @@ export type Database = {
           description: string | null
           order_id: string | null
           order_number: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      order_activity_feed: {
+        Row: {
+          created_by: string | null
+          description: string | null
+          event_date: string | null
+          event_type: string | null
+          feed_source: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string | null
+          order_id: string | null
+          paperwork_id: string | null
+          price_impact: number | null
+          side: string | null
+          status: string | null
           title: string | null
         }
         Relationships: []

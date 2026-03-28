@@ -17,9 +17,11 @@ interface OverviewTabProps {
   manufacturer: any;
   baseModel: { name: string; short_name: string } | null | undefined;
   paperwork: any[];
+  margin?: { amount: number; percent: number } | null;
+  marginColor?: string;
 }
 
-export default function OverviewTab({ order, customer, manufacturer, baseModel, paperwork }: OverviewTabProps) {
+export default function OverviewTab({ order, customer, manufacturer, baseModel, paperwork, margin, marginColor = "#717182" }: OverviewTabProps) {
   const queryClient = useQueryClient();
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(order.notes || "");
@@ -82,12 +84,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
 
   const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
 
-  const margin = order.customer_price && order.our_cost
-    ? { amount: order.customer_price - order.our_cost, percent: ((order.customer_price - order.our_cost) / order.customer_price) * 100 }
-    : null;
-  const marginColor = margin
-    ? margin.percent >= 15 ? "#27AE60" : margin.percent >= 10 ? "#F3D12A" : "#D4183D"
-    : "#717182";
 
   return (
     <div className="space-y-5">
@@ -240,12 +236,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
               <span className="text-[15px] font-semibold text-foreground">{fmtCurrency(order.our_cost)}</span>
             </div>
             <div className="h-px bg-border" />
-            <div className="flex justify-between items-baseline">
-              <span className="text-[13px] text-muted-foreground">Margin</span>
-              <span className="text-[15px] font-semibold" style={{ color: marginColor }}>
-                {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-              </span>
-            </div>
             {order.freight_estimate != null && (
               <div className="flex justify-between items-baseline">
                 <span className="text-[13px] text-muted-foreground">Freight Estimate</span>
@@ -324,6 +314,25 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           </div>
         </div>
       </div>
+
+      {/* ─── INTERNAL (collapsible) ─────────────────────── */}
+      <details className="mt-4">
+        <summary className="text-[12px] font-semibold cursor-pointer select-none" style={{ color: "#717182" }}>
+          Internal (tap to show)
+        </summary>
+        <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(14,38,70,0.05)", border: "1px solid rgba(14,38,70,0.1)" }}>
+          <div className="flex justify-between text-sm mb-1">
+            <span style={{ color: "#717182" }}>Our cost</span>
+            <span style={{ color: "#717182" }}>{fmtCurrency(order.our_cost)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-semibold">
+            <span style={{ color: marginColor }}>Margin</span>
+            <span style={{ color: marginColor }}>
+              {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
+            </span>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

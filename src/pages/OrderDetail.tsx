@@ -258,6 +258,11 @@ export default function OrderDetail() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[20px] font-bold" style={{ color: "#F0F0F0" }}>
                   {order.order_number}
+                  {customer?.name && (
+                    <span className="font-medium text-[16px] ml-2" style={{ color: "rgba(240,240,240,0.6)" }}>
+                      — {customer.name}
+                    </span>
+                  )}
                 </h1>
                 <StatusBadge status={order.status} />
               </div>
@@ -301,24 +306,12 @@ export default function OrderDetail() {
 
           {/* Right-side info: customer, manufacturer, margin */}
           <div className="flex items-center gap-4 mt-3 flex-wrap">
-            <div>
-              <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.35)" }}>Customer</span>
-              <p className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>
-                {customer?.name || <span className="italic" style={{ color: "rgba(240,240,240,0.45)" }}>Unassigned</span>}
-              </p>
-            </div>
             {manufacturer && (
               <div>
                 <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.35)" }}>Manufacturer</span>
                 <p className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>{manufacturer.short_name || manufacturer.name}</p>
               </div>
             )}
-            <div className="ml-auto text-right">
-              <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</span>
-              <p className="text-[14px] font-semibold" style={{ color: marginColor }}>
-                {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-              </p>
-            </div>
           </div>
 
           {/* Option pills */}
@@ -402,6 +395,8 @@ export default function OrderDetail() {
           manufacturer={manufacturer}
           baseModel={baseModelQuery.data}
           paperwork={paperworkQuery.data || []}
+          margin={margin}
+          marginColor={marginColor}
         />
       )}
       {activeTab === "estimates" && (
