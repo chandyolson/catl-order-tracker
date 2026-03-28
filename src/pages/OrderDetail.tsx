@@ -132,7 +132,7 @@ export default function OrderDetail() {
   const customer = order?.customers as any;
   const manufacturer = order?.manufacturers as any;
 
-  const isEstimate = order?.source_type === "estimate" && (order?.status === "estimate" || order?.status === "approved");
+  const isEstimate = order?.status === "estimate";
 
   // ─── MUTATIONS ──────────────────────────────────────────
   const deleteOrderMutation = useMutation({
@@ -151,7 +151,7 @@ export default function OrderDetail() {
   const convertToOrderMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("orders").update({
-        status: "ordered",
+        status: "on_order",
         ordered_date: format(new Date(), "yyyy-MM-dd"),
       }).eq("id", id!);
       if (error) throw error;
@@ -179,7 +179,7 @@ export default function OrderDetail() {
         .select("*", { count: "exact", head: true })
         .eq("source_type", "direct_order")
         .is("customer_id", null)
-        .in("status", ["ordered", "so_received", "in_production"])
+        .in("status", ["on_order", "building"])
         .eq("manufacturer_id", order?.manufacturer_id || "");
       if (error) throw error;
       return count ?? 0;
@@ -195,7 +195,7 @@ export default function OrderDetail() {
         .select("*", { count: "exact", head: true })
         .eq("source_type", "direct_order")
         .is("customer_id", null)
-        .in("status", ["completed", "freight_arranged"])
+        .in("status", ["ready"])
         .eq("from_inventory", true)
         .eq("manufacturer_id", order?.manufacturer_id || "");
       if (error) throw error;
