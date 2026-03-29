@@ -34,6 +34,8 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [custSearch, setCustSearch] = useState("");
   const [debouncedCustSearch, setDebouncedCustSearch] = useState("");
+  const [editingDriveUrl, setEditingDriveUrl] = useState(false);
+  const [driveUrl, setDriveUrl] = useState(order.google_drive_folder_url || "");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCustSearch(custSearch), 300);
@@ -106,6 +108,41 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
       setEditingMolyNum(false);
       toast.success("MOLY contract # saved");
     },
+  });
+
+  // Document count query for overview summary
+  const docCountQuery = useQuery({
+    queryKey: ["order_documents_summary", order.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_documents")
+        .select("document_type")
+        .eq("order_id", order.id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Save Google Drive folder URL
+  const saveDriveUrlMutation = useMutation({
+    mutationFn: async () => {
+      // Extract folder ID from URL if it's a full URL
+      let folderId = driveUrl;
+      const folderMatch = driveUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (folderMatch) folderId = folderMatch[1];
+
+      const { error } = await supabase.from("orders").update({
+        google_drive_folder_url: driveUrl || null,
+        google_drive_folder_id: folderId || null,
+      }).eq("id", order.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+      setEditingDriveUrl(false);
+      toast.success("Drive folder linked");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to save Drive URL"),
   });
 
   const convertToOrderMutation = useMutation({
@@ -626,6 +663,99 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           )}
         </div>
       )}
+
+      {/* ─── GOOGLE DRIVE & DOCUMENTS ────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#F5F5F0" }}>
+          <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Documents & Drive</h3>
+          {order.google_drive_folder_url ? (
+            <a
+              href={order.google_drive_folder_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full active:scale-[0.97] transition-transform"
+              style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}
+            >
+              <ExternalLink size={11} />
+              Open Drive Folder
+            </a>
+          ) : (
+            <button
+              onClick={() => setEditingDriveUrl(true)}
+              className="text-[12px] font-medium px-2.5 py-1 rounded-full"
+              style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#854F0B" }}
+            >
+              + Link Drive Folder
+            </button>
+          )}
+        </div>
+        <div className="p-4 space-y-3">
+          {/* Drive folder URL editor */}
+          {editingDriveUrl && (
+            <div className="space-y-2">
+              <input
+                value={driveUrl}
+                onChange={(e) => setDriveUrl(e.target.value)}
+                placeholder="Paste Google Drive folder URL..."
+                className="w-full border border-border rounded-lg px-3 py-2.5 text-[14px] outline-none text-[16px] focus:border-[#F3D12A] focus:ring-2 focus:ring-[rgba(243,209,42,0.25)]"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => saveDriveUrlMutation.mutate()}
+                  disabled={!driveUrl.trim() || saveDriveUrlMutation.isPending}
+                  className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: "#55BAAA" }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setEditingDriveUrl(false); setDriveUrl(order.google_drive_folder_url || ""); }}
+                  className="px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Document summary pills */}
+          {docCountQuery.data && docCountQuery.data.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(
+                docCountQuery.data.reduce((acc: Record<string, number>, doc: any) => {
+                  acc[doc.document_type] = (acc[doc.document_type] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>)
+              ).map(([type, count]) => {
+                const typeConfig: Record<string, { bg: string; color: string; label: string }> = {
+                  invoice: { bg: "rgba(39,174,96,0.12)", color: "#27AE60", label: "Invoice" },
+                  sales_order: { bg: "rgba(59,130,246,0.12)", color: "#3B82F6", label: "Sales Order" },
+                  estimate: { bg: "rgba(243,209,42,0.15)", color: "#854F0B", label: "Estimate" },
+                  contract: { bg: "rgba(14,38,70,0.08)", color: "#0E2646", label: "Contract" },
+                  correspondence: { bg: "rgba(113,113,130,0.12)", color: "#717182", label: "Correspondence" },
+                  photo: { bg: "rgba(168,85,247,0.12)", color: "#A855F7", label: "Photo" },
+                  other: { bg: "rgba(113,113,130,0.12)", color: "#717182", label: "Other" },
+                };
+                const tc = typeConfig[type] || typeConfig.other;
+                return (
+                  <span
+                    key={type}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                    style={{ backgroundColor: tc.bg, color: tc.color }}
+                  >
+                    <Check size={10} /> {count} {tc.label}{Number(count) !== 1 ? "s" : ""}
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[12px]" style={{ color: "#B4B2A9" }}>
+              No documents attached yet — go to the Documents tab to add them
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* ─── PAPERWORK STATUS CARDS ──────────────────────── */}
       <div className="grid grid-cols-2 gap-3">

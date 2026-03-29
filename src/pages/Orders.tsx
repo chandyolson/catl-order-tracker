@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Package } from "lucide-react";
+import { Search, Plus, Package, FileText } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -91,7 +91,7 @@ export default function Orders() {
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
-        .select("*, customers(name), manufacturers(name, short_name)", { count: "exact" });
+        .select("*, customers(name), manufacturers(name, short_name), order_documents(id)", { count: "exact" });
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
@@ -216,6 +216,7 @@ export default function Orders() {
             const manufacturer = order.manufacturers as any;
             const pw = paperworkMap[order.id];
             const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
+            const docCount = Array.isArray((order as any).order_documents) ? (order as any).order_documents.length : 0;
             const margin = order.customer_price && order.our_cost
               ? { amount: order.customer_price - order.our_cost, percent: ((order.customer_price - order.our_cost) / order.customer_price) * 100 }
               : null;
@@ -318,6 +319,18 @@ export default function Orders() {
                       }
                     >
                       {order.source_type === "estimate" ? "Estimate" : "Direct Order"}
+                    </span>
+                    {/* Document count */}
+                    <span
+                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={
+                        docCount > 0
+                          ? { backgroundColor: "rgba(39,174,96,0.12)", color: "#27AE60" }
+                          : { backgroundColor: "rgba(212,24,61,0.08)", color: "#D4183D" }
+                      }
+                    >
+                      <FileText size={10} />
+                      {docCount > 0 ? `${docCount} doc${docCount !== 1 ? "s" : ""}` : "No docs"}
                     </span>
                   </div>
                   {/* Paperwork indicator */}

@@ -416,7 +416,7 @@ export default function OrderDetail() {
         />
       )}
       {activeTab === "documents" && (
-        <DocumentsTab orderId={id!} molyContractNumber={(order as any).moly_contract_number} />
+        <DocumentsTab orderId={id!} molyContractNumber={(order as any).moly_contract_number} driveFolderUrl={order.google_drive_folder_url} />
       )}
       {activeTab === "activity" && (
         <ActivityTab
