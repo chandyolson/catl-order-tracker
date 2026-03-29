@@ -233,9 +233,10 @@ export default function Orders() {
                 <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <span className="text-[14px] font-bold" style={{ color: "#F0F0F0" }}>
-                      {(order as any).contract_name || order.order_number}
+                      {(order as any).contract_name || order.moly_contract_number || order.order_number || "Unnamed"}
                     </span>
-                    {order.moly_contract_number && (
+                    {order.moly_contract_number && !(order as any).contract_name && null}
+                    {order.moly_contract_number && (order as any).contract_name && (
                       <span className="text-[12px] font-medium" style={{ color: "rgba(240,240,240,0.5)" }}>
                         #{order.moly_contract_number}
                       </span>
@@ -256,8 +257,8 @@ export default function Orders() {
                       {customer?.name || <span className="italic text-muted-foreground">Unassigned</span>}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
-                      {(order as any).contract_name && (
-                        <span className="text-[10px] text-muted-foreground">{order.order_number}</span>
+                      {order.moly_contract_number && !(order as any).contract_name?.includes(order.moly_contract_number) && (
+                        <span className="text-[10px] text-muted-foreground">#{order.moly_contract_number}</span>
                       )}
                       {manufacturer && (
                         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>

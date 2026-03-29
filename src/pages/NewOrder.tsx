@@ -748,8 +748,14 @@ export default function NewOrder() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const { data: orderNumber, error: rpcError } = await supabase.rpc("generate_order_number");
-      if (rpcError) throw rpcError;
+      // Estimates get an auto-generated number (2026EST-001).
+      // Direct orders use the MOLY contract number as their identifier — no auto number.
+      let estimateNumber: string | null = null;
+      if (!isDirectOrder) {
+        const { data: estNum, error: rpcError } = await supabase.rpc("generate_estimate_number");
+        if (rpcError) throw rpcError;
+        estimateNumber = estNum;
+      }
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
@@ -776,7 +782,7 @@ export default function NewOrder() {
       const subtotal = calcRetail;
 
       const { data: order, error: orderError } = await supabase.from("orders").insert({
-        order_number: orderNumber,
+        order_number: molyContractNumber || null,
         customer_id: customerId || null,
         manufacturer_id: manufacturerId,
         base_model_id: baseModelId,
@@ -818,6 +824,7 @@ export default function NewOrder() {
         order_id: order.id,
         customer_id: customerId || null,
         base_model_id: baseModelId || null,
+        estimate_number: estimateNumber,
         status: "open",
         version_number: 1,
         build_shorthand: buildShorthand,
@@ -830,7 +837,10 @@ export default function NewOrder() {
         total_with_tax: taxRate > 0 ? totalWithTax : null,
       });
 
-      toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${orderNumber} created`);
+      const displayNumber = isDirectOrder
+        ? (molyContractNumber || contractName || "Order")
+        : (estimateNumber || "Estimate");
+      toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${displayNumber} created`);
       navigate(`/orders/${order.id}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to create order");

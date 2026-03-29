@@ -256,7 +256,7 @@ export default function OrderDetail() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[20px] font-bold" style={{ color: "#F0F0F0" }}>
-                  {order.order_number}
+                  {(order as any).contract_name || order.moly_contract_number || order.order_number || "New Order"}
                   {customer?.name && (
                     <span className="font-medium text-[16px] ml-2" style={{ color: "rgba(240,240,240,0.6)" }}>
                       — {customer.name}
