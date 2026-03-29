@@ -142,6 +142,31 @@ function EstimateCard({ estimate }: { estimate: any }) {
               <span>{fmtCurrency(item.total_retail || item.retail_price || item.retail_price_each || 0)}</span>
             </div>
           ))}
+          {/* ─── Totals ─── */}
+          <div className="border-t border-border mt-2 pt-2 space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Subtotal</span>
+              <span>{fmtCurrency(estimate.total_price)}</span>
+            </div>
+            {estimate.discount_amount > 0 && (
+              <div className="flex justify-between text-xs" style={{ color: "#55BAAA" }}>
+                <span>Discount {estimate.discount_type === "%" ? `(${estimate.discount_amount}%)` : ""}</span>
+                <span>−{estimate.discount_type === "%" ? fmtCurrency(Math.round((estimate.total_price || 0) * estimate.discount_amount / 100)) : fmtCurrency(estimate.discount_amount)}</span>
+              </div>
+            )}
+            {estimate.tax_amount > 0 && (
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Sales Tax{estimate.tax_state ? ` (${estimate.tax_state} ${estimate.tax_rate}%)` : ""}</span>
+                <span>{fmtCurrency(estimate.tax_amount)}</span>
+              </div>
+            )}
+            {(estimate.discount_amount > 0 || estimate.tax_amount > 0) && (
+              <div className="flex justify-between text-sm font-semibold text-foreground pt-1">
+                <span>Total</span>
+                <span>{fmtCurrency(estimate.total_with_tax || estimate.total_price)}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
