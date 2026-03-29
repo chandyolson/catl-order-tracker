@@ -1,5 +1,5 @@
 // DO NOT EDIT IN LOVABLE — deployed via GitHub Actions
-// Version: 51 (2026-03-29)
+// Version: 55 (2026-03-29) — DocNumber ALWAYS sent on create AND update
 // Key fixes: DocNumber ALWAYS sent, HTTP 200 on errors, ItemRef.value always present
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
