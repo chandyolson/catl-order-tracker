@@ -124,6 +124,8 @@ export default function EditOrder() {
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [fromInventory, setFromInventory] = useState(false);
   const [inventoryLocation, setInventoryLocation] = useState("");
+  const [contractName, setContractName] = useState("");
+  const [molyContractNumber, setMolyContractNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -261,6 +263,8 @@ export default function EditOrder() {
     setFreightEstimate(o.freight_estimate ? String(o.freight_estimate) : "");
     setCatlNumber(o.catl_number || "");
     setSerialNumber(o.serial_number || "");
+    setContractName((o as any).contract_name || "");
+    setMolyContractNumber((o as any).moly_contract_number || "");
     setStatus(o.status || "estimate");
     setEstimateDate(o.estimate_date ? new Date(o.estimate_date + "T00:00:00") : new Date());
     setEstCompletionDate(o.est_completion_date ? new Date(o.est_completion_date + "T00:00:00") : undefined);
@@ -655,6 +659,7 @@ export default function EditOrder() {
       const { error: updateError } = await supabase.from("orders").update({
         manufacturer_id: manufacturerId, base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null, build_shorthand: buildShorthand,
+        contract_name: contractName || null, moly_contract_number: molyContractNumber || null,
         build_description: notes || null, subtotal: calcRetail,
         customer_price: customerPrice, our_cost: ourCost,
         discount_type: discountType, discount_amount: parseFloat(discountAmount) || 0,
@@ -1276,6 +1281,30 @@ export default function EditOrder() {
             </div>
           </div>
         )}
+
+        {/* ── CONTRACT IDENTIFIERS ────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
+            <input
+              type="text"
+              value={contractName}
+              onChange={(e) => setContractName(e.target.value)}
+              placeholder="e.g. Smith Ranch Chute"
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+            />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>MOLY contract #</p>
+            <input
+              type="text"
+              value={molyContractNumber}
+              onChange={(e) => setMolyContractNumber(e.target.value)}
+              placeholder="e.g. 2025-76"
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+            />
+          </div>
+        </div>
 
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mb-2">

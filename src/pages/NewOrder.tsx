@@ -180,6 +180,8 @@ export default function NewOrder() {
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [fromInventory, setFromInventory] = useState(false);
   const [inventoryLocation, setInventoryLocation] = useState("");
+  const [contractName, setContractName] = useState("");
+  const [molyContractNumber, setMolyContractNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -779,6 +781,8 @@ export default function NewOrder() {
         manufacturer_id: manufacturerId,
         base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null,
+        contract_name: contractName || null,
+        moly_contract_number: molyContractNumber || null,
         build_shorthand: buildShorthand,
         build_description: notes || null,
         subtotal,
@@ -1348,6 +1352,30 @@ export default function NewOrder() {
             </div>
           </div>
         )}
+
+        {/* ── CONTRACT IDENTIFIERS ────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
+            <input
+              type="text"
+              value={contractName}
+              onChange={(e) => setContractName(e.target.value)}
+              placeholder="e.g. Smith Ranch Chute"
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+            />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>MOLY contract #</p>
+            <input
+              type="text"
+              value={molyContractNumber}
+              onChange={(e) => setMolyContractNumber(e.target.value)}
+              placeholder="e.g. 2025-76"
+              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+            />
+          </div>
+        </div>
 
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mb-2">
