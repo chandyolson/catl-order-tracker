@@ -250,7 +250,6 @@ export default function Settings() {
             )}
           </div>
         )}
-        </div>
       </SettingsCard>
 
       {/* ═══ Email Configuration ═══ */}
