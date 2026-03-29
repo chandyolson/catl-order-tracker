@@ -37,8 +37,7 @@ Deno.serve(async (req) => {
 
     // Base model line
     if (baseModel) {
-      const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: baseModel.retail_price || 0, Description: baseModel.name || "Base Model", SalesItemLineDetail: { UnitPrice: baseModel.retail_price || 0, Qty: 1 } };
-      if (baseModel.qb_item_id || baseModel.qb_item_name) line.SalesItemLineDetail.ItemRef = { ...(baseModel.qb_item_id ? { value: baseModel.qb_item_id } : {}), name: baseModel.qb_item_name || "Services" };
+      const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: baseModel.retail_price || 0, Description: baseModel.name || "Base Model", SalesItemLineDetail: { UnitPrice: baseModel.retail_price || 0, Qty: 1, ItemRef: { ...(baseModel.qb_item_id ? { value: baseModel.qb_item_id } : {}), name: baseModel.qb_item_name || "Services" } } };
       qbLines.push(line);
     }
 
@@ -69,9 +68,8 @@ Deno.serve(async (req) => {
           if (sides.length > 0) desc += ` (${sides.join(", ")})`;
         }
         if (amount === 0) desc += " — Included";
-        const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: amount, Description: desc, SalesItemLineDetail: { UnitPrice: retailEach, Qty: qty } };
         const itemId = mapping?.qb_item_id || null;
-        if (itemName || itemId) line.SalesItemLineDetail.ItemRef = { ...(itemId ? { value: itemId } : {}), name: itemName || "Services" };
+        const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: amount, Description: desc, SalesItemLineDetail: { UnitPrice: retailEach, Qty: qty, ItemRef: { ...(itemId ? { value: itemId } : {}), name: itemName || "Services" } } };
         qbLines.push(line);
       }
     }
@@ -79,28 +77,44 @@ Deno.serve(async (req) => {
     // Discount
     if (order?.discount_amount && order.discount_amount > 0) {
       const dv = order.discount_type === "%" ? Math.round((order.subtotal || 0) * order.discount_amount) / 100 : order.discount_amount;
-      if (dv > 0) qbLines.push({ Id: String(lineNum++), DetailType: "DiscountLineDetail", Amount: dv, DiscountLineDetail: { PercentBased: order.discount_type === "%", ...(order.discount_type === "%" ? { DiscountPercent: order.discount_amount } : {}) } });
+      if (dv > 0) {
+        // DiscountAccountRef is required by QB — lazy fetch and cache on qb_tokens
+        let discountAccountRef: { value: string; name: string };
+        if (tokenData.discount_account_id) {
+          discountAccountRef = { value: tokenData.discount_account_id, name: tokenData.discount_account_name || "Discounts given" };
+        } else {
+          const dAcctResp = await fetch(`${baseUrl}/v3/company/${realm_id}/query?query=SELECT%20*%20FROM%20Account%20WHERE%20AccountType%20%3D%20'Income'%20AND%20AccountSubType%20%3D%20'DiscountsRefundsGiven'%20MAXRESULTS%201&minorversion=75`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
+          if (!dAcctResp.ok) throw new Error(`Failed to fetch discount account: ${dAcctResp.status} - ${await dAcctResp.text()}`);
+          const dAcctData = await dAcctResp.json();
+          const dAcct = dAcctData?.QueryResponse?.Account?.[0];
+          if (!dAcct) throw new Error("No discount account found in QuickBooks. Please create a 'Discounts given' income account.");
+          discountAccountRef = { value: dAcct.Id, name: dAcct.Name };
+          await supabase.from("qb_tokens").update({ discount_account_id: dAcct.Id, discount_account_name: dAcct.Name }).eq("id", tokenData.id);
+        }
+        qbLines.push({ Id: String(lineNum++), DetailType: "DiscountLineDetail", Amount: dv, DiscountLineDetail: { DiscountAccountRef: discountAccountRef, PercentBased: order.discount_type === "%", ...(order.discount_type === "%" ? { DiscountPercent: order.discount_amount } : {}) } });
+      }
     }
 
     // Fallback
     if (qbLines.length === 0) {
       const price = order?.customer_price ?? estimate.total_price ?? 0;
-      qbLines.push({ Id: "1", DetailType: "SalesItemLineDetail", Amount: price, Description: estimate.build_shorthand || "Equipment", SalesItemLineDetail: { UnitPrice: price, Qty: 1 } });
+      qbLines.push({ Id: "1", DetailType: "SalesItemLineDetail", Amount: price, Description: estimate.build_shorthand || "Equipment", SalesItemLineDetail: { UnitPrice: price, Qty: 1, ItemRef: { name: "Services" } } });
     }
 
     const orderLabel = order?.contract_name || order?.moly_contract_number || "";
     const qbEstimate: any = { Line: qbLines, TxnDate: new Date().toISOString().split("T")[0], PrivateNote: `${orderLabel}${order?.build_shorthand ? " - " + order.build_shorthand : ""}${order?.tax_state && order?.tax_amount > 0 ? ` | Tax: ${order.tax_state} $${order.tax_amount}` : ""}`.substring(0, 4000) };
-    if (estimate.estimate_number) qbEstimate.DocNumber = estimate.estimate_number;
-    if (customer?.qb_customer_id) qbEstimate.CustomerRef = { value: customer.qb_customer_id };
-    else if (customer?.name) qbEstimate.CustomerRef = { name: customer.name };
+    // Only send DocNumber on updates — sending it on create risks duplicates in auto-increment companies
+    if (estimate.qb_estimate_id && estimate.estimate_number) qbEstimate.DocNumber = estimate.estimate_number;
+    if (!customer?.qb_customer_id) throw new Error(`Customer "${customer?.name || "unknown"}" has no QuickBooks customer ID. Sync customers in Settings before pushing estimates.`);
+    qbEstimate.CustomerRef = { value: customer.qb_customer_id, name: customer.name };
 
     if (estimate.qb_estimate_id) {
-      const existingResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate/${estimate.qb_estimate_id}`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
-      if (existingResp.ok) { const existing = await existingResp.json(); qbEstimate.Id = estimate.qb_estimate_id; qbEstimate.SyncToken = existing.Estimate.SyncToken; }
+      const existingResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate/${estimate.qb_estimate_id}?minorversion=75`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
+      if (existingResp.ok) { const existing = await existingResp.json(); qbEstimate.Id = estimate.qb_estimate_id; qbEstimate.SyncToken = existing.Estimate.SyncToken; qbEstimate.sparse = true; }
       else throw new Error(`Failed to fetch existing QB estimate: ${existingResp.status} - ${await existingResp.text()}`);
     }
 
-    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbEstimate) });
+    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate?minorversion=75`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbEstimate) });
     if (!qbResp.ok) throw new Error(`QuickBooks API error: ${qbResp.status} - ${await qbResp.text()}`);
 
     const qbData = await qbResp.json();
@@ -113,6 +127,6 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, qb_estimate_id: qbEstimateId, qb_doc_number: qbDocNumber, line_count: qbLines.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

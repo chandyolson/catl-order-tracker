@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const tokenData = await getQBToken(supabase);
     const { access_token, realm_id } = tokenData;
-    const baseUrl = "https://quickbooks.api.intuit.com";
+    const baseUrl = Deno.env.get("QB_BASE_URL") || "https://quickbooks.api.intuit.com";
     const qbLines: any[] = [];
     let lineNum = 1;
     const selectedOptions = order.selected_options || [];
@@ -91,12 +91,30 @@ Deno.serve(async (req) => {
       steps.push("fallback: lump sum");
     }
 
-    const vendorRef = mfg.qb_vendor_id ? { value: mfg.qb_vendor_id } : { name: mfg.name };
+    if (!mfg.qb_vendor_id) throw new Error(`Manufacturer "${mfg.name}" has no QuickBooks vendor ID. Link the vendor in Settings before pushing purchase orders.`);
+    const vendorRef = { value: mfg.qb_vendor_id, name: mfg.name };
+
+    // Resolve APAccountRef — fetch from QB once and cache on qb_tokens row
+    let apAccountRef: { value: string; name: string };
+    if (tokenData.ap_account_id) {
+      apAccountRef = { value: tokenData.ap_account_id, name: tokenData.ap_account_name || "Accounts Payable (A/P)" };
+      steps.push(`AP account (cached): ${apAccountRef.name}`);
+    } else {
+      const apResp = await fetch(`${baseUrl}/v3/company/${realm_id}/query?query=SELECT%20*%20FROM%20Account%20WHERE%20AccountSubType%20%3D%20'AccountsPayable'%20MAXRESULTS%201&minorversion=75`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
+      if (!apResp.ok) throw new Error(`Failed to fetch AP account: ${apResp.status} - ${await apResp.text()}`);
+      const apData = await apResp.json();
+      const apAccount = apData?.QueryResponse?.Account?.[0];
+      if (!apAccount) throw new Error("No Accounts Payable account found in QuickBooks. Please ensure an AP account exists.");
+      apAccountRef = { value: apAccount.Id, name: apAccount.Name };
+      await supabase.from("qb_tokens").update({ ap_account_id: apAccount.Id, ap_account_name: apAccount.Name }).eq("id", tokenData.id);
+      steps.push(`AP account (fetched + cached): ${apAccountRef.name}`);
+    }
+
     const orderLabel = order.contract_name || order.moly_contract_number || order.order_number || "";
-    const qbPO: any = { Line: qbLines, VendorRef: vendorRef, TxnDate: order.ordered_date || new Date().toISOString().split("T")[0], PrivateNote: `${orderLabel}${order.build_shorthand ? " - " + order.build_shorthand : ""}${order.moly_contract_number ? " | Contract: " + order.moly_contract_number : ""}`.substring(0, 4000) };
+    const qbPO: any = { Line: qbLines, VendorRef: vendorRef, APAccountRef: apAccountRef, TxnDate: order.ordered_date || new Date().toISOString().split("T")[0], PrivateNote: `${orderLabel}${order.build_shorthand ? " - " + order.build_shorthand : ""}${order.moly_contract_number ? " | Contract: " + order.moly_contract_number : ""}`.substring(0, 4000) };
     steps.push(`PO payload: ${qbLines.length} lines, vendor=${JSON.stringify(vendorRef)}`);
 
-    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/purchaseorder`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbPO) });
+    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/purchaseorder?minorversion=75`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbPO) });
     const qbBody = await qbResp.text();
     if (!qbResp.ok) throw new Error(`QB ${qbResp.status}: ${qbBody}`);
 
