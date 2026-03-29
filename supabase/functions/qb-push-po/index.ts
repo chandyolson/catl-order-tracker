@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     const tokenData = await getQBToken(supabase);
     const { access_token, realm_id } = tokenData;
-    const baseUrl = "https://quickbooks.api.intuit.com";
+    const baseUrl = Deno.env.get("QB_BASE_URL") || "https://quickbooks.api.intuit.com";
     const qbLines: any[] = [];
     let lineNum = 1;
     const selectedOptions = order.selected_options || [];
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     const qbPO: any = { Line: qbLines, VendorRef: vendorRef, TxnDate: order.ordered_date || new Date().toISOString().split("T")[0], PrivateNote: `${orderLabel}${order.build_shorthand ? " - " + order.build_shorthand : ""}${order.moly_contract_number ? " | Contract: " + order.moly_contract_number : ""}`.substring(0, 4000) };
     steps.push(`PO payload: ${qbLines.length} lines, vendor=${JSON.stringify(vendorRef)}`);
 
-    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/purchaseorder`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbPO) });
+    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/purchaseorder?minorversion=75`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbPO) });
     const qbBody = await qbResp.text();
     if (!qbResp.ok) throw new Error(`QB ${qbResp.status}: ${qbBody}`);
 
