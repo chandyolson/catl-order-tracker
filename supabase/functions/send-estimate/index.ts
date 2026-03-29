@@ -95,6 +95,6 @@ ${order.tax_amount && order.tax_amount > 0 ? `<tr><td style="color:#717182;font-
       const body = await req.clone().json().catch(() => ({}));
       if (body.estimate_id) await supabase.from("email_log").insert({ estimate_id: body.estimate_id, recipient_email: body.recipient_email || "unknown", subject: "Estimate (failed)", status: "failed", error_message: err.message });
     } catch (_) {}
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

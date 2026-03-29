@@ -113,6 +113,6 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, qb_estimate_id: qbEstimateId, qb_doc_number: qbDocNumber, line_count: qbLines.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
