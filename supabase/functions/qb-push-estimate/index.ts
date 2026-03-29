@@ -111,8 +111,13 @@ Deno.serve(async (req) => {
       TotalAmt: price,
       Line: lineItems,
       TxnDate: new Date().toISOString().split("T")[0],
-      PrivateNote: `Order ${order.order_number} - ${estimate.build_shorthand}`,
+      PrivateNote: `${order.contract_name || order.moly_contract_number || "Order"} - ${estimate.build_shorthand}`,
     };
+
+    // Send our estimate number as QB DocNumber so QB uses our numbering
+    if (estimate.estimate_number) {
+      qbEstimate.DocNumber = estimate.estimate_number;
+    }
 
     // Link customer if QB customer ID exists
     if (customer?.qb_customer_id) {
