@@ -102,8 +102,11 @@ function EstimateCard({ estimate }: { estimate: any }) {
         {isSigned && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#0E2646", backgroundColor: "rgba(14,38,70,0.1)" }}>Signed</span>}
         {!isCurrent && !isApproved && <span className="text-[11px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Superseded</span>}
       </div>
-      <div className="text-sm font-semibold text-foreground">
-        v{estimate.version_number}
+      <div className="text-sm font-semibold text-foreground flex items-center gap-2 flex-wrap">
+        <span>v{estimate.version_number}</span>
+        {estimate.estimate_number && (
+          <span className="text-[12px] font-bold px-2 py-0.5 rounded-full" style={{ color: "#F3D12A", backgroundColor: "rgba(243,209,42,0.12)" }}>{estimate.estimate_number}</span>
+        )}
         {estimate.label && (
           <span className="font-normal text-muted-foreground"> — {estimate.label}</span>
         )}
