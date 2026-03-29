@@ -1,0 +1,47 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy changed functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: dubzwbfqlwhkpmpuejsy
+        run: |
+          # Get list of changed files in this push
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- supabase/functions/ 2>/dev/null || echo "supabase/functions/")
+          
+          # Extract unique function names from changed paths
+          FUNCTIONS=$(echo "$CHANGED" | grep -oP 'supabase/functions/\K[^/]+' | sort -u)
+          
+          if [ -z "$FUNCTIONS" ]; then
+            echo "No function changes detected, deploying all..."
+            FUNCTIONS=$(ls supabase/functions/)
+          fi
+          
+          echo "Functions to deploy: $FUNCTIONS"
+          
+          for fn in $FUNCTIONS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "Deploying $fn..."
+              supabase functions deploy "$fn" \
+                --project-ref "$PROJECT_REF" \
+                --no-verify-jwt
+            else
+              echo "Skipping $fn (no index.ts found)"
+            fi
+          done
