@@ -46,6 +46,7 @@ export type Database = {
           margin_percent: number | null
           name: string
           notes: string | null
+          qb_item_id: string | null
           qb_item_name: string | null
           retail_price: number
           short_name: string
@@ -62,6 +63,7 @@ export type Database = {
           margin_percent?: number | null
           name: string
           notes?: string | null
+          qb_item_id?: string | null
           qb_item_name?: string | null
           retail_price: number
           short_name: string
@@ -78,6 +80,7 @@ export type Database = {
           margin_percent?: number | null
           name?: string
           notes?: string | null
+          qb_item_id?: string | null
           qb_item_name?: string | null
           retail_price?: number
           short_name?: string
@@ -447,6 +450,7 @@ export type Database = {
           discount_type: string | null
           emailed_at: string | null
           emailed_to: string | null
+          estimate_number: string | null
           id: string
           is_approved: boolean | null
           is_current: boolean | null
@@ -478,6 +482,7 @@ export type Database = {
           discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
+          estimate_number?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
@@ -509,6 +514,7 @@ export type Database = {
           discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
+          estimate_number?: string | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
@@ -736,6 +742,7 @@ export type Database = {
           name: string
           notes: string | null
           option_group: string | null
+          qb_item_id: string | null
           qb_item_name: string | null
           qb_item_name_by_model: Json | null
           requires_extended: boolean | null
@@ -763,6 +770,7 @@ export type Database = {
           name: string
           notes?: string | null
           option_group?: string | null
+          qb_item_id?: string | null
           qb_item_name?: string | null
           qb_item_name_by_model?: Json | null
           requires_extended?: boolean | null
@@ -790,6 +798,7 @@ export type Database = {
           name?: string
           notes?: string | null
           option_group?: string | null
+          qb_item_id?: string | null
           qb_item_name?: string | null
           qb_item_name_by_model?: Json | null
           requires_extended?: boolean | null
@@ -806,6 +815,105 @@ export type Database = {
             columns: ["manufacturer_id"]
             isOneToOne: false
             referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_document_slots: {
+        Row: {
+          base_model: string | null
+          chute_length: string | null
+          comparison_notes: string | null
+          comparison_status: string | null
+          created_at: string
+          discount_amount: number | null
+          document_id: string | null
+          filled_at: string | null
+          floor_type: string | null
+          freight_amount: number | null
+          id: string
+          is_filled: boolean
+          last_compared_at: string | null
+          line_items: Json
+          order_id: string
+          parse_confidence: number | null
+          parsed_by: string | null
+          qb_doc_id: string | null
+          qb_doc_number: string | null
+          raw_extracted_text: string | null
+          slot_type: string
+          subtotal: number | null
+          tax_amount: number | null
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_model?: string | null
+          chute_length?: string | null
+          comparison_notes?: string | null
+          comparison_status?: string | null
+          created_at?: string
+          discount_amount?: number | null
+          document_id?: string | null
+          filled_at?: string | null
+          floor_type?: string | null
+          freight_amount?: number | null
+          id?: string
+          is_filled?: boolean
+          last_compared_at?: string | null
+          line_items?: Json
+          order_id: string
+          parse_confidence?: number | null
+          parsed_by?: string | null
+          qb_doc_id?: string | null
+          qb_doc_number?: string | null
+          raw_extracted_text?: string | null
+          slot_type: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_model?: string | null
+          chute_length?: string | null
+          comparison_notes?: string | null
+          comparison_status?: string | null
+          created_at?: string
+          discount_amount?: number | null
+          document_id?: string | null
+          filled_at?: string | null
+          floor_type?: string | null
+          freight_amount?: number | null
+          id?: string
+          is_filled?: boolean
+          last_compared_at?: string | null
+          line_items?: Json
+          order_id?: string
+          parse_confidence?: number | null
+          parsed_by?: string | null
+          qb_doc_id?: string | null
+          qb_doc_number?: string | null
+          raw_extracted_text?: string | null
+          slot_type?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_document_slots_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "order_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_document_slots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -969,14 +1077,19 @@ export type Database = {
           mfg_po_number: string | null
           mfg_so_number: string | null
           moly_contract_number: string | null
+          moly_invoice_matched: boolean | null
+          moly_invoice_total: number | null
           notes: string | null
           notion_id: string | null
-          order_number: string
+          order_number: string | null
           ordered_date: string | null
           our_cost: number | null
           paid_date: string | null
+          qb_bill_doc_number: string | null
           qb_bill_id: string | null
+          qb_estimate_doc_number: string | null
           qb_estimate_id: string | null
+          qb_invoice_doc_number: string | null
           qb_invoice_id: string | null
           qb_po_doc_number: string | null
           qb_po_id: string | null
@@ -1029,14 +1142,19 @@ export type Database = {
           mfg_po_number?: string | null
           mfg_so_number?: string | null
           moly_contract_number?: string | null
+          moly_invoice_matched?: boolean | null
+          moly_invoice_total?: number | null
           notes?: string | null
           notion_id?: string | null
-          order_number: string
+          order_number?: string | null
           ordered_date?: string | null
           our_cost?: number | null
           paid_date?: string | null
+          qb_bill_doc_number?: string | null
           qb_bill_id?: string | null
+          qb_estimate_doc_number?: string | null
           qb_estimate_id?: string | null
+          qb_invoice_doc_number?: string | null
           qb_invoice_id?: string | null
           qb_po_doc_number?: string | null
           qb_po_id?: string | null
@@ -1089,14 +1207,19 @@ export type Database = {
           mfg_po_number?: string | null
           mfg_so_number?: string | null
           moly_contract_number?: string | null
+          moly_invoice_matched?: boolean | null
+          moly_invoice_total?: number | null
           notes?: string | null
           notion_id?: string | null
-          order_number?: string
+          order_number?: string | null
           ordered_date?: string | null
           our_cost?: number | null
           paid_date?: string | null
+          qb_bill_doc_number?: string | null
           qb_bill_id?: string | null
+          qb_estimate_doc_number?: string | null
           qb_estimate_id?: string | null
+          qb_invoice_doc_number?: string | null
           qb_invoice_id?: string | null
           qb_po_doc_number?: string | null
           qb_po_id?: string | null
@@ -1329,7 +1452,7 @@ export type Database = {
       }
     }
     Functions: {
-      generate_order_number: { Args: never; Returns: string }
+      generate_estimate_number: { Args: never; Returns: string }
       list_customers_with_stats: {
         Args: {
           page_number?: number

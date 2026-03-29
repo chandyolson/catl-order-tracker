@@ -752,7 +752,7 @@ export default function NewOrder() {
       // Direct orders use the MOLY contract number as their identifier — no auto number.
       let estimateNumber: string | null = null;
       if (!isDirectOrder) {
-        const { data: estNum, error: rpcError } = await supabase.rpc("generate_estimate_number");
+        const { data: estNum, error: rpcError } = await (supabase.rpc as any)("generate_estimate_number");
         if (rpcError) throw rpcError;
         estimateNumber = estNum;
       }
