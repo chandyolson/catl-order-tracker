@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ClipboardList, Calendar, FileCheck, Plus } from "lucide-react";
+import { AlertTriangle, ClipboardList, Calendar, FileCheck, Plus, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import StatusBadge from "@/components/StatusBadge";
 import { attentionConfig } from "@/components/AttentionBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -46,12 +48,60 @@ function KpiCard({
 export default function Index() {
   const navigate = useNavigate();
   const [showPicker, setShowPicker] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const activeOrders = useActiveOrdersCount();
   const eoCounts = useEstimateVsOrderCounts();
   const attentionItems = useAttentionItems();
   const dueThisMonth = useDueThisMonth();
   const readyToInvoice = useReadyToInvoice();
   const recentOrders = useRecentOrders();
+
+  // Debounce search
+  useState(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  });
+  // Actually use useEffect for debounce
+  const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  function handleSearchChange(val: string) {
+    setSearch(val);
+    if (searchTimer) clearTimeout(searchTimer);
+    setSearchTimer(setTimeout(() => setDebouncedSearch(val), 300));
+  }
+
+  // Search query — searches orders, estimates, and customers
+  const searchQuery = useQuery({
+    queryKey: ["dashboard-search", debouncedSearch],
+    queryFn: async () => {
+      const s = `%${debouncedSearch}%`;
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, order_number, contract_name, moly_contract_number, build_shorthand, status, customer_price, customers(name)")
+        .or(`order_number.ilike.${s},contract_name.ilike.${s},moly_contract_number.ilike.${s},build_shorthand.ilike.${s}`)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      const { data: customers } = await supabase
+        .from("customers")
+        .select("id, name, email, phone, address_city, address_state")
+        .or(`name.ilike.${s},email.ilike.${s},phone.ilike.${s}`)
+        .order("name")
+        .limit(5);
+      const { data: estimates } = await supabase
+        .from("estimates")
+        .select("id, estimate_number, qb_doc_number, build_shorthand, total_price, status, order_id, customers(name)")
+        .or(`estimate_number.ilike.${s},qb_doc_number.ilike.${s},build_shorthand.ilike.${s}`)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return { orders: orders || [], customers: customers || [], estimates: estimates || [] };
+    },
+    enabled: debouncedSearch.length >= 2,
+  });
+
+  const hasResults = debouncedSearch.length >= 2 && searchQuery.data;
+  const totalResults = hasResults
+    ? (searchQuery.data.orders.length + searchQuery.data.customers.length + searchQuery.data.estimates.length)
+    : 0;
 
   const attentionCount = attentionItems.data?.length ?? 0;
   const estCount = eoCounts.data?.estimates ?? 0;
@@ -67,6 +117,92 @@ export default function Index() {
         >
           <Plus size={20} />
         </button>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <div className="flex items-center border border-border rounded-xl bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold">
+          <Search size={18} className="ml-3 text-muted-foreground flex-shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search orders, estimates, customers..."
+            className="w-full px-3 py-3 bg-transparent outline-none text-[16px] text-foreground placeholder:text-muted-foreground"
+          />
+          {search && (
+            <button onClick={() => { setSearch(""); setDebouncedSearch(""); }} className="pr-3 text-muted-foreground hover:text-foreground text-sm">
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Search results dropdown */}
+        {hasResults && totalResults > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 max-h-[400px] overflow-y-auto">
+            {searchQuery.data!.orders.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold px-3 pt-3 pb-1" style={{ color: "#717182" }}>Orders</p>
+                {searchQuery.data!.orders.map((o: any) => (
+                  <button key={o.id} onClick={() => { navigate(`/orders/${o.id}`); setSearch(""); setDebouncedSearch(""); }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-muted/50 flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium text-foreground">{o.contract_name || o.moly_contract_number || o.order_number || "Unnamed"}</span>
+                      {o.moly_contract_number && o.contract_name && (
+                        <span className="text-xs text-muted-foreground ml-2">#{o.moly_contract_number}</span>
+                      )}
+                      <StatusBadge status={o.status} />
+                      {o.customers?.name && <span className="text-xs text-muted-foreground ml-2">{o.customers.name}</span>}
+                    </div>
+                    {o.customer_price != null && (
+                      <span className="text-sm font-bold shrink-0" style={{ color: "#F3D12A" }}>
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(o.customer_price)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchQuery.data!.estimates.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold px-3 pt-3 pb-1" style={{ color: "#717182" }}>Estimates</p>
+                {searchQuery.data!.estimates.map((e: any) => (
+                  <button key={e.id} onClick={() => { if (e.order_id) navigate(`/orders/${e.order_id}`); setSearch(""); setDebouncedSearch(""); }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-muted/50 flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="text-sm font-bold" style={{ color: "#F3D12A" }}>{e.estimate_number || e.qb_doc_number || "—"}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{e.build_shorthand}</span>
+                      {e.customers?.name && <span className="text-xs text-muted-foreground ml-2">· {e.customers.name}</span>}
+                    </div>
+                    {e.total_price != null && (
+                      <span className="text-sm font-medium shrink-0 text-foreground">
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(e.total_price)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchQuery.data!.customers.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold px-3 pt-3 pb-1" style={{ color: "#717182" }}>Customers</p>
+                {searchQuery.data!.customers.map((c: any) => (
+                  <button key={c.id} onClick={() => { navigate(`/customers/${c.id}`); setSearch(""); setDebouncedSearch(""); }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-muted/50">
+                    <span className="text-sm font-medium text-foreground">{c.name}</span>
+                    {c.address_city && <span className="text-xs text-muted-foreground ml-2">{c.address_city}, {c.address_state}</span>}
+                    {c.phone && <span className="text-xs text-muted-foreground ml-2">{c.phone}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {hasResults && totalResults === 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3">
+            <p className="text-sm text-muted-foreground">No results for "{debouncedSearch}"</p>
+          </div>
+        )}
       </div>
 
       {/* KPI row */}
@@ -147,7 +283,7 @@ export default function Index() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-catl-navy">{order.order_number}</span>
+                          <span className="font-bold text-sm text-catl-navy">{(order as any).contract_name || order.moly_contract_number || order.order_number || "Unnamed"}</span>
                           <StatusBadge status={order.status} />
                         </div>
                         <p className="text-sm font-medium text-catl-teal mt-1 truncate">{order.build_shorthand}</p>
