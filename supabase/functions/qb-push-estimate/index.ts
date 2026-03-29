@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     // Base model line
     if (baseModel) {
       const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: baseModel.retail_price || 0, Description: baseModel.name || "Base Model", SalesItemLineDetail: { UnitPrice: baseModel.retail_price || 0, Qty: 1 } };
-      if (baseModel.qb_item_name) line.SalesItemLineDetail.ItemRef = { name: baseModel.qb_item_name };
+      if (baseModel.qb_item_id || baseModel.qb_item_name) line.SalesItemLineDetail.ItemRef = { ...(baseModel.qb_item_id ? { value: baseModel.qb_item_id } : {}), name: baseModel.qb_item_name || "Services" };
       qbLines.push(line);
     }
 
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       const optionIds = selectedOptions.map((o: any) => o.option_id).filter(Boolean);
       let optionMap: Record<string, any> = {};
       if (optionIds.length > 0) {
-        const { data: optRows } = await supabase.from("model_options").select("id, qb_item_name, qb_item_name_by_model").in("id", optionIds);
+        const { data: optRows } = await supabase.from("model_options").select("id, qb_item_name, qb_item_id, qb_item_name_by_model").in("id", optionIds);
         if (optRows) for (const row of optRows) optionMap[row.id] = row;
       }
       for (const opt of selectedOptions) {
@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
         }
         if (amount === 0) desc += " — Included";
         const line: any = { Id: String(lineNum++), DetailType: "SalesItemLineDetail", Amount: amount, Description: desc, SalesItemLineDetail: { UnitPrice: retailEach, Qty: qty } };
-        if (itemName) line.SalesItemLineDetail.ItemRef = { name: itemName };
+        const itemId = mapping?.qb_item_id || null;
+        if (itemName || itemId) line.SalesItemLineDetail.ItemRef = { ...(itemId ? { value: itemId } : {}), name: itemName || "Services" };
         qbLines.push(line);
       }
     }

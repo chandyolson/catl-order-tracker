@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
     // Base model at COST — MUST have ItemRef
     if (baseModel) {
-      qbLines.push({ Id: String(lineNum++), DetailType: "ItemBasedExpenseLineDetail", Amount: baseModel.cost_price || 0, Description: baseModel.name || "", ItemBasedExpenseLineDetail: { ItemRef: { name: baseModel.qb_item_name || FALLBACK_ITEM }, UnitPrice: baseModel.cost_price || 0, Qty: 1 } });
+      qbLines.push({ Id: String(lineNum++), DetailType: "ItemBasedExpenseLineDetail", Amount: baseModel.cost_price || 0, Description: baseModel.name || "", ItemBasedExpenseLineDetail: { ItemRef: { ...(baseModel.qb_item_id ? { value: baseModel.qb_item_id } : {}), name: baseModel.qb_item_name || FALLBACK_ITEM }, UnitPrice: baseModel.cost_price || 0, Qty: 1 } });
       steps.push(`base: ${baseModel.name} -> ${baseModel.qb_item_name || FALLBACK_ITEM} @ $${baseModel.cost_price}`);
     }
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       const optionIds = selectedOptions.map((o: any) => o.option_id).filter(Boolean);
       let optionMap: Record<string, any> = {};
       if (optionIds.length > 0) {
-        const { data: optRows } = await supabase.from("model_options").select("id, qb_item_name, qb_item_name_by_model").in("id", optionIds);
+        const { data: optRows } = await supabase.from("model_options").select("id, qb_item_name, qb_item_id, qb_item_name_by_model").in("id", optionIds);
         if (optRows) for (const row of optRows) optionMap[row.id] = row;
       }
       steps.push(`option mappings loaded: ${Object.keys(optionMap).length}`);
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
           if (opt.right_qty > 0) sides.push(`R:${opt.right_qty}`);
           if (sides.length > 0) desc += ` (${sides.join(", ")})`;
         }
-        qbLines.push({ Id: String(lineNum++), DetailType: "ItemBasedExpenseLineDetail", Amount: amount, Description: desc, ItemBasedExpenseLineDetail: { ItemRef: { name: itemName }, UnitPrice: costEach, Qty: qty } });
+        qbLines.push({ Id: String(lineNum++), DetailType: "ItemBasedExpenseLineDetail", Amount: amount, Description: desc, ItemBasedExpenseLineDetail: { ItemRef: { ...(mapping?.qb_item_id ? { value: mapping.qb_item_id } : {}), name: itemName }, UnitPrice: costEach, Qty: qty } });
       }
       steps.push(`options: ${selectedOptions.length} line items`);
     }
