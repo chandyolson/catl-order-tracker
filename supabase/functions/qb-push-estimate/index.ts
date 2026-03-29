@@ -77,7 +77,22 @@ Deno.serve(async (req) => {
     // Discount
     if (order?.discount_amount && order.discount_amount > 0) {
       const dv = order.discount_type === "%" ? Math.round((order.subtotal || 0) * order.discount_amount) / 100 : order.discount_amount;
-      if (dv > 0) qbLines.push({ Id: String(lineNum++), DetailType: "DiscountLineDetail", Amount: dv, DiscountLineDetail: { PercentBased: order.discount_type === "%", ...(order.discount_type === "%" ? { DiscountPercent: order.discount_amount } : {}) } });
+      if (dv > 0) {
+        // DiscountAccountRef is required by QB — lazy fetch and cache on qb_tokens
+        let discountAccountRef: { value: string; name: string };
+        if (tokenData.discount_account_id) {
+          discountAccountRef = { value: tokenData.discount_account_id, name: tokenData.discount_account_name || "Discounts given" };
+        } else {
+          const dAcctResp = await fetch(`${baseUrl}/v3/company/${realm_id}/query?query=SELECT%20*%20FROM%20Account%20WHERE%20AccountType%20%3D%20'Income'%20AND%20AccountSubType%20%3D%20'DiscountsRefundsGiven'%20MAXRESULTS%201&minorversion=75`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
+          if (!dAcctResp.ok) throw new Error(`Failed to fetch discount account: ${dAcctResp.status} - ${await dAcctResp.text()}`);
+          const dAcctData = await dAcctResp.json();
+          const dAcct = dAcctData?.QueryResponse?.Account?.[0];
+          if (!dAcct) throw new Error("No discount account found in QuickBooks. Please create a 'Discounts given' income account.");
+          discountAccountRef = { value: dAcct.Id, name: dAcct.Name };
+          await supabase.from("qb_tokens").update({ discount_account_id: dAcct.Id, discount_account_name: dAcct.Name }).eq("id", tokenData.id);
+        }
+        qbLines.push({ Id: String(lineNum++), DetailType: "DiscountLineDetail", Amount: dv, DiscountLineDetail: { DiscountAccountRef: discountAccountRef, PercentBased: order.discount_type === "%", ...(order.discount_type === "%" ? { DiscountPercent: order.discount_amount } : {}) } });
+      }
     }
 
     // Fallback
@@ -95,14 +110,11 @@ Deno.serve(async (req) => {
 
     if (estimate.qb_estimate_id) {
       const existingResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate/${estimate.qb_estimate_id}?minorversion=75`, { headers: { Authorization: `Bearer ${access_token}`, Accept: "application/json" } });
-      if (existingResp.ok) { const existing = await existingResp.json(); qbEstimate.Id = estimate.qb_estimate_id; qbEstimate.SyncToken = existing.Estimate.SyncToken; }
+      if (existingResp.ok) { const existing = await existingResp.json(); qbEstimate.Id = estimate.qb_estimate_id; qbEstimate.SyncToken = existing.Estimate.SyncToken; qbEstimate.sparse = true; }
       else throw new Error(`Failed to fetch existing QB estimate: ${existingResp.status} - ${await existingResp.text()}`);
     }
 
-    const estimateUrl = estimate.qb_estimate_id
-      ? `${baseUrl}/v3/company/${realm_id}/estimate?operation=sparse=true&minorversion=75`
-      : `${baseUrl}/v3/company/${realm_id}/estimate?minorversion=75`;
-    const qbResp = await fetch(estimateUrl, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbEstimate) });
+    const qbResp = await fetch(`${baseUrl}/v3/company/${realm_id}/estimate?minorversion=75`, { method: "POST", headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(qbEstimate) });
     if (!qbResp.ok) throw new Error(`QuickBooks API error: ${qbResp.status} - ${await qbResp.text()}`);
 
     const qbData = await qbResp.json();
