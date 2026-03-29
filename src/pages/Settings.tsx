@@ -15,7 +15,6 @@ function fmtDate(d: string | null | undefined) {
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [syncing, setSyncing] = useState(false);
   const [showEmailLog, setShowEmailLog] = useState(false);
 
   useEffect(() => {
@@ -72,18 +71,78 @@ export default function Settings() {
   const qb = qbStatusQuery.data;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://dubzwbfqlwhkpmpuejsy.supabase.co";
 
-  const handleSync = async () => {
-    setSyncing(true);
+  const [syncingCustomers, setSyncingCustomers] = useState(false);
+  const [syncingItems, setSyncingItems] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+
+  const handleSyncCustomers = async () => {
+    setSyncingCustomers(true);
+    setSyncResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("qb-sync-customers");
-      if (error) throw new Error(error.message);
-      toast.success(data?.message || `Synced ${data?.created || 0} new, updated ${data?.updated || 0} customers`);
+      let totalSynced = 0;
+      let totalInQB = 0;
+      let page = 1;
+      // Paginate through all customers
+      while (true) {
+        const { data, error } = await supabase.functions.invoke("qb-sync-customers", {
+          body: {},
+          headers: { "x-page": String(page) },
+        });
+        // The function uses URL params, so call with query string workaround
+        const resp = await fetch(
+          `${supabaseUrl}/functions/v1/qb-sync-customers?page=${page}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+              "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY || ""}`,
+            },
+          }
+        );
+        const result = await resp.json();
+        if (!result.success && result.error) throw new Error(result.error);
+        totalSynced += result.synced_this_page || 0;
+        totalInQB = result.total_in_qb || totalInQB;
+        if (!result.has_more) break;
+        page++;
+      }
+      setSyncResult({ type: "customers", totalInQB, totalSynced, pages: page });
+      toast.success(`Customers synced — ${totalSynced} records across ${page} page${page > 1 ? "s" : ""}`);
       queryClient.invalidateQueries({ queryKey: ["customers_with_stats"] });
     } catch (err: any) {
-      toast.error("Sync failed: " + err.message);
+      toast.error("Customer sync failed: " + err.message);
     } finally {
-      setSyncing(false);
+      setSyncingCustomers(false);
     }
+  };
+
+  const handleSyncItems = async () => {
+    setSyncingItems(true);
+    setSyncResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("qb-sync-items", { body: {} });
+      if (error) throw new Error(error.message);
+      if (data && !data.success) throw new Error(data.error || "Item sync failed");
+      setSyncResult({ type: "items", ...data });
+      const totalChanges = (data.base_models?.updated || 0) + (data.options?.updated || 0);
+      if (totalChanges > 0) {
+        toast.success(`Items synced — ${totalChanges} price/name update${totalChanges !== 1 ? "s" : ""}`);
+      } else {
+        toast.success("Items synced — everything matches QB");
+      }
+      queryClient.invalidateQueries({ queryKey: ["base_models"] });
+      queryClient.invalidateQueries({ queryKey: ["model_options_full"] });
+    } catch (err: any) {
+      toast.error("Item sync failed: " + err.message);
+    } finally {
+      setSyncingItems(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    await handleSyncCustomers();
+    await handleSyncItems();
   };
 
   return (
@@ -125,14 +184,72 @@ export default function Settings() {
             </a>
           )}
           <button
-            onClick={handleSync}
-            disabled={syncing}
+            onClick={handleSyncCustomers}
+            disabled={syncingCustomers || syncingItems}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
             style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
           >
-            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-            {syncing ? "Syncing…" : "Sync Customers"}
+            <RefreshCw size={14} className={syncingCustomers ? "animate-spin" : ""} />
+            {syncingCustomers ? "Syncing…" : "Sync Customers"}
           </button>
+          <button
+            onClick={handleSyncItems}
+            disabled={syncingCustomers || syncingItems}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
+            style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
+          >
+            <RefreshCw size={14} className={syncingItems ? "animate-spin" : ""} />
+            {syncingItems ? "Syncing…" : "Sync Items & Prices"}
+          </button>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncingCustomers || syncingItems}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-semibold active:scale-[0.97] transition-transform disabled:opacity-50"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+          >
+            <RefreshCw size={14} className={syncingCustomers || syncingItems ? "animate-spin" : ""} />
+            {syncingCustomers || syncingItems ? "Syncing…" : "Sync Everything"}
+          </button>
+        </div>
+
+        {/* Sync results */}
+        {syncResult && (
+          <div className="mt-4 rounded-lg p-3" style={{ backgroundColor: "rgba(85,186,170,0.06)", border: "1px solid rgba(85,186,170,0.2)" }}>
+            {syncResult.type === "customers" && (
+              <p className="text-[13px]" style={{ color: "#0F6E56" }}>
+                <strong>Customers:</strong> {syncResult.totalSynced} synced from QB ({syncResult.totalInQB} total in QuickBooks)
+              </p>
+            )}
+            {syncResult.type === "items" && (
+              <div className="space-y-1">
+                <p className="text-[13px]" style={{ color: "#0F6E56" }}>
+                  <strong>Base Models:</strong> {syncResult.base_models?.updated || 0} updated, {syncResult.base_models?.unchanged || 0} unchanged
+                </p>
+                <p className="text-[13px]" style={{ color: "#0F6E56" }}>
+                  <strong>Options:</strong> {syncResult.options?.updated || 0} updated, {syncResult.options?.unchanged || 0} unchanged
+                </p>
+                {syncResult.changes && syncResult.changes.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#717182" }}>Changes applied:</p>
+                    {syncResult.changes.map((c: any, i: number) => (
+                      <p key={i} className="text-[12px]" style={{ color: "#0E2646" }}>
+                        {c.item}: {c.diffs?.join(", ")}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {syncResult.missing_in_qb && syncResult.missing_in_qb.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#D4183D" }}>Not found in QB:</p>
+                    {syncResult.missing_in_qb.map((m: string, i: number) => (
+                      <p key={i} className="text-[12px]" style={{ color: "#D4183D" }}>{m}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </SettingsCard>
 
