@@ -689,6 +689,10 @@ export default function EditOrder() {
           .limit(1);
         const nextVersion = (existingEstimates?.[0]?.version_number || 0) + 1;
 
+        // Generate estimate number for the new version
+        const { data: newEstNum, error: rpcError } = await supabase.rpc("generate_estimate_number");
+        if (rpcError) throw rpcError;
+
         await supabase.from("estimates").update({ is_current: false }).eq("order_id", id!);
 
         const lineItems = [
@@ -698,6 +702,7 @@ export default function EditOrder() {
 
         await supabase.from("estimates").insert({
           order_id: id,
+          estimate_number: newEstNum,
           version_number: nextVersion,
           label: options.estimateLabel || null,
           build_shorthand: buildShorthand,
@@ -716,7 +721,7 @@ export default function EditOrder() {
         await supabase.from("order_timeline").insert({
           order_id: id,
           event_type: "estimate_revised",
-          title: `Estimate v${nextVersion} created`,
+          title: `Estimate v${nextVersion} created — ${newEstNum}`,
           description: options.estimateLabel ? `"${options.estimateLabel}"` : null,
         });
       }
