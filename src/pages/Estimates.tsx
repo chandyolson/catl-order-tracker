@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Plus, ChevronDown } from "lucide-react";
+import { Receipt, Plus, ChevronDown, Search } from "lucide-react";
 import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -32,6 +32,7 @@ interface CustomerGroup {
 export default function Estimates() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState("");
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
 
   const { data: estimates = [], isLoading } = useQuery({
@@ -48,9 +49,27 @@ export default function Estimates() {
   });
 
   const filtered = useMemo(() => {
-    if (filter === "all") return estimates;
-    return estimates.filter((e: any) => e.status === filter);
-  }, [estimates, filter]);
+    let result = estimates;
+    if (filter !== "all") {
+      result = result.filter((e: any) => e.status === filter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter((e: any) => {
+        const customerName = (e.customers as any)?.name?.toLowerCase() || "";
+        const build = e.build_shorthand?.toLowerCase() || "";
+        const model = (e.base_models as any)?.name?.toLowerCase() || "";
+        const label = e.label?.toLowerCase() || "";
+        return (
+          customerName.includes(q) ||
+          build.includes(q) ||
+          model.includes(q) ||
+          label.includes(q)
+        );
+      });
+    }
+    return result;
+  }, [estimates, filter, search]);
 
   const groups = useMemo(() => {
     const map = new Map<string, CustomerGroup>();
@@ -123,6 +142,28 @@ export default function Estimates() {
         >
           <Plus size={14} /> New Estimate
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: "#717182" }}
+        />
+        <input
+          type="text"
+          placeholder="Search by customer, build, or model…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border pl-9 pr-3 py-2.5 text-[14px] outline-none transition-colors"
+          style={{
+            borderColor: "#D4D4D0",
+            backgroundColor: "#FFFFFF",
+            color: "#0E2646",
+            fontSize: "16px",
+          }}
+        />
       </div>
 
       {/* Filters */}
