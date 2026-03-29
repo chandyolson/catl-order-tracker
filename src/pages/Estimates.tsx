@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Plus, ChevronDown, Search } from "lucide-react";
+import { Receipt, Plus, ChevronDown, Search, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -60,11 +62,15 @@ export default function Estimates() {
         const build = e.build_shorthand?.toLowerCase() || "";
         const model = (e.base_models as any)?.name?.toLowerCase() || "";
         const label = e.label?.toLowerCase() || "";
+        const estNum = e.estimate_number?.toLowerCase() || "";
+        const qbNum = e.qb_doc_number?.toLowerCase() || "";
         return (
           customerName.includes(q) ||
           build.includes(q) ||
           model.includes(q) ||
-          label.includes(q)
+          label.includes(q) ||
+          estNum.includes(q) ||
+          qbNum.includes(q)
         );
       });
     }
@@ -275,9 +281,12 @@ export default function Estimates() {
 }
 
 function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: string) => void }) {
+  const queryClient = useQueryClient();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const baseModel = estimate.base_models as any;
   const modelName = baseModel?.name || baseModel?.short_name || estimate.build_shorthand || "Estimate";
   const hasOrder = !!estimate.order_id;
+  const displayNumber = estimate.estimate_number || estimate.qb_doc_number;
 
   const statusStyles: Record<string, { bg: string; color: string; label: string }> = {
     open: { bg: "rgba(243,209,42,0.15)", color: "#854F0B", label: "Open" },
@@ -286,41 +295,91 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
   };
   const status = statusStyles[estimate.status] || statusStyles.open;
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("estimates").delete().eq("id", estimate.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(`Estimate${displayNumber ? ` ${displayNumber}` : ""} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["open_estimates"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete estimate");
+    },
+  });
+
   return (
-    <button
-      onClick={() => {
-        if (hasOrder) navigate(`/orders/${estimate.order_id}`);
-      }}
-      className="w-full text-left rounded-lg px-2.5 py-2 flex items-center justify-between gap-2 transition-colors"
-      style={{
-        background: "#F5F5F0",
-        cursor: hasOrder ? "pointer" : "default",
-      }}
-    >
-      <div className="min-w-0">
-        <p className="text-[13px] font-medium truncate" style={{ color: "#0E2646" }}>
-          {modelName}
-        </p>
-        <p className="text-[11px] truncate" style={{ color: "#717182" }}>
-          v{estimate.version_number}
-          {estimate.label ? ` — ${estimate.label}` : ""}
-          {" · "}
-          {estimate.status === "sent"
-            ? `Sent ${fmtDate(estimate.emailed_at || estimate.created_at)}`
-            : `Created ${fmtDate(estimate.created_at)}`}
-        </p>
-      </div>
-      <div className="flex flex-col items-end shrink-0 gap-0.5">
-        <span className="text-[13px] font-medium" style={{ color: "#0E2646" }}>
-          {fmtCurrency(estimate.total_price)}
-        </span>
-        <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: status.bg, color: status.color }}
+    <>
+      <div
+        className="w-full rounded-lg px-2.5 py-2 flex items-center justify-between gap-2 transition-colors"
+        style={{ background: "#F5F5F0" }}
+      >
+        <button
+          onClick={() => { if (hasOrder) navigate(`/orders/${estimate.order_id}`); }}
+          className="flex-1 text-left min-w-0"
+          style={{ cursor: hasOrder ? "pointer" : "default" }}
         >
-          {status.label}
-        </span>
+          <div className="flex items-center gap-1.5">
+            {displayNumber && (
+              <span className="text-[12px] font-bold" style={{ color: "#F3D12A" }}>{displayNumber}</span>
+            )}
+            <p className="text-[13px] font-medium truncate" style={{ color: "#0E2646" }}>
+              {modelName}
+            </p>
+          </div>
+          <p className="text-[11px] truncate" style={{ color: "#717182" }}>
+            v{estimate.version_number}
+            {estimate.label ? ` — ${estimate.label}` : ""}
+            {" · "}
+            {estimate.status === "sent"
+              ? `Sent ${fmtDate(estimate.emailed_at || estimate.created_at)}`
+              : `Created ${fmtDate(estimate.created_at)}`}
+          </p>
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[13px] font-medium" style={{ color: "#0E2646" }}>
+              {fmtCurrency(estimate.total_price)}
+            </span>
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: status.bg, color: status.color }}
+            >
+              {status.label}
+            </span>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
+            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+            title="Delete estimate"
+          >
+            <Trash2 size={14} style={{ color: "#D4183D" }} />
+          </button>
+        </div>
       </div>
-    </button>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="max-w-sm rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base">Delete estimate?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              {displayNumber ? `Estimate ${displayNumber}` : "This estimate"} — {modelName} ({fmtCurrency(estimate.total_price)}) will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-sm">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="text-sm"
+              style={{ backgroundColor: "#D4183D", color: "#FFFFFF" }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
