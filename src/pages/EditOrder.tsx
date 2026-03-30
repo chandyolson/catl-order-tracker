@@ -127,6 +127,7 @@ export default function EditOrder() {
   const [contractName, setContractName] = useState("");
   const [molyContractNumber, setMolyContractNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [newEstimateNumber, setNewEstimateNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [taxState, setTaxState] = useState<string>("");
@@ -176,6 +177,15 @@ export default function EditOrder() {
   });
   const existingEstimateCount = existingEstimatesQuery.data?.length || 0;
   const isFirstEstimate = forEstimate && existingEstimateCount === 0;
+
+  // Auto-fill estimate number when creating a new version
+  useEffect(() => {
+    if (forEstimate && !newEstimateNumber) {
+      supabase.rpc("generate_estimate_number").then(({ data, error }) => {
+        if (!error && data) setNewEstimateNumber(data);
+      });
+    }
+  }, [forEstimate]);
 
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
@@ -689,9 +699,8 @@ export default function EditOrder() {
           .limit(1);
         const nextVersion = (existingEstimates?.[0]?.version_number || 0) + 1;
 
-        // Generate estimate number for the new version
-        const { data: newEstNum, error: rpcError } = await supabase.rpc("generate_estimate_number");
-        if (rpcError) throw rpcError;
+        // Use the estimate number from the form field (auto-filled or manually overridden)
+        const finalEstNum = newEstimateNumber || null;
 
         await supabase.from("estimates").update({ is_current: false }).eq("order_id", id!);
 
@@ -702,7 +711,7 @@ export default function EditOrder() {
 
         await supabase.from("estimates").insert({
           order_id: id,
-          estimate_number: newEstNum,
+          estimate_number: finalEstNum,
           version_number: nextVersion,
           label: options.estimateLabel || null,
           build_shorthand: buildShorthand,
@@ -721,7 +730,7 @@ export default function EditOrder() {
         await supabase.from("order_timeline").insert({
           order_id: id,
           event_type: "estimate_revised",
-          title: `Estimate v${nextVersion} created — ${newEstNum}`,
+          title: `Estimate v${nextVersion} created — ${finalEstNum || ""}`,
           description: options.estimateLabel ? `"${options.estimateLabel}"` : null,
         });
       }
@@ -1560,6 +1569,18 @@ export default function EditOrder() {
               </label>
             </div>
           )}
+
+          <div>
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#F3D12A" }}>Estimate No.</p>
+            <input
+              type="text"
+              value={newEstimateNumber}
+              onChange={(e) => setNewEstimateNumber(e.target.value)}
+              placeholder="Auto-generated"
+              className="w-full border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:ring-2 focus:ring-catl-gold/25"
+              style={{ borderColor: "#F3D12A", fontWeight: 600 }}
+            />
+          </div>
 
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Name this estimate</p>
