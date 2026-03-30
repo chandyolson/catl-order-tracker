@@ -271,16 +271,30 @@ export default function DocumentsTab({ orderId, molyContractNumber, driveFolderU
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {doc.file_url && (
-                  <a
-                    href={doc.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const url = doc.file_url as string;
+                      if (url.startsWith("http")) {
+                        window.open(url, "_blank");
+                      } else {
+                        // Supabase Storage path — generate signed URL
+                        const { data, error } = await supabase.storage
+                          .from("order-documents")
+                          .createSignedUrl(url.replace("order-documents/", ""), 3600);
+                        if (error || !data?.signedUrl) {
+                          toast.error("Could not open file");
+                          return;
+                        }
+                        window.open(data.signedUrl, "_blank");
+                      }
+                    }}
                     className="flex items-center gap-1 text-[12px] font-medium px-3 py-1.5 rounded-full active:scale-[0.97] transition-transform"
                     style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}
                   >
                     <ExternalLink size={12} />
                     Open
-                  </a>
+                  </button>
                 )}
                 <button
                   onClick={() => setDeleteTarget(doc)}
