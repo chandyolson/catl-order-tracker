@@ -129,20 +129,6 @@ export default function OrderDetail() {
     enabled: !!id,
   });
 
-  const slotsQuery = useQuery({
-    queryKey: ["document_slots", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("order_document_slots")
-        .select("*, order_documents(id, file_url, title)")
-        .eq("order_id", id!)
-        .order("slot_type");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
-
   const order = orderQuery.data;
   const customer = order?.customers as any;
   const manufacturer = order?.manufacturers as any;
@@ -411,84 +397,15 @@ export default function OrderDetail() {
 
       {/* ─── TAB CONTENT ─────────────────────────────────── */}
       {activeTab === "overview" && (
-        <>
-          <OverviewTab
-            order={order}
-            customer={customer}
-            manufacturer={manufacturer}
-            baseModel={baseModelQuery.data}
-            paperwork={paperworkQuery.data || []}
-            margin={margin}
-            marginColor={marginColor}
-          />
-          {/* ─── Document Slots Summary ─── */}
-          {slotsQuery.data && slotsQuery.data.length > 0 && (
-            <div className="mt-5 rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[14px] font-semibold" style={{ color: "#0E2646" }}>Document Chain</h3>
-                {order.google_drive_folder_url && (
-                  <a href={order.google_drive_folder_url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
-                    style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}>
-                    <ExternalLink size={11} /> Drive Folder
-                  </a>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(slotsQuery.data || []).map((slot: any) => {
-                  const labels: Record<string, string> = {
-                    catl_estimate: "CATL Estimate",
-                    catl_purchase_order: "Purchase Order",
-                    moly_sales_order: "Moly Sales Order",
-                    moly_invoice: "Moly Invoice",
-                    qb_bill: "QB Bill",
-                    catl_customer_invoice: "Customer Invoice",
-                  };
-                  const label = labels[slot.slot_type] || slot.slot_type;
-                  const doc = slot.order_documents;
-                  const fileUrl = doc?.file_url;
-                  const isLink = fileUrl && fileUrl.startsWith("http");
-                  return (
-                    <div key={slot.id} className="rounded-lg p-2.5 flex items-center gap-2"
-                      style={{ backgroundColor: slot.is_filled ? "rgba(85,186,170,0.06)" : "rgba(14,38,70,0.03)", border: `1px solid ${slot.is_filled ? "rgba(85,186,170,0.2)" : "rgba(14,38,70,0.08)"}` }}>
-                      <div className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: slot.is_filled ? "#55BAAA" : "#D4D4D0" }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold truncate" style={{ color: slot.is_filled ? "#0E2646" : "#B4B2A9" }}>{label}</p>
-                        {slot.is_filled && slot.qb_doc_number && (
-                          <p className="text-[10px]" style={{ color: "#717182" }}>#{slot.qb_doc_number}</p>
-                        )}
-                      </div>
-                      {slot.is_filled && isLink && (
-                        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] font-medium px-2 py-1 rounded-full shrink-0"
-                          style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
-                          View
-                        </a>
-                      )}
-                      {!slot.is_filled && (
-                        <span className="text-[10px] font-medium px-2 py-1 rounded-full shrink-0"
-                          style={{ backgroundColor: "rgba(14,38,70,0.04)", color: "#B4B2A9" }}>
-                          Empty
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {slotsQuery.data.some((s: any) => s.comparison_status === "mismatch") && (
-                <div className="mt-3 rounded-lg p-2.5" style={{ backgroundColor: "rgba(212,24,61,0.06)", border: "1px solid rgba(212,24,61,0.15)" }}>
-                  <p className="text-[12px] font-semibold" style={{ color: "#D4183D" }}>
-                    ⚠ Document mismatch detected
-                  </p>
-                  {slotsQuery.data.filter((s: any) => s.comparison_status === "mismatch").map((s: any) => (
-                    <p key={s.id} className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{s.comparison_notes}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </>
+        <OverviewTab
+          order={order}
+          customer={customer}
+          manufacturer={manufacturer}
+          baseModel={baseModelQuery.data}
+          paperwork={paperworkQuery.data || []}
+          margin={margin}
+          marginColor={marginColor}
+        />
       )}
       {activeTab === "estimates" && (
         <EstimatesTab
