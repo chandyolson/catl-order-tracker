@@ -183,6 +183,7 @@ export default function NewOrder() {
   const [contractName, setContractName] = useState("");
   const [molyContractNumber, setMolyContractNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [estimateNumber, setEstimateNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [taxState, setTaxState] = useState<string>("");
@@ -194,6 +195,15 @@ export default function NewOrder() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   /* ─── Queries ──────────────────────────────────────────────── */
+
+  // Auto-fill estimate number for new estimates
+  useEffect(() => {
+    if (!isDirectOrder && !estimateNumber) {
+      supabase.rpc("generate_estimate_number").then(({ data, error }) => {
+        if (!error && data) setEstimateNumber(data);
+      });
+    }
+  }, [isDirectOrder]);
 
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
@@ -224,7 +234,8 @@ export default function NewOrder() {
       const ids = baseModelsQuery.data.map((m) => m.id);
       if (!ids.length) return [];
       const { data, error } = await supabase
-        .from("quick_builds").select("*").in("base_model_id", ids)
+        .from("quick_builds").select("*")
+        .or(`base_model_id.in.(${ids.join(",")}),base_model_id.is.null`)
         .eq("is_active", true).order("sort_order");
       if (error) throw error;
       return data;
@@ -748,14 +759,8 @@ export default function NewOrder() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      // Estimates get an auto-generated number (2026EST-001).
-      // Direct orders use the MOLY contract number as their identifier — no auto number.
-      let estimateNumber: string | null = null;
-      if (!isDirectOrder) {
-        const { data: estNum, error: rpcError } = await (supabase.rpc as any)("generate_estimate_number");
-        if (rpcError) throw rpcError;
-        estimateNumber = estNum;
-      }
+      // Use the estimate number from the form field (auto-filled or manually overridden)
+      const finalEstimateNumber: string | null = isDirectOrder ? null : (estimateNumber || null);
 
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
@@ -1386,6 +1391,24 @@ export default function NewOrder() {
             />
           </div>
         </div>
+
+        {/* ── ESTIMATE NUMBER (only for estimates, not direct orders) ── */}
+        {!isDirectOrder && (
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#F3D12A" }}>Estimate No.</p>
+              <input
+                type="text"
+                value={estimateNumber}
+                onChange={(e) => setEstimateNumber(e.target.value)}
+                placeholder="Auto-generated"
+                className="w-full border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:ring-2 focus:ring-catl-gold/25"
+                style={{ borderColor: "#F3D12A", fontWeight: 600 }}
+              />
+            </div>
+            <div />
+          </div>
+        )}
 
         {/* ── EQUIPMENT ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mb-2">

@@ -207,7 +207,7 @@ export default function EditOrder() {
       if (!baseModelsQuery.data) return [];
       const ids = baseModelsQuery.data.map((m) => m.id);
       if (!ids.length) return [];
-      const { data, error } = await supabase.from("quick_builds").select("*").in("base_model_id", ids).eq("is_active", true).order("sort_order");
+      const { data, error } = await supabase.from("quick_builds").select("*").or(`base_model_id.in.(${ids.join(",")}),base_model_id.is.null`).eq("is_active", true).order("sort_order");
       if (error) throw error; return data;
     },
     enabled: !!baseModelsQuery.data && baseModelsQuery.data.length > 0,
