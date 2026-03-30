@@ -123,6 +123,20 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
     },
   });
 
+  // Document chain: 6 slots with Drive links
+  const slotsQuery = useQuery({
+    queryKey: ["order_document_slots", order.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_document_slots")
+        .select("*, order_documents:document_id(id, file_url, file_name, title)")
+        .eq("order_id", order.id)
+        .order("slot_type");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Save Google Drive folder URL
   const saveDriveUrlMutation = useMutation({
     mutationFn: async () => {
@@ -783,6 +797,84 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
             />
           </div>
         </div>
+      </div>
+
+      {/* ─── DOCUMENT CHAIN ──────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Document Chain</div>
+          {order.google_drive_folder_url && (
+            <a
+              href={order.google_drive_folder_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] font-medium hover:underline"
+              style={{ color: "#55BAAA" }}
+            >
+              <ExternalLink size={11} /> Drive Folder
+            </a>
+          )}
+        </div>
+        {(() => {
+          const slotConfig: Record<string, { label: string; color: string }> = {
+            catl_estimate: { label: "CATL Estimate", color: "#F3D12A" },
+            catl_purchase_order: { label: "CATL Purchase Order", color: "#0E2646" },
+            moly_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
+            moly_invoice: { label: "Mfg Invoice", color: "#8B5CF6" },
+            qb_bill: { label: "QB Bill", color: "#EF4444" },
+            catl_customer_invoice: { label: "Customer Invoice", color: "#27AE60" },
+          };
+          const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "moly_invoice", "qb_bill", "catl_customer_invoice"];
+          const slots = slotsQuery.data || [];
+
+          return (
+            <div className="grid grid-cols-2 gap-2">
+              {slotOrder.map((slotType) => {
+                const slot = slots.find((s: any) => s.slot_type === slotType);
+                const isFilled = slot?.is_filled;
+                const doc = slot?.order_documents as any;
+                const driveUrl = doc?.file_url;
+                const cfg = slotConfig[slotType] || { label: slotType, color: "#717182" };
+                const isDriveLink = driveUrl && (driveUrl.includes("drive.google.com") || driveUrl.includes("docs.google.com"));
+
+                return (
+                  <div
+                    key={slotType}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+                    style={{ backgroundColor: isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.06)" }}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: isFilled ? "#27AE60" : "#D1D5DB" }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>
+                        {cfg.label}
+                      </p>
+                      {isFilled && slot.qb_doc_number && (
+                        <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>
+                      )}
+                    </div>
+                    {isFilled && isDriveLink && (
+                      <a
+                        href={driveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-0.5 text-[10px] font-medium shrink-0 hover:underline"
+                        style={{ color: "#55BAAA" }}
+                      >
+                        <ExternalLink size={10} /> View
+                      </a>
+                    )}
+                    {!isFilled && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">—</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ─── INTERNAL (collapsible) ─────────────────────── */}
