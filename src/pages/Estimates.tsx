@@ -43,7 +43,7 @@ export default function Estimates() {
       const { data, error } = await supabase
         .from("estimates")
         .select("*, customers(*), base_models(name, short_name)")
-        .in("status", ["open", "sent"])
+        .in("status", ["open", "sent", "approved"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -286,6 +286,7 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
   const baseModel = estimate.base_models as any;
   const modelName = baseModel?.name || baseModel?.short_name || estimate.build_shorthand || "Estimate";
   const hasOrder = !!estimate.order_id;
+  const isConverted = estimate.converted_to_order || hasOrder;
   const displayNumber = estimate.estimate_number || estimate.qb_doc_number;
 
   const statusStyles: Record<string, { bg: string; color: string; label: string }> = {
@@ -320,13 +321,18 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
           className="flex-1 text-left min-w-0"
           style={{ cursor: hasOrder ? "pointer" : "default" }}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {displayNumber && (
               <span className="text-[12px] font-bold" style={{ color: "#F3D12A" }}>{displayNumber}</span>
             )}
             <p className="text-[13px] font-medium truncate" style={{ color: "#0E2646" }}>
               {modelName}
             </p>
+            {isConverted && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.1)", color: "#0E2646" }}>
+                Ordered
+              </span>
+            )}
           </div>
           <p className="text-[11px] truncate" style={{ color: "#717182" }}>
             v{estimate.version_number}
@@ -349,6 +355,26 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
               {status.label}
             </span>
           </div>
+          {!isConverted && (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/estimates/${estimate.id}/convert`); }}
+              className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-[0.97] transition-transform"
+              style={{ backgroundColor: "#0E2646", color: "#F3D12A" }}
+              title="Convert to order"
+            >
+              Convert
+            </button>
+          )}
+          {isConverted && hasOrder && (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/orders/${estimate.order_id}`); }}
+              className="text-[11px] font-bold px-3 py-1.5 rounded-full active:scale-[0.97] transition-transform"
+              style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
+              title="View order"
+            >
+              View Order
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
             className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"

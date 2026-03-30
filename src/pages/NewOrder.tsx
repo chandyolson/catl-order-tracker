@@ -759,9 +759,6 @@ export default function NewOrder() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      // Use the estimate number from the form field (auto-filled or manually overridden)
-      const finalEstimateNumber: string | null = isDirectOrder ? null : (estimateNumber || null);
-
       const selectedOptionsJson = selectedOptionsList.map((s) => {
         const qty = s.quantity;
         const isPivot = s.pivotType != null;
@@ -785,70 +782,82 @@ export default function NewOrder() {
       });
 
       const subtotal = calcRetail;
-
-      const { data: order, error: orderError } = await supabase.from("orders").insert({
-        order_number: molyContractNumber || null,
-        customer_id: customerId || null,
-        manufacturer_id: manufacturerId,
-        base_model_id: baseModelId,
-        base_model: selectedBaseModel?.name || null,
-        contract_name: contractName || null,
-        moly_contract_number: molyContractNumber || null,
-        build_shorthand: buildShorthand,
-        build_description: notes || null,
-        subtotal,
-        customer_price: customerPrice,
-        our_cost: ourCost,
-        discount_type: discountType,
-        discount_amount: parseFloat(discountAmount) || 0,
-        freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
-        catl_number: catl_number || null,
-        serial_number: serialNumber || null,
-        status,
-        source_type: isDirectOrder ? "direct_order" : "estimate",
-        estimate_date: format(estimateDate, "yyyy-MM-dd"),
-        ordered_date: isDirectOrder ? format(new Date(), "yyyy-MM-dd") : null,
-        est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
-        from_inventory: fromInventory,
-        inventory_location: fromInventory ? inventoryLocation || null : null,
-        selected_options: selectedOptionsJson,
-        notes: notes || null,
-        tax_state: taxState || null,
-        tax_rate: taxRate || 0,
-        tax_amount: taxAmount || 0,
-        total_with_tax: taxRate > 0 ? totalWithTax : null,
-      }).select().single();
-      if (orderError) throw orderError;
-
       const lineItems = [
         { type: "base_model", id: baseModelId, name: selectedBaseModel?.name, retail_price: selectedBaseModel?.retail_price, cost_price: selectedBaseModel?.cost_price },
         ...selectedOptionsJson.map((o) => ({ type: "option", ...o })),
       ];
 
-      await supabase.from("estimates").insert({
-        order_id: order.id,
-        customer_id: customerId || null,
-        base_model_id: baseModelId || null,
-        estimate_number: estimateNumber,
-        status: "open",
-        version_number: 1,
-        build_shorthand: buildShorthand,
-        total_price: customerPrice,
-        is_current: true,
-        line_items: lineItems,
-        tax_state: taxState || null,
-        tax_rate: taxRate || 0,
-        tax_amount: taxAmount || 0,
-        total_with_tax: taxRate > 0 ? totalWithTax : null,
-      });
+      if (isDirectOrder) {
+        // ─── DIRECT ORDER: create order row only (no estimate) ───
+        const { data: order, error: orderError } = await supabase.from("orders").insert({
+          order_number: molyContractNumber || null,
+          customer_id: customerId || null,
+          manufacturer_id: manufacturerId,
+          base_model_id: baseModelId,
+          base_model: selectedBaseModel?.name || null,
+          contract_name: contractName || null,
+          moly_contract_number: molyContractNumber || null,
+          build_shorthand: buildShorthand,
+          build_description: notes || null,
+          subtotal,
+          customer_price: customerPrice,
+          our_cost: ourCost,
+          discount_type: discountType,
+          discount_amount: parseFloat(discountAmount) || 0,
+          freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
+          catl_number: catl_number || null,
+          serial_number: serialNumber || null,
+          status: "purchase_order",
+          source_type: "direct_order",
+          ordered_date: format(new Date(), "yyyy-MM-dd"),
+          est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
+          from_inventory: fromInventory,
+          inventory_location: fromInventory ? inventoryLocation || null : null,
+          selected_options: selectedOptionsJson,
+          notes: notes || null,
+          tax_state: taxState || null,
+          tax_rate: taxRate || 0,
+          tax_amount: taxAmount || 0,
+          total_with_tax: taxRate > 0 ? totalWithTax : null,
+        }).select().single();
+        if (orderError) throw orderError;
 
-      const displayNumber = isDirectOrder
-        ? (molyContractNumber || contractName || "Order")
-        : (estimateNumber || "Estimate");
-      toast.success(`${isDirectOrder ? "Order" : "Estimate"} ${displayNumber} created`);
-      navigate(`/orders/${order.id}`);
+        toast.success(`Order ${molyContractNumber || contractName || "created"}`);
+        navigate(`/orders/${order.id}`);
+      } else {
+        // ─── ESTIMATE: create estimate row only (NO order row) ───
+        const { data: est, error: estError } = await supabase.from("estimates").insert({
+          customer_id: customerId || null,
+          manufacturer_id: manufacturerId,
+          base_model_id: baseModelId || null,
+          estimate_number: estimateNumber,
+          estimate_date: format(estimateDate, "yyyy-MM-dd"),
+          contract_name: contractName || null,
+          status: "open",
+          version_number: 1,
+          build_shorthand: buildShorthand,
+          subtotal,
+          total_price: customerPrice,
+          our_cost: ourCost,
+          discount_type: discountType,
+          discount_amount: parseFloat(discountAmount) || 0,
+          freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
+          is_current: true,
+          line_items: lineItems,
+          selected_options: selectedOptionsJson,
+          tax_state: taxState || null,
+          tax_rate: taxRate || 0,
+          tax_amount: taxAmount || 0,
+          total_with_tax: taxRate > 0 ? totalWithTax : null,
+          notes: notes || null,
+        }).select().single();
+        if (estError) throw estError;
+
+        toast.success(`Estimate ${estimateNumber || ""} created`);
+        navigate(`/estimates`);
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to create order");
+      toast.error(err.message || "Failed to create");
     } finally {
       setSubmitting(false);
     }
