@@ -12,6 +12,7 @@ import EditOrder from "./pages/EditOrder";
 import EquipmentMatch from "./pages/EquipmentMatch";
 import Estimates from "./pages/Estimates";
 import ConvertEstimate from "./pages/ConvertEstimate";
+import EstimateDetail from "./pages/EstimateDetail";
 import Paperwork from "./pages/Paperwork";
 import Production from "./pages/Production";
 import Customers from "./pages/Customers";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/orders/:id/edit" element={<EditOrder />} />
             <Route path="/orders/:id/match" element={<EquipmentMatch />} />
             <Route path="/estimates" element={<Estimates />} />
+            <Route path="/estimates/:id" element={<EstimateDetail />} />
             <Route path="/estimates/:id/convert" element={<ConvertEstimate />} />
             <Route path="/paperwork" element={<Paperwork />} />
             <Route path="/production" element={<Production />} />

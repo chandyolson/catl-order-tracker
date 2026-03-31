@@ -48,6 +48,20 @@ export default function CustomerDetail() {
     enabled: !!id,
   });
 
+  const estimatesQuery = useQuery({
+    queryKey: ["customer_estimates", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("estimates")
+        .select("*, base_models:base_model_id(name, short_name), manufacturers:manufacturer_id(name, short_name)")
+        .eq("customer_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
   const customer = customerQuery.data;
   const orders = ordersQuery.data || [];
 
@@ -247,6 +261,56 @@ export default function CustomerDetail() {
                 <span className="text-[15px] font-semibold text-foreground shrink-0">{fmtCurrency(order.customer_price)}</span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Estimates */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-2.5" style={{ backgroundColor: "#F5F5F0" }}>
+          <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>
+            Estimates ({(estimatesQuery.data || []).length})
+          </h3>
+        </div>
+        {(estimatesQuery.data || []).length === 0 ? (
+          <p className="text-sm text-muted-foreground p-4">No estimates yet.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {(estimatesQuery.data || []).map((est: any) => {
+              const bm = est.base_models as any;
+              const mfg = est.manufacturers as any;
+              const isConverted = est.converted_to_order || !!est.order_id;
+              return (
+                <div
+                  key={est.id}
+                  onClick={() => navigate(`/estimates/${est.id}`)}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {est.estimate_number && (
+                        <span className="text-[12px] font-bold" style={{ color: "#F3D12A" }}>{est.estimate_number}</span>
+                      )}
+                      <span className="text-[13px] font-medium" style={{ color: "#0E2646" }}>
+                        {bm?.name || est.build_shorthand || "Estimate"}
+                      </span>
+                      {isConverted ? (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.1)", color: "#0E2646" }}>Ordered</span>
+                      ) : (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#B8930A" }}>Open</span>
+                      )}
+                      {est.qb_sync_status === "synced" && (
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>QB ✓</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      v{est.version_number}{est.label ? ` — ${est.label}` : ""} · {mfg?.short_name || ""} · {fmtDate(est.estimate_date || est.created_at?.split("T")[0])}
+                    </p>
+                  </div>
+                  <span className="text-[15px] font-semibold text-foreground shrink-0">{fmtCurrency(est.total_price)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

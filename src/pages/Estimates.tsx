@@ -332,9 +332,9 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
         style={{ background: "#F5F5F0" }}
       >
         <button
-          onClick={() => { if (hasOrder) navigate(`/orders/${estimate.order_id}`); }}
+          onClick={() => navigate(`/estimates/${estimate.id}`)}
           className="flex-1 text-left min-w-0"
-          style={{ cursor: hasOrder ? "pointer" : "default" }}
+          style={{ cursor: "pointer" }}
         >
           <div className="flex items-center gap-1.5 flex-wrap">
             {displayNumber && (
