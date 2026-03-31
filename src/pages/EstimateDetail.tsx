@@ -99,8 +99,11 @@ export default function EstimateDetail() {
                   {estimate.contract_name || baseModel?.name || estimate.build_shorthand || "Estimate"}
                 </h1>
               </div>
-              <p className="text-[12px] mt-0.5" style={{ color: "rgba(240,240,240,0.6)" }}>
-                {customer?.name || "No customer"} · {manufacturer?.name || "No manufacturer"} · v{estimate.version_number}
+              <p className="text-[14px] font-semibold mt-1" style={{ color: "rgba(240,240,240,0.85)" }}>
+                {customer?.name || "No customer"}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: "rgba(240,240,240,0.5)" }}>
+                {manufacturer?.name || "No manufacturer"} · v{estimate.version_number}
                 {estimate.label && ` · "${estimate.label}"`}
               </p>
             </div>
@@ -185,9 +188,9 @@ export default function EstimateDetail() {
       {customer && (
         <div className="rounded-xl border border-border bg-card p-4 mb-4">
           <p className="text-[11px] font-medium uppercase tracking-wider mb-2" style={{ color: "#717182" }}>Customer</p>
-          <p className="text-[14px] font-semibold" style={{ color: "#0E2646" }}>{customer.name}</p>
-          {customer.email && <p className="text-[12px] text-muted-foreground">{customer.email}</p>}
-          {customer.phone && <p className="text-[12px] text-muted-foreground">{customer.phone}</p>}
+          <p className="text-[18px] font-bold" style={{ color: "#0E2646" }}>{customer.name}</p>
+          {customer.email && <p className="text-[13px] text-muted-foreground mt-1">{customer.email}</p>}
+          {customer.phone && <p className="text-[13px] text-muted-foreground">{customer.phone}</p>}
         </div>
       )}
 
