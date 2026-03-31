@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
-import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText, Users, Search } from "lucide-react";
+import { Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink, FileText, Users, Search, Trash2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -863,19 +863,44 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
                   const cfg = slotConfig[slotType] || { label: slotType, color: "#717182" };
                   const isDriveLink = driveUrl && (driveUrl.includes("drive.google.com") || driveUrl.includes("docs.google.com"));
 
+                  // Sync status for QB-linked slots
+                  const qbSyncMap: Record<string, string | undefined> = {
+                    catl_estimate: undefined, // handled via estimates table
+                    catl_purchase_order: order.qb_po_sync_status,
+                    qb_bill: order.qb_bill_sync_status,
+                    catl_customer_invoice: order.qb_invoice_sync_status,
+                  };
+                  const syncStatus = qbSyncMap[slotType];
+                  const isOutOfSync = syncStatus === "out_of_sync";
+                  const isVoided = syncStatus === "voided";
+
+                  // Can this slot be voided in QB?
+                  const qbVoidMap: Record<string, string | undefined> = {
+                    catl_purchase_order: "purchaseorder",
+                    qb_bill: "bill",
+                    catl_customer_invoice: "invoice",
+                  };
+                  const voidDocType = qbVoidMap[slotType];
+                  const canVoid = isFilled && voidDocType && !isVoided;
+
                   return (
                     <div
                       key={slotType}
-                      className="flex items-center gap-2 rounded-lg px-2.5 py-2"
-                      style={{ backgroundColor: isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.06)" }}
+                      className="flex items-center gap-1.5 rounded-lg px-2.5 py-2"
+                      style={{ 
+                        backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.06)",
+                        border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "none",
+                      }}
                     >
                       <div
                         className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: isFilled ? "#27AE60" : "#D1D5DB" }}
+                        style={{ backgroundColor: isVoided ? "#D4183D" : isOutOfSync ? "#F3A12A" : isFilled ? "#27AE60" : "#D1D5DB" }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>
                           {cfg.label}
+                          {isOutOfSync && <span className="text-[8px] ml-1" style={{ color: "#B8930A" }}>⚡ out of sync</span>}
+                          {isVoided && <span className="text-[8px] ml-1" style={{ color: "#D4183D" }}>✕ voided</span>}
                         </p>
                         {isFilled && slot.qb_doc_number && (
                           <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>
@@ -895,7 +920,26 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
                           <ExternalLink size={10} /> View
                         </a>
                       )}
-                      {!isFilled && (
+                      {canVoid && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Remove QB ${cfg.label}? This will delete it from QuickBooks.`)) return;
+                            try {
+                              const { data, error } = await supabase.functions.invoke("qb-void-document", {
+                                body: { order_id: order.id, doc_type: voidDocType, action: "void_in_qb" },
+                              });
+                              if (error) throw error;
+                              if (data?.success) { toast.success(`${cfg.label} removed from QuickBooks`); slotsQuery.refetch(); }
+                              else { toast.error(data?.error || "Void failed"); }
+                            } catch (err: any) { toast.error(err.message || "Void failed"); }
+                          }}
+                          className="p-1 rounded hover:bg-red-50 shrink-0"
+                          title={`Remove ${cfg.label} from QuickBooks`}
+                        >
+                          <Trash2 size={10} style={{ color: "#D4183D" }} />
+                        </button>
+                      )}
+                      {!isFilled && !isVoided && (
                         <span className="text-[10px] text-muted-foreground shrink-0">—</span>
                       )}
                     </div>
