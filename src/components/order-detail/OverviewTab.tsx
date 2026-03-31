@@ -803,17 +803,37 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Document Chain</div>
-          {order.google_drive_folder_url && (
-            <a
-              href={order.google_drive_folder_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-medium hover:underline"
-              style={{ color: "#55BAAA" }}
-            >
-              <ExternalLink size={11} /> Drive Folder
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            {(order.qb_estimate_id || order.qb_po_id || order.qb_bill_id || order.qb_invoice_id) && (
+              <button
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke("qb-check-sync", { body: { order_id: order.id } });
+                    if (error) throw error;
+                    if (data?.success) {
+                      toast[data.has_issues ? "error" : "success"](data.summary);
+                      slotsQuery.refetch();
+                    } else { toast.error(data?.error || "Sync check failed"); }
+                  } catch (err: any) { toast.error(err.message || "Sync check failed"); }
+                }}
+                className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full hover:opacity-80"
+                style={{ border: "1px solid #717182", color: "#717182" }}
+              >
+                Check QB Sync
+              </button>
+            )}
+            {order.google_drive_folder_url && (
+              <a
+                href={order.google_drive_folder_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] font-medium hover:underline"
+                style={{ color: "#55BAAA" }}
+              >
+                <ExternalLink size={11} /> Drive Folder
+              </a>
+            )}
+          </div>
         </div>
         {(() => {
           const slotConfig: Record<string, { label: string; color: string }> = {
