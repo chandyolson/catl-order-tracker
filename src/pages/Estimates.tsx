@@ -296,13 +296,28 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
   };
   const status = statusStyles[estimate.status] || statusStyles.open;
 
+  const hasQBEstimate = !!estimate.qb_estimate_id;
+
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("estimates").delete().eq("id", estimate.id);
-      if (error) throw error;
+    mutationFn: async (action: string) => {
+      if (hasQBEstimate) {
+        // Use the void function which handles QB deletion
+        const { data, error } = await supabase.functions.invoke("qb-void-estimate", {
+          body: { estimate_id: estimate.id, action },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || "Delete failed");
+      } else {
+        // No QB link — just delete locally
+        const { error } = await supabase.from("estimates").delete().eq("id", estimate.id);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
-      toast.success(`Estimate${displayNumber ? ` ${displayNumber}` : ""} deleted`);
+    onSuccess: (_, action) => {
+      const msg = action === "void_in_qb" 
+        ? `Estimate${displayNumber ? ` ${displayNumber}` : ""} deleted from app and QuickBooks`
+        : `Estimate${displayNumber ? ` ${displayNumber}` : ""} deleted`;
+      toast.success(msg);
       queryClient.invalidateQueries({ queryKey: ["open_estimates"] });
     },
     onError: (err: any) => {
@@ -331,6 +346,16 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
             {isConverted && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.1)", color: "#0E2646" }}>
                 Ordered
+              </span>
+            )}
+            {estimate.qb_sync_status === "out_of_sync" && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,161,42,0.15)", color: "#B8930A" }}>
+                QB out of sync
+              </span>
+            )}
+            {estimate.qb_sync_status === "synced" && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>
+                QB ✓
               </span>
             )}
           </div>
@@ -391,17 +416,32 @@ function EstimateRow({ estimate, navigate }: { estimate: any; navigate: (path: s
             <AlertDialogTitle className="text-base">Delete estimate?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
               {displayNumber ? `Estimate ${displayNumber}` : "This estimate"} — {modelName} ({fmtCurrency(estimate.total_price)}) will be permanently deleted.
+              {hasQBEstimate && (
+                <span className="block mt-2 font-medium" style={{ color: "#D4183D" }}>
+                  This estimate exists in QuickBooks as #{estimate.qb_doc_number || estimate.qb_estimate_id}.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className={hasQBEstimate ? "flex-col gap-2 sm:flex-col" : ""}>
             <AlertDialogCancel className="text-sm">Cancel</AlertDialogCancel>
+            {hasQBEstimate && (
+              <AlertDialogAction
+                onClick={() => deleteMutation.mutate("void_in_qb")}
+                disabled={deleteMutation.isPending}
+                className="text-sm"
+                style={{ backgroundColor: "#D4183D", color: "#FFFFFF" }}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete from app AND QuickBooks"}
+              </AlertDialogAction>
+            )}
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate()}
+              onClick={() => deleteMutation.mutate("delete_local_only")}
               disabled={deleteMutation.isPending}
               className="text-sm"
-              style={{ backgroundColor: "#D4183D", color: "#FFFFFF" }}
+              style={hasQBEstimate ? { backgroundColor: "#717182", color: "#FFFFFF" } : { backgroundColor: "#D4183D", color: "#FFFFFF" }}
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? "Deleting..." : hasQBEstimate ? "Delete from app only (keep in QB)" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
