@@ -6,12 +6,7 @@ import { Search, RefreshCw, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-function fmtCurrency(n: number | null | undefined) {
-  if (n == null) return "$0";
-  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
-
-type SortKey = "name" | "company" | "location" | "orders" | "revenue";
+type SortKey = "name" | "company" | "location" | "orders" | "estimates";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 50;
@@ -110,7 +105,7 @@ export default function Customers() {
                 { key: "company" as SortKey, label: "Company" },
                 { key: "location" as SortKey, label: "Location" },
                 { key: "orders" as SortKey, label: "Orders" },
-                { key: "revenue" as SortKey, label: "Revenue" },
+                { key: "estimates" as SortKey, label: "Estimates" },
               ].map((h) => (
                 <button key={h.key} onClick={() => toggleSort(h.key)} className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-left" style={{ color: "rgba(240,240,240,0.6)" }}>
                   {h.label} <SortIcon col={h.key} />
@@ -138,7 +133,7 @@ export default function Customers() {
                   {[c.address_city, c.address_state].filter(Boolean).join(", ") || "—"}
                 </span>
                 <span className="text-[13px] text-foreground">{c.order_count}</span>
-                <span className="text-[13px] font-medium text-foreground">{fmtCurrency(c.total_revenue)}</span>
+                <span className="text-[13px] text-foreground">{c.estimate_count}</span>
                 <div className="text-[12px] text-muted-foreground truncate">
                   {c.email || c.phone || "—"}
                 </div>
