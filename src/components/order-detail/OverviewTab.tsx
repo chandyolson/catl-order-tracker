@@ -818,61 +818,121 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
         {(() => {
           const slotConfig: Record<string, { label: string; color: string }> = {
             catl_estimate: { label: "CATL Estimate", color: "#F3D12A" },
-            catl_purchase_order: { label: "CATL Purchase Order", color: "#0E2646" },
+            catl_purchase_order: { label: "Purchase Order", color: "#0E2646" },
             moly_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
+            signed_moly_so: { label: "Signed SO ✓", color: "#27AE60" },
             moly_invoice: { label: "Mfg Invoice", color: "#8B5CF6" },
             qb_bill: { label: "QB Bill", color: "#EF4444" },
             catl_customer_invoice: { label: "Customer Invoice", color: "#27AE60" },
           };
-          const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "moly_invoice", "qb_bill", "catl_customer_invoice"];
+          const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "signed_moly_so", "moly_invoice", "qb_bill", "catl_customer_invoice"];
           const slots = slotsQuery.data || [];
+          const molySlot = slots.find((s: any) => s.slot_type === "moly_sales_order");
+          const signedSlot = slots.find((s: any) => s.slot_type === "signed_moly_so");
+          const molyFilled = molySlot?.is_filled;
+          const signedFilled = signedSlot?.is_filled;
 
           return (
-            <div className="grid grid-cols-2 gap-2">
-              {slotOrder.map((slotType) => {
-                const slot = slots.find((s: any) => s.slot_type === slotType);
-                const isFilled = slot?.is_filled;
-                const doc = slot?.order_documents as any;
-                const driveUrl = doc?.file_url;
-                const cfg = slotConfig[slotType] || { label: slotType, color: "#717182" };
-                const isDriveLink = driveUrl && (driveUrl.includes("drive.google.com") || driveUrl.includes("docs.google.com"));
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {slotOrder.map((slotType) => {
+                  const slot = slots.find((s: any) => s.slot_type === slotType);
+                  const isFilled = slot?.is_filled;
+                  const doc = slot?.order_documents as any;
+                  const driveUrl = doc?.file_url;
+                  const cfg = slotConfig[slotType] || { label: slotType, color: "#717182" };
+                  const isDriveLink = driveUrl && (driveUrl.includes("drive.google.com") || driveUrl.includes("docs.google.com"));
 
-                return (
-                  <div
-                    key={slotType}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2"
-                    style={{ backgroundColor: isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.06)" }}
-                  >
+                  return (
                     <div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: isFilled ? "#27AE60" : "#D1D5DB" }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>
-                        {cfg.label}
-                      </p>
-                      {isFilled && slot.qb_doc_number && (
-                        <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>
+                      key={slotType}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+                      style={{ backgroundColor: isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.06)" }}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: isFilled ? "#27AE60" : "#D1D5DB" }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>
+                          {cfg.label}
+                        </p>
+                        {isFilled && slot.qb_doc_number && (
+                          <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>
+                        )}
+                        {slotType === "signed_moly_so" && isFilled && slot.comparison_notes && (
+                          <p className="text-[9px] text-muted-foreground">{slot.comparison_notes}</p>
+                        )}
+                      </div>
+                      {isFilled && isDriveLink && (
+                        <a
+                          href={driveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-0.5 text-[10px] font-medium shrink-0 hover:underline"
+                          style={{ color: "#55BAAA" }}
+                        >
+                          <ExternalLink size={10} /> View
+                        </a>
+                      )}
+                      {!isFilled && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">—</span>
                       )}
                     </div>
-                    {isFilled && isDriveLink && (
-                      <a
-                        href={driveUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-0.5 text-[10px] font-medium shrink-0 hover:underline"
-                        style={{ color: "#55BAAA" }}
-                      >
-                        <ExternalLink size={10} /> View
-                      </a>
-                    )}
-                    {!isFilled && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">—</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {/* Comparison warning */}
+              {molySlot?.comparison_status === "mismatch" && (
+                <div className="mt-2 rounded-lg p-2.5" style={{ backgroundColor: "rgba(212,24,61,0.06)", border: "1px solid rgba(212,24,61,0.15)" }}>
+                  <p className="text-[11px] font-semibold" style={{ color: "#D4183D" }}>⚠ Spec mismatch found — {molySlot.comparison_notes}</p>
+                </div>
+              )}
+              {molySlot?.comparison_status === "match" && !signedFilled && (
+                <div className="mt-2 rounded-lg p-2.5" style={{ backgroundColor: "rgba(39,174,96,0.06)", border: "1px solid rgba(39,174,96,0.15)" }}>
+                  <p className="text-[11px] font-semibold" style={{ color: "#27AE60" }}>✓ Specs match — ready to accept</p>
+                </div>
+              )}
+              {/* Action buttons */}
+              {molyFilled && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { data, error } = await supabase.functions.invoke("compare-documents", { body: { order_id: order.id } });
+                        if (error) throw error;
+                        if (data?.success) {
+                          toast.success(data.summary.has_issues 
+                            ? `Comparison done: ${data.summary.mismatches} mismatch(es), ${data.summary.moly_only} Moly-only, ${data.summary.catl_only} PO-only`
+                            : `All ${data.summary.matches} specs match!`);
+                          slotsQuery.refetch();
+                        } else { toast.error(data?.error || "Comparison failed"); }
+                      } catch (err: any) { toast.error(err.message || "Compare failed"); }
+                    }}
+                    className="flex-1 text-[12px] font-semibold py-2 rounded-full active:scale-[0.97] transition-transform"
+                    style={{ border: "2px solid #3B82F6", color: "#3B82F6" }}
+                  >
+                    Compare SO vs PO
+                  </button>
+                  {!signedFilled && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data, error } = await supabase.functions.invoke("accept-sales-order", { body: { order_id: order.id, signer_name: "Tim Olson" } });
+                          if (error) throw error;
+                          if (data?.success) { toast.success("Sales Order accepted!"); slotsQuery.refetch(); }
+                          else { toast.error(data?.error || "Accept failed"); }
+                        } catch (err: any) { toast.error(err.message || "Accept failed"); }
+                      }}
+                      className="flex-1 text-[12px] font-semibold py-2 rounded-full active:scale-[0.97] transition-transform"
+                      style={{ backgroundColor: "#27AE60", color: "#FFFFFF" }}
+                    >
+                      Accept & Sign SO
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           );
         })()}
       </div>
