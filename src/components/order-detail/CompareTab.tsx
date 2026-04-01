@@ -79,7 +79,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
   return (
     <div className="space-y-5">
       {/* Document selectors + Run button */}
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-end">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
         <div>
           <label className="text-[11px] font-medium uppercase tracking-wider block mb-1" style={{ color: "#717182" }}>Document A</label>
           <select value={leftSlot} onChange={(e) => setLeftSlot(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card outline-none">
@@ -95,7 +95,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
         <button
           onClick={() => compareMutation.mutate()}
           disabled={compareMutation.isPending || (!leftHasData && !rightHasData)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-bold active:scale-[0.97] transition-transform disabled:opacity-50 mb-0.5"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-bold active:scale-[0.97] transition-transform disabled:opacity-50 mt-5"
           style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
         >
           <RefreshCw size={12} className={compareMutation.isPending ? "animate-spin" : ""} />

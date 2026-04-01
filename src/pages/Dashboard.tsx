@@ -540,7 +540,7 @@ export default function Dashboard() {
       {/* RIGHT — Chat */}
       <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0"
         style={{ borderLeft: "0.5px solid #D4D4D0", background: "#fff" }}>
-        <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+        <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

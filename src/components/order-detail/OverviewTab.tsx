@@ -321,7 +321,7 @@ export default function OverviewTab({
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{paperwork.length})</h3>
             <button onClick={() => setShowAddTask(!showAddTask)} className="p-1 rounded-full hover:bg-white/50"><Plus size={14} style={{ color: "#55BAAA" }} /></button>
           </div>
-          <div className="p-3 space-y-1 max-h-[500px] overflow-y-auto">
+          <div className="p-3 space-y-1">
             {showAddTask && (
               <div className="flex items-center gap-2 mb-2 px-1">
                 <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="New task..." className="flex-1 border border-border rounded-lg px-3 py-2 text-[13px] outline-none text-[16px]" autoFocus onKeyDown={(e) => { if (e.key === "Enter" && newTaskTitle.trim()) addTaskMutation.mutate(newTaskTitle.trim()); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); }}} />
@@ -359,7 +359,7 @@ export default function OverviewTab({
           <div className="px-4 py-2.5" style={{ backgroundColor: "#F5F5F0" }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Timeline</h3>
           </div>
-          <div className="p-3 max-h-[400px] overflow-y-auto">
+          <div className="p-3">
             {events.length === 0 ? <p className="text-[12px] text-muted-foreground px-2 py-4">No events yet</p> : (
               <div className="space-y-0">
                 {events.map((ev, i) => {
@@ -419,16 +419,18 @@ export default function OverviewTab({
                 const qbSync: Record<string, string | undefined> = { catl_purchase_order: order.qb_po_sync_status, qb_bill: order.qb_bill_sync_status, catl_customer_invoice: order.qb_invoice_sync_status };
                 const isOutOfSync = qbSync[slotType] === "out_of_sync";
                 const isVoided = qbSync[slotType] === "voided";
+                const Wrapper = isFilled && fileUrl ? "a" : "div";
+                const wrapperProps = isFilled && fileUrl ? { href: fileUrl, target: "_blank", rel: "noopener noreferrer" } : {};
                 return (
-                  <div key={slotType} className="flex items-center gap-2 rounded-lg px-2.5 py-2" style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
+                  <Wrapper key={slotType} {...wrapperProps as any} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-2 transition-colors", isFilled && fileUrl && "cursor-pointer hover:opacity-80")} style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isFilled ? "rgba(39,174,96,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isVoided ? "#D4183D" : isOutOfSync ? "#F3A12A" : isFilled ? "#27AE60" : "#D1D5DB" }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>{cfg.label}{isOutOfSync && <span className="text-[8px] ml-1" style={{ color: "#B8930A" }}>⚡</span>}{isVoided && <span className="text-[8px] ml-1" style={{ color: "#D4183D" }}>✕</span>}</p>
                       {isFilled && slot.qb_doc_number && <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>}
                     </div>
-                    {isFilled && isDriveLink && <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-0.5 text-[10px] font-medium px-2 py-1 rounded-full hover:underline" style={{ color: "#55BAAA", backgroundColor: "rgba(85,186,170,0.08)" }}><ExternalLink size={9} /> View</a>}
+                    {isFilled && fileUrl && <ExternalLink size={10} style={{ color: "#55BAAA" }} className="shrink-0" />}
                     {!isFilled && !isVoided && <span className="text-[10px] text-muted-foreground">—</span>}
-                  </div>
+                  </Wrapper>
                 );
               })}
             </div>

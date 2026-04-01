@@ -593,7 +593,7 @@ export default function EditOrder() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
-    if (!buildShorthand.trim()) e.buildShorthand = "Required";
+    // build shorthand is optional
     if (pivotChecked) {
       if (!pivotType) e.pivotType = "Select pivot type";
       if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
