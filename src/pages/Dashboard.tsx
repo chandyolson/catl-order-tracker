@@ -328,7 +328,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
+    <div className="flex gap-3 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0, background: "#F5F5F0" }}>
 
       {/* LEFT */}
       <div className="flex-1 min-w-0 flex flex-col" style={{ background: "#F5F5F0" }}>
@@ -576,8 +576,8 @@ export default function Dashboard() {
       </div>
 
       {/* RIGHT — Chat */}
-      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0"
-        style={{ borderLeft: "0.5px solid #D4D4D0", background: "#fff" }}>
+      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 rounded-xl overflow-hidden my-3 mr-3"
+        style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
         <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
