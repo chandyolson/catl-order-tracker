@@ -319,7 +319,7 @@ export default function OverviewTab({
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#F5F5F0" }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{paperwork.length})</h3>
-            <button onClick={() => setShowAddTask(!showAddTask)} className="p-1 rounded-full hover:bg-white/50"><Plus size={14} style={{ color: "#55BAAA" }} /></button>
+            <button onClick={() => setShowAddTask(!showAddTask)} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-[0.95] transition-transform" style={{ backgroundColor: "#55BAAA", color: "#fff" }}><Plus size={12} /> Add task</button>
           </div>
           <div className="p-3 space-y-1">
             {showAddTask && (
@@ -455,24 +455,38 @@ export default function OverviewTab({
                 const doc = slot?.order_documents as any;
                 const fileUrl = doc?.file_url;
                 const isPending = isFilled && !fileUrl;
+                const isComplete = isFilled && !!fileUrl;
                 const cfg = slotConfig[slotType] || { label: slotType, color: "#717182" };
                 const isDriveLink = fileUrl && (fileUrl.includes("drive.google.com") || fileUrl.includes("docs.google.com"));
                 const qbSync: Record<string, string | undefined> = { catl_purchase_order: order.qb_po_sync_status, qb_bill: order.qb_bill_sync_status, catl_customer_invoice: order.qb_invoice_sync_status };
                 const isOutOfSync = qbSync[slotType] === "out_of_sync";
                 const isVoided = qbSync[slotType] === "voided";
-                const Wrapper = isFilled && fileUrl ? "a" : "div";
-                const wrapperProps = isFilled && fileUrl ? { href: fileUrl, target: "_blank", rel: "noopener noreferrer" } : {};
                 return (
-                  <Wrapper key={slotType} {...wrapperProps as any} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-2 transition-colors", isFilled && fileUrl && "cursor-pointer hover:opacity-80")} style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isFilled && fileUrl ? "rgba(39,174,96,0.06)" : isPending ? "rgba(243,209,42,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isVoided ? "#D4183D" : isOutOfSync ? "#F3A12A" : isFilled && fileUrl ? "#27AE60" : isPending ? "#F3D12A" : "#D1D5DB" }} />
+                  <div key={slotType} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors" style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isComplete ? "rgba(39,174,96,0.06)" : isPending ? "rgba(243,209,42,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
+                    {/* Checkbox */}
+                    <div className="w-5 h-5 rounded flex items-center justify-center shrink-0" style={{
+                      backgroundColor: isComplete ? "#27AE60" : isPending ? "#F3D12A" : isVoided ? "#D4183D" : "transparent",
+                      border: isComplete || isPending || isVoided ? "none" : "2px solid #D1D5DB",
+                    }}>
+                      {isComplete && <Check size={12} color="#fff" strokeWidth={3} />}
+                      {isPending && <span className="text-[10px] text-white font-bold">!</span>}
+                      {isVoided && <X size={10} color="#fff" strokeWidth={3} />}
+                    </div>
+                    {/* Label */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate" style={{ color: cfg.color }}>{cfg.label}{isOutOfSync && <span className="text-[8px] ml-1" style={{ color: "#B8930A" }}>⚡</span>}{isVoided && <span className="text-[8px] ml-1" style={{ color: "#D4183D" }}>✕</span>}</p>
-                      {isFilled && slot.qb_doc_number && <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>}
+                      <p className="text-[12px] font-semibold truncate" style={{ color: isComplete ? "#0E2646" : cfg.color }}>{cfg.label}{isOutOfSync && <span className="text-[9px] ml-1" style={{ color: "#B8930A" }}>⚡ out of sync</span>}</p>
+                      {isComplete && slot.qb_doc_number && <p className="text-[10px] text-muted-foreground">#{slot.qb_doc_number}</p>}
                       {isPending && <p className="text-[10px]" style={{ color: "#B8930A" }}>In QB — click Sync to download</p>}
                     </div>
-                    {isFilled && fileUrl && <ExternalLink size={10} style={{ color: "#55BAAA" }} className="shrink-0" />}
+                    {/* Clickable file icon */}
+                    {isComplete && fileUrl && (
+                      <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-white/80 transition-colors active:scale-[0.95]" style={{ backgroundColor: "rgba(85,186,170,0.1)" }}>
+                        <FileText size={14} style={{ color: "#55BAAA" }} />
+                        <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
+                      </a>
+                    )}
                     {!isFilled && !isVoided && <span className="text-[10px] text-muted-foreground">—</span>}
-                  </Wrapper>
+                  </div>
                 );
               })}
             </div>

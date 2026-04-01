@@ -24,3 +24,27 @@
 17. **Team assignment system** — assigned_to field on tasks, @mention in chat, notification bar for incoming assignments
 18. **Click-to-call integration** — call buttons throughout the app, AI-initiated calls
 
+
+## Email Automation Pipeline (TO BUILD)
+
+### Phase 1: Auto-capture email attachments
+- Monitor Gmail for Moly sales orders (from: orders@molymfg.com, attachment: CATL*.pdf)
+- Monitor Gmail for Moly invoices (from: donotreply@molymfg.com, attachment: *_SO_*IN_*.PDF)
+- Auto-save PDFs to correct Drive folder based on contract number in email body/subject
+- Auto-fill document chain slots
+- Auto-compare documents and flag mismatches
+
+### Phase 2: Email task extraction
+- Parse equipment-related emails for action items
+- Create tasks linked to the correct order (match by contract number)
+- General equipment tasks show on dashboard
+- Order-specific tasks show in that order's task list
+
+### Phase 3: Notifications
+- Alert Tim when documents don't match (comparison failures)
+- Alert when paperwork is missing (e.g. order has PO but no bill after X days)
+- Alert when Moly invoice arrives (equipment may be shipping)
+
+### Moly Email Patterns (confirmed from Gmail)
+- Sales Orders: from orders@molymfg.com, subject "Ranch SILENCER WB Order# CATL0414021626", attachment "CATL/CATL0414021626.pdf", body contains contract number "44274"
+- Invoices: from donotreply@molymfg.com, subject "Moly Manufacturing, LLC Invoice4/1/20260044270", attachment "000002480_SO_0044270IN_20260401_000.PDF"
