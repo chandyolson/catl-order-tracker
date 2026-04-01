@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Tasks from "./pages/Tasks";
+import VoiceMemos from "./pages/VoiceMemos";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import NewOrder from "./pages/NewOrder";
@@ -32,7 +35,10 @@ const App = () => (
       <BrowserRouter>
         <Layout>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/voice-memos" element={<VoiceMemos />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/new" element={<NewOrder />} />
             <Route path="/orders/:id" element={<OrderDetail />} />

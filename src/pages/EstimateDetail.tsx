@@ -48,8 +48,8 @@ export default function EstimateDetail() {
   const isSynced = estimate.qb_sync_status === "synced";
   const isOutOfSync = estimate.qb_sync_status === "out_of_sync";
 
-  const options = lineItems.filter((li: any) => li.type === "option");
-  const baseItem = lineItems.find((li: any) => li.type === "base_model");
+  const options = (lineItems as any[]).filter((li: any) => li.type === "option");
+  const baseItem = (lineItems as any[]).find((li: any) => li.type === "base_model");
 
   const subtotal = estimate.subtotal || estimate.total_price || 0;
   const discount = estimate.discount_amount || 0;
