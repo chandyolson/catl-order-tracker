@@ -94,7 +94,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <NavItem
             key={item.path}
             item={item}
-            active={location.pathname === item.path}
+            active={location.pathname === item.path || (item.path === "/dashboard" && location.pathname === "/")}
             onClick={() => {
               navigate(item.path);
               setDrawerOpen(false);
