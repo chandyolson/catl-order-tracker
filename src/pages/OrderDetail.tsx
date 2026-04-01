@@ -21,6 +21,7 @@ import OverviewTab from "@/components/order-detail/OverviewTab";
 import EstimatesTab from "@/components/order-detail/EstimatesTab";
 import FinancialsTab from "@/components/order-detail/FinancialsTab";
 import DocumentsTab from "@/components/order-detail/DocumentsTab";
+import CompareTab from "@/components/order-detail/CompareTab";
 import ActivityTab from "@/components/order-detail/ActivityTab";
 
 function fmtCurrency(n: number | null | undefined) {
@@ -40,7 +41,7 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "financials">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "financials" | "compare">("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
 
@@ -234,6 +235,7 @@ export default function OrderDetail() {
     { key: "overview" as const, label: "Overview" },
     ...(hasEstimates ? [{ key: "estimates" as const, label: "Estimates" }] : []),
     { key: "financials" as const, label: "Financials 🔒" },
+    { key: "compare" as const, label: "Compare" },
   ];
 
   const keyDates = [
@@ -244,7 +246,7 @@ export default function OrderDetail() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto pb-32 overflow-x-hidden">
+    <div className="max-w-5xl mx-auto pb-32 overflow-x-hidden">
       {/* ─── HEADER — Navy Card ──────────────────────────── */}
       <div className="rounded-xl overflow-hidden mb-5" style={{ backgroundColor: "#0E2646" }}>
         {/* Top section */}
@@ -397,32 +399,17 @@ export default function OrderDetail() {
 
       {/* ─── TAB CONTENT ─────────────────────────────────── */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
-          <OverviewTab
-            order={order}
-            customer={customer}
-            manufacturer={manufacturer}
-            baseModel={baseModelQuery.data}
-            paperwork={paperworkQuery.data || []}
-            margin={margin}
-            marginColor={marginColor}
-          />
-          {/* Documents inline */}
-          <DocumentsTab
-            orderId={id!}
-            molyContractNumber={(order as any).moly_contract_number}
-            driveFolderUrl={order.google_drive_folder_url}
-          />
-          {/* Activity inline */}
-          <ActivityTab
-            orderId={id!}
-            docs={paperworkQuery.data || []}
-            events={timelineQuery.data || []}
-            changes={changeOrdersQuery.data || []}
-            order={order}
-            queryClient={queryClient}
-          />
-        </div>
+        <OverviewTab
+          order={order}
+          customer={customer}
+          manufacturer={manufacturer}
+          baseModel={baseModelQuery.data}
+          paperwork={paperworkQuery.data || []}
+          margin={margin}
+          marginColor={marginColor}
+          events={timelineQuery.data || []}
+          queryClient={queryClient}
+        />
       )}
       {activeTab === "estimates" && (
         <EstimatesTab
@@ -438,6 +425,9 @@ export default function OrderDetail() {
           margin={margin}
           marginColor={marginColor}
         />
+      )}
+      {activeTab === "compare" && (
+        <CompareTab orderId={id!} order={order} />
       )}
 
       {/* ─── DELETE CONFIRMATION DIALOG ──────────────────── */}
