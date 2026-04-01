@@ -97,6 +97,120 @@ export type Database = {
           },
         ]
       }
+      call_log: {
+        Row: {
+          ai_summary: string | null
+          audio_file_name: string | null
+          audio_file_size_bytes: number | null
+          audio_storage_path: string | null
+          call_date: string | null
+          call_sentiment: string | null
+          commitments: Json | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name_detected: string | null
+          direction: string | null
+          duration_seconds: number | null
+          equipment_mentioned: Json | null
+          freight_details: string | null
+          id: string
+          match_confidence: number | null
+          match_method: string | null
+          next_action: string | null
+          order_id: string | null
+          phone_number: string | null
+          phone_number_normalized: string | null
+          pricing_discussed: Json | null
+          processing_error: string | null
+          processing_status: string | null
+          timeline_entry_id: string | null
+          transcript: string | null
+          transcript_segments: Json | null
+          transcription_confidence: number | null
+          transcription_model: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          audio_file_name?: string | null
+          audio_file_size_bytes?: number | null
+          audio_storage_path?: string | null
+          call_date?: string | null
+          call_sentiment?: string | null
+          commitments?: Json | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name_detected?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          equipment_mentioned?: Json | null
+          freight_details?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          next_action?: string | null
+          order_id?: string | null
+          phone_number?: string | null
+          phone_number_normalized?: string | null
+          pricing_discussed?: Json | null
+          processing_error?: string | null
+          processing_status?: string | null
+          timeline_entry_id?: string | null
+          transcript?: string | null
+          transcript_segments?: Json | null
+          transcription_confidence?: number | null
+          transcription_model?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          audio_file_name?: string | null
+          audio_file_size_bytes?: number | null
+          audio_storage_path?: string | null
+          call_date?: string | null
+          call_sentiment?: string | null
+          commitments?: Json | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name_detected?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          equipment_mentioned?: Json | null
+          freight_details?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          next_action?: string | null
+          order_id?: string | null
+          phone_number?: string | null
+          phone_number_normalized?: string | null
+          pricing_discussed?: Json | null
+          processing_error?: string | null
+          processing_status?: string | null
+          timeline_entry_id?: string | null
+          transcript?: string | null
+          transcript_segments?: Json | null
+          transcription_confidence?: number | null
+          transcription_model?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_orders: {
         Row: {
           all_applied: boolean | null
@@ -234,6 +348,30 @@ export type Database = {
           phone?: string | null
           qb_customer_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      debug_log: {
+        Row: {
+          created_at: string | null
+          function_name: string | null
+          id: number
+          message: string | null
+          step: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          function_name?: string | null
+          id?: number
+          message?: string | null
+          step?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string | null
+          id?: number
+          message?: string | null
+          step?: string | null
         }
         Relationships: []
       }
@@ -444,27 +582,38 @@ export type Database = {
           approved_date: string | null
           base_model_id: string | null
           build_shorthand: string | null
+          contract_name: string | null
+          conversion_type: string | null
+          converted_at: string | null
+          converted_to_order: boolean | null
           created_at: string | null
           customer_id: string | null
           discount_amount: number | null
           discount_type: string | null
           emailed_at: string | null
           emailed_to: string | null
+          estimate_date: string | null
           estimate_number: string | null
+          freight_estimate: number | null
           id: string
           is_approved: boolean | null
           is_current: boolean | null
           label: string | null
           line_items: Json | null
+          manufacturer_id: string | null
           notes: string | null
           order_id: string | null
           our_cost: number | null
           qb_doc_number: string | null
           qb_estimate_id: string | null
+          qb_last_modified_at: string | null
+          qb_last_pushed_at: string | null
+          qb_sync_status: string | null
           selected_options: Json | null
           signed: boolean | null
           signed_date: string | null
           status: string
+          subtotal: number | null
           tax_amount: number | null
           tax_rate: number | null
           tax_state: string | null
@@ -476,27 +625,38 @@ export type Database = {
           approved_date?: string | null
           base_model_id?: string | null
           build_shorthand?: string | null
+          contract_name?: string | null
+          conversion_type?: string | null
+          converted_at?: string | null
+          converted_to_order?: boolean | null
           created_at?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
+          estimate_date?: string | null
           estimate_number?: string | null
+          freight_estimate?: number | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
           label?: string | null
           line_items?: Json | null
+          manufacturer_id?: string | null
           notes?: string | null
           order_id?: string | null
           our_cost?: number | null
           qb_doc_number?: string | null
           qb_estimate_id?: string | null
+          qb_last_modified_at?: string | null
+          qb_last_pushed_at?: string | null
+          qb_sync_status?: string | null
           selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
           status?: string
+          subtotal?: number | null
           tax_amount?: number | null
           tax_rate?: number | null
           tax_state?: string | null
@@ -508,27 +668,38 @@ export type Database = {
           approved_date?: string | null
           base_model_id?: string | null
           build_shorthand?: string | null
+          contract_name?: string | null
+          conversion_type?: string | null
+          converted_at?: string | null
+          converted_to_order?: boolean | null
           created_at?: string | null
           customer_id?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           emailed_at?: string | null
           emailed_to?: string | null
+          estimate_date?: string | null
           estimate_number?: string | null
+          freight_estimate?: number | null
           id?: string
           is_approved?: boolean | null
           is_current?: boolean | null
           label?: string | null
           line_items?: Json | null
+          manufacturer_id?: string | null
           notes?: string | null
           order_id?: string | null
           our_cost?: number | null
           qb_doc_number?: string | null
           qb_estimate_id?: string | null
+          qb_last_modified_at?: string | null
+          qb_last_pushed_at?: string | null
+          qb_sync_status?: string | null
           selected_options?: Json | null
           signed?: boolean | null
           signed_date?: string | null
           status?: string
+          subtotal?: number | null
           tax_amount?: number | null
           tax_rate?: number | null
           tax_state?: string | null
@@ -549,6 +720,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
             referencedColumns: ["id"]
           },
           {
@@ -681,6 +859,73 @@ export type Database = {
           short_name?: string
         }
         Relationships: []
+      }
+      mfg_item_mapping: {
+        Row: {
+          base_model_id: string | null
+          comparison_key: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          item_type: string
+          manufacturer_id: string
+          mfg_item_category: string
+          mfg_item_description: string
+          notes: string | null
+          option_id: string | null
+          side: string | null
+        }
+        Insert: {
+          base_model_id?: string | null
+          comparison_key?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type: string
+          manufacturer_id: string
+          mfg_item_category: string
+          mfg_item_description: string
+          notes?: string | null
+          option_id?: string | null
+          side?: string | null
+        }
+        Update: {
+          base_model_id?: string | null
+          comparison_key?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_type?: string
+          manufacturer_id?: string
+          mfg_item_category?: string
+          mfg_item_description?: string
+          notes?: string | null
+          option_id?: string | null
+          side?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfg_item_mapping_base_model_id_fkey"
+            columns: ["base_model_id"]
+            isOneToOne: false
+            referencedRelation: "base_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mfg_item_mapping_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mfg_item_mapping_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "model_options"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       model_option_availability: {
         Row: {
@@ -1046,7 +1291,7 @@ export type Database = {
           base_model: string | null
           base_model_id: string | null
           build_description: string | null
-          build_shorthand: string
+          build_shorthand: string | null
           catl_number: string | null
           contract_name: string | null
           created_at: string | null
@@ -1079,6 +1324,9 @@ export type Database = {
           moly_contract_number: string | null
           moly_invoice_matched: boolean | null
           moly_invoice_total: number | null
+          moly_so_accepted: boolean | null
+          moly_so_accepted_at: string | null
+          moly_so_accepted_by: string | null
           notes: string | null
           notion_id: string | null
           order_number: string | null
@@ -1087,12 +1335,16 @@ export type Database = {
           paid_date: string | null
           qb_bill_doc_number: string | null
           qb_bill_id: string | null
+          qb_bill_sync_status: string | null
           qb_estimate_doc_number: string | null
           qb_estimate_id: string | null
           qb_invoice_doc_number: string | null
           qb_invoice_id: string | null
+          qb_invoice_sync_status: string | null
           qb_po_doc_number: string | null
           qb_po_id: string | null
+          qb_po_last_pushed_at: string | null
+          qb_po_sync_status: string | null
           selected_options: Json | null
           serial_number: string | null
           so_received_date: string | null
@@ -1111,7 +1363,7 @@ export type Database = {
           base_model?: string | null
           base_model_id?: string | null
           build_description?: string | null
-          build_shorthand: string
+          build_shorthand?: string | null
           catl_number?: string | null
           contract_name?: string | null
           created_at?: string | null
@@ -1144,6 +1396,9 @@ export type Database = {
           moly_contract_number?: string | null
           moly_invoice_matched?: boolean | null
           moly_invoice_total?: number | null
+          moly_so_accepted?: boolean | null
+          moly_so_accepted_at?: string | null
+          moly_so_accepted_by?: string | null
           notes?: string | null
           notion_id?: string | null
           order_number?: string | null
@@ -1152,12 +1407,16 @@ export type Database = {
           paid_date?: string | null
           qb_bill_doc_number?: string | null
           qb_bill_id?: string | null
+          qb_bill_sync_status?: string | null
           qb_estimate_doc_number?: string | null
           qb_estimate_id?: string | null
           qb_invoice_doc_number?: string | null
           qb_invoice_id?: string | null
+          qb_invoice_sync_status?: string | null
           qb_po_doc_number?: string | null
           qb_po_id?: string | null
+          qb_po_last_pushed_at?: string | null
+          qb_po_sync_status?: string | null
           selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
@@ -1176,7 +1435,7 @@ export type Database = {
           base_model?: string | null
           base_model_id?: string | null
           build_description?: string | null
-          build_shorthand?: string
+          build_shorthand?: string | null
           catl_number?: string | null
           contract_name?: string | null
           created_at?: string | null
@@ -1209,6 +1468,9 @@ export type Database = {
           moly_contract_number?: string | null
           moly_invoice_matched?: boolean | null
           moly_invoice_total?: number | null
+          moly_so_accepted?: boolean | null
+          moly_so_accepted_at?: string | null
+          moly_so_accepted_by?: string | null
           notes?: string | null
           notion_id?: string | null
           order_number?: string | null
@@ -1217,12 +1479,16 @@ export type Database = {
           paid_date?: string | null
           qb_bill_doc_number?: string | null
           qb_bill_id?: string | null
+          qb_bill_sync_status?: string | null
           qb_estimate_doc_number?: string | null
           qb_estimate_id?: string | null
           qb_invoice_doc_number?: string | null
           qb_invoice_id?: string | null
+          qb_invoice_sync_status?: string | null
           qb_po_doc_number?: string | null
           qb_po_id?: string | null
+          qb_po_last_pushed_at?: string | null
+          qb_po_sync_status?: string | null
           selected_options?: Json | null
           serial_number?: string | null
           so_received_date?: string | null
@@ -1390,6 +1656,78 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          order_id: string | null
+          priority: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string | null
+          task_type: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string | null
+          task_type?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string | null
+          task_type?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_rates: {
         Row: {
           id: string
@@ -1416,6 +1754,96 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      voice_memos: {
+        Row: {
+          ai_summary: string | null
+          audio_file_name: string | null
+          audio_file_size_bytes: number | null
+          audio_storage_path: string | null
+          commitments: Json | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name_detected: string | null
+          deadline: string | null
+          drive_file_id: string | null
+          duration_seconds: number | null
+          equipment_mentioned: Json | null
+          id: string
+          memo_type: string | null
+          order_id: string | null
+          processing_error: string | null
+          processing_status: string | null
+          recorded_by: string | null
+          source_app: string | null
+          transcript: string | null
+          transcription_confidence: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          audio_file_name?: string | null
+          audio_file_size_bytes?: number | null
+          audio_storage_path?: string | null
+          commitments?: Json | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name_detected?: string | null
+          deadline?: string | null
+          drive_file_id?: string | null
+          duration_seconds?: number | null
+          equipment_mentioned?: Json | null
+          id?: string
+          memo_type?: string | null
+          order_id?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          recorded_by?: string | null
+          source_app?: string | null
+          transcript?: string | null
+          transcription_confidence?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          audio_file_name?: string | null
+          audio_file_size_bytes?: number | null
+          audio_storage_path?: string | null
+          commitments?: Json | null
+          created_at?: string | null
+          customer_id?: string | null
+          customer_name_detected?: string | null
+          deadline?: string | null
+          drive_file_id?: string | null
+          duration_seconds?: number | null
+          equipment_mentioned?: Json | null
+          id?: string
+          memo_type?: string | null
+          order_id?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          recorded_by?: string | null
+          source_app?: string | null
+          transcript?: string | null
+          transcription_confidence?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_memos_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_memos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1468,6 +1896,7 @@ export type Database = {
           created_at: string
           customer_type: string
           email: string
+          estimate_count: number
           id: string
           name: string
           order_count: number
@@ -1477,6 +1906,7 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      normalize_phone: { Args: { raw_phone: string }; Returns: string }
       search_customers: {
         Args: { search_term: string }
         Returns: {
