@@ -305,20 +305,42 @@ export default function Dashboard() {
         </div>
 
         {/* Pipeline */}
-        <div className="mb-6">
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[2px] mb-3">Pipeline</p>
-          <div className="flex gap-1 rounded-lg overflow-hidden">
-            {pipelineStages.map(stage => {
+        <div className="bg-card border border-border rounded-xl p-5 mb-6">
+          <p className="text-accent text-[11px] font-bold uppercase tracking-[1.5px] mb-3">Order pipeline</p>
+          <div className="space-y-2">
+            {pipelineStages.filter(s => s !== "closed").map(stage => {
               const count = statusCounts[stage] || 0;
+              const maxCount = Math.max(...pipelineStages.map(s => statusCounts[s] || 0), 1);
+              const widthPercent = Math.max((count / maxCount) * 100, 0);
+              const stageColors: Record<string, string> = {
+                estimate: "hsl(var(--accent))",
+                order_pending: "hsl(210 80% 55%)",
+                building: "hsl(38 92% 50%)",
+                ready: "hsl(160 60% 45%)",
+                delivered: "hsl(var(--muted-foreground))",
+              };
               return (
                 <button
                   key={stage}
                   onClick={() => navigate(`/orders?status=${stage}`)}
-                  className={`flex-1 py-3 px-2 text-center transition-colors ${stage === maxStage ? "bg-accent text-accent-foreground" : "bg-muted/60 text-muted-foreground hover:bg-muted"}`}
-                  style={{ flexGrow: Math.max(count, 1) }}
+                  className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors w-full text-left"
                 >
-                  <p className="text-lg font-bold">{count}</p>
-                  <p className="text-[10px] uppercase tracking-wide">{stageLabels[stage]}</p>
+                  <span className="text-sm text-primary font-medium w-[140px] shrink-0">
+                    {stageLabels[stage]}
+                  </span>
+                  <div className="flex-1 h-7 bg-muted rounded-md overflow-hidden relative">
+                    <div
+                      className="h-full rounded-md transition-all duration-500"
+                      style={{
+                        width: `${widthPercent}%`,
+                        backgroundColor: stageColors[stage] || "hsl(var(--accent))",
+                        minWidth: count > 0 ? '24px' : '0px',
+                      }}
+                    />
+                  </div>
+                  <span className="text-lg font-semibold text-primary w-[40px] text-right">
+                    {count}
+                  </span>
                 </button>
               );
             })}
