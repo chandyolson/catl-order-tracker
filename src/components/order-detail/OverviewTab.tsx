@@ -403,7 +403,7 @@ export default function OverviewTab({
                     if (data?.success) {
                       const downloadCount = data.downloads ? Object.values(data.downloads).filter((d: any) => d?.success).length : 0;
                       toast[data.has_issues ? "error" : "success"](
-                        data.has_issues ? data.summary : `Synced! ${downloadCount} PDF(s) downloaded to Drive.`
+                        data.has_issues ? data.summary : `Synced! ${downloadCount} PDF(s) downloaded.`
                       );
                       slotsQuery.refetch();
                     } else {
@@ -412,6 +412,26 @@ export default function OverviewTab({
                   } catch (err: any) { toast.error(err.message); }
                   finally { btn.textContent = origText || "QB Sync"; btn.style.opacity = "1"; btn.disabled = false; }
                 }} className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: "#0E2646", color: "#F3D12A" }}>QB Sync</button>
+              )}
+              {order.google_drive_folder_id && (
+                <button onClick={async (e) => {
+                  const btn = e.currentTarget;
+                  const origText = btn.textContent;
+                  btn.textContent = "Scanning...";
+                  btn.style.opacity = "0.6";
+                  btn.disabled = true;
+                  try {
+                    const { data, error } = await supabase.functions.invoke("drive-scan-documents", { body: { order_id: order.id } });
+                    if (error) throw error;
+                    if (data?.success) {
+                      toast[data.matched > 0 ? "success" : "info"](data.summary);
+                      slotsQuery.refetch();
+                    } else {
+                      toast.error(data?.error || "Scan failed");
+                    }
+                  } catch (err: any) { toast.error(err.message); }
+                  finally { btn.textContent = origText || "Scan Drive"; btn.style.opacity = "1"; btn.disabled = false; }
+                }} className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: "#55BAAA", color: "#fff" }}>Scan Drive</button>
               )}
               {order.google_drive_folder_url ? (
                 <a href={order.google_drive_folder_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><ExternalLink size={10} /> Drive</a>
