@@ -1,135 +1,167 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
-  CheckSquare, ShoppingCart, Warehouse, Mic, Send,
-  MessageCircle, AlertTriangle,
+  CheckSquare, Warehouse, Send, MessageCircle,
+  AlertTriangle, Truck, TrendingUp, Mic, ChevronRight,
 } from "lucide-react";
 
-/* ──────── types ──────── */
 type Task = {
   id: string; title: string; description: string | null;
   status: string | null; priority: string | null; task_type: string | null;
   due_date: string | null; order_id: string | null; source_type: string | null;
   created_at: string | null;
 };
-type ChatMsg = { role: "user" | "assistant"; content: string };
+type ChatMsg = { role: "user" | "assistant"; content: string; actions?: ActionButton[] };
+type ActionButton = { label: string; route: string };
 type Order = {
   id: string; status: string; manufacturer_id: string | null; customer_id: string | null;
   from_inventory: boolean | null; qb_estimate_id: string | null; qb_po_id: string | null;
   qb_bill_id: string | null; qb_invoice_id: string | null;
   manufacturers: { name: string; short_name: string } | null;
+  base_models: { name: string; category: string | null } | null;
 };
-type Estimate = { id: string; order_id: string | null; status: string };
+type Estimate = {
+  id: string; order_id: string | null; status: string | null;
+  estimate_number: string | null; contract_name: string | null;
+  total_price: number | null; created_at: string; emailed_at: string | null;
+  converted_to_order: boolean | null;
+  customers: { name: string; company: string | null } | null;
+};
+type VoiceMemo = {
+  id: string; transcript: string | null; created_at: string; status: string | null;
+};
 
-/* ──────── helpers ──────── */
-const todayISO = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-const priorityColors: Record<string, string> = {
-  urgent: "bg-destructive text-destructive-foreground",
-  high: "bg-catl-orange text-white",
-  normal: "bg-muted text-muted-foreground",
-  low: "bg-muted/50 text-muted-foreground",
-};
-const typeColors: Record<string, string> = {
-  send_estimate: "bg-blue-100 text-blue-800",
-  followup: "bg-blue-100 text-blue-800",
-  inventory: "bg-green-100 text-green-800",
-  paperwork: "bg-amber-100 text-amber-800",
-};
+
+function getLeadHeat(estimate: Estimate): "hot" | "warm" | "cold" {
+  const daysSince = Math.floor((Date.now() - new Date(estimate.created_at).getTime()) / (1000 * 60 * 60 * 24));
+  const effective = estimate.emailed_at ? daysSince - 2 : daysSince;
+  if (effective <= 7) return "hot";
+  if (effective <= 14) return "warm";
+  return "cold";
+}
+
+function heatColor(heat: "hot" | "warm" | "cold"): string {
+  return heat === "hot" ? "#E8503A" : heat === "warm" ? "#F3D12A" : "#717182";
+}
+
+function daysAgo(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
+
+function fmt$(n: number | null): string {
+  if (!n) return "—";
+  return "$" + Math.round(n).toLocaleString();
+}
 
 const SUGGESTIONS = [
-  "What needs attention today?",
-  "Draft an estimate",
-  "What did I promise?",
-  "Available inventory",
+  "Who needs a call today?",
+  "Draft a follow-up email",
+  "What inventory is available?",
   "Orders missing paperwork",
 ];
 
+const stageLabels: Record<string, string> = {
+  estimate: "Estimate", order_pending: "Pending", building: "Building",
+  ready: "Ready", delivered: "Delivered",
+};
+const stageColors: Record<string, string> = {
+  estimate: "#55BAAA", order_pending: "#3B82F6",
+  building: "#F3D12A", ready: "#22C55E", delivered: "#717182",
+};
+const pipelineStages = ["estimate", "order_pending", "building", "ready", "delivered"];
+const categoryLabels: Record<string, string> = {
+  chute: "Chutes", alley: "Alleys", processor: "Processors",
+  corral: "Corrals", panel: "Panels", gate: "Gates", other: "Other",
+};
+const priorityColors: Record<string, string> = {
+  urgent: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700",
+  normal: "bg-gray-100 text-gray-600", low: "bg-gray-50 text-gray-400",
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
 
-  /* ── metrics ── */
-  const [openTasks, setOpenTasks] = useState(0);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [unsoldInv, setUnsoldInv] = useState(0);
-  const [memosToday, setMemosToday] = useState(0);
-
-  /* ── data ── */
   const [tasks, setTasks] = useState<Task[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [estimates, setEstimates] = useState<Estimate[]>([]);
-
-  /* ── chat ── */
+  const [openEstimates, setOpenEstimates] = useState<Estimate[]>([]);
+  const [recentMemos, setRecentMemos] = useState<VoiceMemo[]>([]);
+  const [openTaskCount, setOpenTaskCount] = useState(0);
+  const [readyCount, setReadyCount] = useState(0);
   const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const greetingCalled = useRef(false);
 
-  /* ── fetch helpers ── */
-  const fetchMetrics = useCallback(async () => {
-    const [r1, r2, r3, r4] = await Promise.all([
-      supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
-      supabase.from("orders").select("*", { count: "exact", head: true }),
-      supabase.from("orders").select("*", { count: "exact", head: true }).is("customer_id", null).eq("from_inventory", true),
-      supabase.from("voice_memos").select("*", { count: "exact", head: true }).gte("created_at", todayISO),
-    ]);
-    setOpenTasks(r1.count ?? 0);
-    setTotalOrders(r2.count ?? 0);
-    setUnsoldInv(r3.count ?? 0);
-    setMemosToday(r4.count ?? 0);
-  }, []);
+  const fetchAll = useCallback(async () => {
+    const [tasksRes, ordersRes, estimatesRes, memosRes, taskCountRes, readyRes] =
+      await Promise.all([
+        supabase.from("tasks").select("*").eq("status", "open").order("created_at", { ascending: false }),
+        (supabase.from("orders").select(
+          "id, status, manufacturer_id, customer_id, from_inventory, qb_estimate_id, qb_po_id, qb_bill_id, qb_invoice_id, manufacturers(name, short_name), base_models(name, category)"
+        ) as any).order("created_at", { ascending: false }),
+        (supabase.from("estimates").select(
+          "id, order_id, status, estimate_number, contract_name, total_price, created_at, emailed_at, converted_to_order, customers(name, company)"
+        ) as any)
+          .eq("converted_to_order", false)
+          .not("status", "in", '("closed","rejected")')
+          .order("created_at", { ascending: false })
+          .limit(15),
+        supabase.from("voice_memos").select("id, transcript, created_at, status")
+          .order("created_at", { ascending: false }).limit(5),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
+        supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
+      ]);
 
-  const fetchTasks = useCallback(async () => {
-    const { data } = await supabase.from("tasks").select("*").eq("status", "open").order("created_at", { ascending: false });
-    const sorted = ((data as Task[]) || []).sort((a, b) => (priorityOrder[a.priority || "normal"] ?? 2) - (priorityOrder[b.priority || "normal"] ?? 2));
+    const sorted = ((tasksRes.data as Task[]) || []).sort(
+      (a, b) => (priorityOrder[a.priority || "normal"] ?? 2) - (priorityOrder[b.priority || "normal"] ?? 2)
+    );
     setTasks(sorted);
+    setOrders((ordersRes.data as Order[]) || []);
+    setOpenEstimates((estimatesRes.data as Estimate[]) || []);
+    setRecentMemos((memosRes.data as VoiceMemo[]) || []);
+    setOpenTaskCount(taskCountRes.count ?? 0);
+    setReadyCount(readyRes.count ?? 0);
   }, []);
 
-  const fetchOrders = useCallback(async () => {
-    const { data } = await (supabase.from("orders").select("id, status, manufacturer_id, customer_id, from_inventory, qb_estimate_id, qb_po_id, qb_bill_id, qb_invoice_id, manufacturers(name, short_name)") as any).order("created_at", { ascending: false });
-    setOrders((data as Order[]) || []);
-  }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const fetchEstimates = useCallback(async () => {
-    const { data } = await supabase.from("estimates").select("id, order_id, status");
-    setEstimates((data as Estimate[]) || []);
-  }, []);
-
-  /* ── initial load ── */
   useEffect(() => {
-    fetchMetrics();
-    fetchTasks();
-    fetchOrders();
-    fetchEstimates();
-  }, [fetchMetrics, fetchTasks, fetchOrders, fetchEstimates]);
-
-  /* ── realtime ── */
-  useEffect(() => {
-    const channel = supabase.channel("dashboard-rt")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, () => { fetchTasks(); fetchMetrics(); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "voice_memos" }, () => fetchMetrics())
+    const ch = supabase.channel("dashboard-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, fetchAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "voice_memos" }, fetchAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "estimates" }, fetchAll)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchTasks, fetchMetrics]);
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchAll]);
 
-  /* ── chat greeting ── */
   useEffect(() => {
     if (greetingCalled.current) return;
     greetingCalled.current = true;
-    sendChat("Generate a brief morning greeting for Tim. Mention the most important thing he should know today.", true);
+    sendChat("Generate a brief morning greeting for Tim. Mention the most important thing he should focus on today based on overdue tasks, open estimates, and orders ready to deliver.", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── scroll chat ── */
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
-  /* ── chat send ── */
   const sendChat = async (message: string, isGreeting = false) => {
     if (!message.trim()) return;
     const newHistory = isGreeting ? [] : [...chatHistory, { role: "user" as const, content: message }];
@@ -142,269 +174,358 @@ export default function Dashboard() {
       });
       if (error) throw error;
       const assistantMsg = data?.response || "Sorry, I couldn't process that.";
-      setChatHistory(prev => [...(isGreeting ? [] : prev), ...(isGreeting ? [] : []), { role: "assistant" as const, content: assistantMsg }]);
-      if (!isGreeting) {
-        setChatHistory(prev => prev); // already appended
-      } else {
-        setChatHistory([{ role: "assistant", content: assistantMsg }]);
+      const lower = assistantMsg.toLowerCase();
+      const actions: ActionButton[] = [];
+      if (lower.includes("estimate") || lower.includes("quote") || lower.includes("draft")) {
+        actions.push({ label: "New estimate →", route: "/estimates/new" });
       }
-      // handle actions
+      if (lower.includes("order") || lower.includes("inventory")) {
+        actions.push({ label: "View orders →", route: "/orders" });
+      }
+      if (lower.includes("task")) {
+        actions.push({ label: "View tasks →", route: "/tasks" });
+      }
+      const newMsg: ChatMsg = { role: "assistant", content: assistantMsg, actions };
+      setChatHistory(isGreeting ? [newMsg] : prev => [...prev, newMsg]);
       if (data?.actions?.length) {
         for (const action of data.actions) {
           if (action.type === "task_created") toast.success("Task created: " + (action.title || ""));
           else if (action.type === "note_logged") toast.success("Note saved");
-          else if (action.type === "memo_linked") toast.success("Memo linked");
         }
-        fetchTasks();
-        fetchMetrics();
+        fetchAll();
       }
     } catch {
-      setChatHistory(prev => [...prev, { role: "assistant", content: "Sorry, something went wrong." }]);
+      setChatHistory(prev => [
+        ...(isGreeting ? [] : prev),
+        { role: "assistant", content: "Sorry, something went wrong." },
+      ]);
     }
     setChatLoading(false);
   };
 
-  /* ── task complete ── */
   const completeTask = async (id: string) => {
     await supabase.from("tasks").update({ status: "complete", completed_at: new Date().toISOString() } as any).eq("id", id);
     toast.success("Task completed");
-    fetchTasks();
-    fetchMetrics();
+    fetchAll();
   };
 
-  /* ── derived data ── */
-  // Inventory by manufacturer
-  const inventoryOrders = orders.filter(o => o.from_inventory);
-  const byMfg = inventoryOrders.reduce<Record<string, { count: number; name: string; id: string }>>((acc, o) => {
-    if (!o.manufacturer_id) return acc;
-    if (!acc[o.manufacturer_id]) acc[o.manufacturer_id] = { count: 0, name: (o.manufacturers as any)?.short_name || "Unknown", id: o.manufacturer_id };
-    acc[o.manufacturer_id].count++;
-    return acc;
-  }, {});
-  const assignedCount = orders.filter(o => o.customer_id).length;
-
-  // Pipeline counts
-  const standaloneEstimates = estimates.filter(e => !e.order_id).length;
-  const statusCounts: Record<string, number> = { estimate: standaloneEstimates };
-  for (const o of orders) {
-    statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+  // Derived
+  const unsoldInventory = orders.filter(o => o.from_inventory && !o.customer_id);
+  const unsoldTotal = unsoldInventory.length;
+  const invByCategory: Record<string, number> = {};
+  for (const o of unsoldInventory) {
+    const cat = (o.base_models as any)?.category || "other";
+    invByCategory[cat] = (invByCategory[cat] || 0) + 1;
   }
-  const pipelineStages = ["estimate", "order_pending", "building", "ready", "delivered", "closed"];
-  const maxStage = pipelineStages.reduce((a, b) => (statusCounts[a] || 0) >= (statusCounts[b] || 0) ? a : b);
 
-  // Paperwork gaps
-  const activeOrders = orders.filter(o => !["estimate", "closed"].includes(o.status));
+  const statusCounts: Record<string, number> = { estimate: openEstimates.length };
+  for (const o of orders) { statusCounts[o.status] = (statusCounts[o.status] || 0) + 1; }
+
+  const activeOrders = orders.filter(o => !["delivered", "closed"].includes(o.status));
   const missingBill = activeOrders.filter(o => !o.qb_bill_id).length;
   const missingInvoice = activeOrders.filter(o => !o.qb_invoice_id).length;
   const missingPO = activeOrders.filter(o => !o.qb_po_id).length;
   const missingEstimate = activeOrders.filter(o => !o.qb_estimate_id).length;
 
-  const stageLabels: Record<string, string> = {
-    estimate: "Estimate", order_pending: "Pending", building: "Building",
-    ready: "Ready", delivered: "Delivered", closed: "Closed",
-  };
+  const leads = [...openEstimates].sort((a, b) => {
+    const hOrder = { hot: 0, warm: 1, cold: 2 };
+    const hA = getLeadHeat(a), hB = getLeadHeat(b);
+    if (hOrder[hA] !== hOrder[hB]) return hOrder[hA] - hOrder[hB];
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
-  const today = new Date();
-  const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-
+  const hotCount = leads.filter(l => getLeadHeat(l) === "hot").length;
+  const warmCount = leads.filter(l => getLeadHeat(l) === "warm").length;
+  const coldCount = leads.filter(l => getLeadHeat(l) === "cold").length;
+  const overdueCount = tasks.filter(t => t.due_date && new Date(t.due_date) < today).length;
+  const maxPipeCount = Math.max(...pipelineStages.map(s => statusCounts[s] || 0), 1);
 
   return (
     <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
-      {/* ═══ LEFT — Dashboard ═══ */}
-      <div className="flex-1 min-w-0 lg:min-w-[600px] overflow-y-auto p-4 md:p-8 bg-background">
+
+      {/* LEFT */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6" style={{ background: "#F5F5F0" }}>
+
         {/* Header */}
-        <div className="flex items-end justify-between mb-6">
+        <div className="rounded-xl mb-4 px-5 py-4 flex items-center justify-between"
+          style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div>
-            <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-1">CATL Resources</p>
-            <h1 className="text-[22px] font-medium text-primary">Equipment dashboard</h1>
+            <p className="text-[10px] font-semibold tracking-widest mb-0.5" style={{ color: "#55BAAA" }}>CATL RESOURCES</p>
+            <h1 className="text-[17px] font-bold text-white leading-tight">Equipment Manager</h1>
           </div>
-          <span className="text-sm text-muted-foreground">{dateStr}</span>
+          <div className="text-right">
+            <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{dateStr}</p>
+            <p className="text-[11px] font-bold tracking-widest mt-0.5" style={{ color: "#F3D12A" }}>CATL</p>
+          </div>
         </div>
 
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          {[
-            { label: "Open tasks", value: openTasks, icon: CheckSquare, to: "/tasks?status=open" },
-            { label: "Active orders", value: totalOrders, icon: ShoppingCart, to: "/orders" },
-            { label: "Unsold inventory", value: unsoldInv, icon: Warehouse, to: "/orders?filter=inventory" },
-            { label: "Memos today", value: memosToday, icon: Mic, to: "/voice-memos" },
-          ].map(m => (
-            <button
-              key={m.label}
-              onClick={() => navigate(m.to)}
-              className="bg-secondary rounded-lg p-3 text-left cursor-pointer transition-colors hover:bg-muted"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <m.icon size={16} className="text-accent" />
-                <span className="text-xs text-muted-foreground">{m.label}</span>
-              </div>
-              <p className="text-[22px] font-semibold text-primary">{m.value}</p>
-            </button>
-          ))}
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {/* Open Estimates */}
+          <button onClick={() => navigate("/estimates")}
+            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            style={{ background: "linear-gradient(150deg, #0E2646 0%, #0D4A40 60%, #55BAAA 100%)" }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <TrendingUp size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Open Estimates</span>
+            </div>
+            <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{openEstimates.length}</p>
+            <div className="flex items-center gap-3">
+              {hotCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#E8503A" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{hotCount} hot</span></span>}
+              {warmCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#F3D12A" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{warmCount} warm</span></span>}
+              {coldCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#717182" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{coldCount} cold</span></span>}
+              {openEstimates.length === 0 && <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>No open estimates</span>}
+            </div>
+          </button>
+
+          {/* Ready to Deliver */}
+          <button onClick={() => navigate("/orders?status=ready")}
+            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            style={{ background: "linear-gradient(150deg, #0E2646 0%, #0A3020 60%, #22763A 100%)" }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Truck size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Ready to Deliver</span>
+            </div>
+            <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{readyCount}</p>
+            <p className="text-[11px]" style={{ color: readyCount > 0 ? "#6EE7A0" : "rgba(255,255,255,0.35)" }}>
+              {readyCount > 0 ? "Awaiting customer pickup" : "None staged yet"}
+            </p>
+          </button>
+
+          {/* Unsold Inventory */}
+          <button onClick={() => navigate("/orders?filter=inventory")}
+            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            style={{ background: "linear-gradient(150deg, #0E2646 0%, #163A5E 60%, #1E5A7A 100%)" }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Warehouse size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Unsold Inventory</span>
+            </div>
+            <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{unsoldTotal}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(invByCategory).map(([cat, count]) => (
+                <span key={cat} className="text-[10px] rounded px-1.5 py-0.5"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.75)" }}>
+                  {count} {categoryLabels[cat] || cat}
+                </span>
+              ))}
+              {unsoldTotal === 0 && <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Nothing on the lot</span>}
+            </div>
+          </button>
+
+          {/* Open Tasks */}
+          <button onClick={() => navigate("/tasks?status=open")}
+            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            style={{ background: overdueCount > 0
+              ? "linear-gradient(150deg, #0E2646 0%, #3A0E0E 60%, #7A1A1A 100%)"
+              : "linear-gradient(150deg, #0E2646 0%, #163A5E 60%, #1E5A7A 100%)" }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <CheckSquare size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Open Tasks</span>
+            </div>
+            <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{openTaskCount}</p>
+            <p className="text-[11px]" style={{ color: overdueCount > 0 ? "#FFA07A" : "rgba(255,255,255,0.35)" }}>
+              {overdueCount > 0 ? `${overdueCount} overdue` : "All current"}
+            </p>
+          </button>
         </div>
 
-        {/* Action Items */}
-        <div className="bg-card rounded-xl border border-border mb-6 shadow-none">
-          <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-            <span className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px]">Action Items</span>
-            <Badge variant="secondary" className="text-[10px] font-semibold rounded-full">{tasks.length}</Badge>
+        {/* Follow-up Leads */}
+        <div className="bg-white rounded-xl mb-4 overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Follow-up Leads</span>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{leads.length}</span>
+            <span className="text-[10px] ml-auto" style={{ color: "#717182" }}>sorted by priority</span>
           </div>
-          <div className="divide-y divide-border max-h-[300px] overflow-y-auto">
-            {tasks.slice(0, 15).map(t => {
-              const isOverdue = t.due_date && new Date(t.due_date) < today;
-              const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
-              return (
-                <div key={t.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-secondary transition-colors">
-                  <Checkbox onCheckedChange={() => completeTask(t.id)} />
-                  <button
-                    onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
-                    className="flex-1 text-sm text-left font-medium text-primary hover:text-accent truncate"
-                  >
-                    {t.title}
-                  </button>
-                  {t.priority && <Badge className={`text-[10px] font-semibold rounded-full ${priorityColors[t.priority] || ""}`}>{t.priority}</Badge>}
-                  {t.task_type && <Badge className={`text-[10px] font-semibold rounded-full ${typeColors[t.task_type] || "bg-muted text-muted-foreground"}`}>{t.task_type}</Badge>}
-                  {t.due_date && (
-                    <span className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : isToday ? "text-catl-gold font-medium" : "text-muted-foreground"}`}>
-                      {new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  )}
-                  {t.source_type === "voice_memo" && <Mic size={12} className="text-muted-foreground" />}
-                  {t.source_type === "chat" && <MessageCircle size={12} className="text-muted-foreground" />}
+          {leads.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#717182" }}>No open estimates</p>}
+          {leads.slice(0, 6).map(lead => {
+            const heat = getLeadHeat(lead);
+            const customerName = (lead.customers as any)?.company || (lead.customers as any)?.name || "Unknown Customer";
+            const daysSince = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24));
+            return (
+              <button key={lead.id} onClick={() => navigate(`/estimates/${lead.id}`)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#F9F9F7] active:scale-[0.99] transition-all"
+                style={{ borderBottom: "0.5px solid #F5F5F0" }}>
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: heatColor(heat) }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold truncate" style={{ color: "#1A1A1A" }}>{customerName}</p>
+                  <p className="text-[11px] truncate" style={{ color: "#717182" }}>
+                    {lead.contract_name || lead.estimate_number || "Estimate"} · {lead.emailed_at ? "estimate sent" : "not yet emailed"}
+                  </p>
                 </div>
-              );
-            })}
-            {tasks.length === 0 && <p className="text-muted-foreground text-sm py-6 text-center">No open tasks</p>}
-          </div>
-        </div>
-
-        {/* Inventory by Manufacturer */}
-        <div className="mb-6">
-          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Inventory by Manufacturer</p>
-          <div className="flex flex-wrap gap-2">
-            {Object.values(byMfg).map(m => (
-              <button
-                key={m.id}
-                onClick={() => navigate(`/orders?manufacturer=${m.id}`)}
-                className="bg-secondary rounded-lg px-4 py-3 cursor-pointer transition-colors hover:bg-muted"
-              >
-                <p className="text-xl font-semibold text-primary">{m.count}</p>
-                <p className="text-xs text-muted-foreground">{m.name}</p>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[12px] font-bold" style={{ color: "#0E2646" }}>{fmt$(lead.total_price)}</p>
+                  <p className="text-[11px]" style={{ color: daysSince > 14 ? "#E8503A" : "#717182" }}>{daysAgo(lead.created_at)}</p>
+                </div>
+                <ChevronRight size={14} style={{ color: "#D4D4D0", flexShrink: 0 }} />
               </button>
-            ))}
-            <button
-              onClick={() => navigate("/orders?filter=assigned")}
-              className="bg-secondary rounded-lg px-4 py-3 cursor-pointer transition-colors hover:bg-muted"
-            >
-              <p className="text-xl font-semibold text-primary">{assignedCount}</p>
-              <p className="text-xs text-muted-foreground">With customer</p>
-            </button>
-            {Object.keys(byMfg).length === 0 && <p className="text-sm text-muted-foreground">No inventory orders</p>}
-          </div>
+            );
+          })}
         </div>
 
-        {/* Pipeline */}
-        <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-none">
-          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Order pipeline</p>
-          <div className="space-y-2">
-            {pipelineStages.filter(s => s !== "closed").map(stage => {
+        {/* Order Pipeline */}
+        <div className="bg-white rounded-xl mb-4 overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Order Pipeline</span>
+          </div>
+          <div className="py-1">
+            {pipelineStages.map(stage => {
               const count = statusCounts[stage] || 0;
-              const maxCount = Math.max(...pipelineStages.map(s => statusCounts[s] || 0), 1);
-              const widthPercent = Math.max((count / maxCount) * 100, 0);
-              const stageColors: Record<string, string> = {
-                estimate: "hsl(var(--accent))",
-                order_pending: "hsl(210 80% 55%)",
-                building: "hsl(38 92% 50%)",
-                ready: "hsl(160 60% 45%)",
-                delivered: "hsl(var(--muted-foreground))",
-              };
+              const widthPct = Math.max((count / maxPipeCount) * 100, 0);
               return (
-                <button
-                  key={stage}
-                  onClick={() => navigate(`/orders?status=${stage}`)}
-                  className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-secondary cursor-pointer transition-colors w-full text-left"
-                >
-                  <span className="text-sm text-primary font-medium w-[140px] shrink-0">
-                    {stageLabels[stage]}
-                  </span>
-                  <div className="flex-1 h-7 bg-muted rounded-md overflow-hidden relative">
-                    <div
-                      className="h-full rounded-md transition-all duration-500"
-                      style={{
-                        width: `${widthPercent}%`,
-                        backgroundColor: stageColors[stage] || "hsl(var(--accent))",
-                        minWidth: count > 0 ? '24px' : '0px',
-                      }}
-                    />
+                <button key={stage} onClick={() => navigate(`/orders?status=${stage}`)}
+                  className="flex items-center gap-3 w-full px-4 py-2 hover:bg-[#F9F9F7] active:scale-[0.99] transition-all text-left">
+                  <span className="text-[12px] font-medium w-[85px] flex-shrink-0" style={{ color: "#1A1A1A" }}>{stageLabels[stage]}</span>
+                  <div className="flex-1 h-6 rounded-md overflow-hidden" style={{ background: "#F5F5F0" }}>
+                    <div className="h-full rounded-md transition-all duration-500"
+                      style={{ width: `${widthPct}%`, background: stageColors[stage], minWidth: count > 0 ? "20px" : "0", opacity: count > 0 ? 1 : 0 }} />
                   </div>
-                  <span className="text-lg font-semibold text-primary w-[40px] text-right">
-                    {count}
-                  </span>
+                  <span className="text-[14px] font-bold w-8 text-right" style={{ color: count > 0 ? "#0E2646" : "#D4D4D0" }}>{count}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Paperwork Gaps */}
-        <div className="mb-6">
-          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Paperwork Gaps</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {[
-              { label: "Missing estimate in QB", count: missingEstimate },
-              { label: "Missing PO in QB", count: missingPO },
-              { label: "Missing bill in QB", count: missingBill },
-              { label: "Missing invoice in QB", count: missingInvoice },
-            ].map(g => (
-              <button
-                key={g.label}
-                onClick={() => navigate("/orders")}
-                className="bg-card border border-border rounded-xl p-4 text-left cursor-pointer transition-colors hover:border-accent shadow-none"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle size={14} className={g.count > 0 ? "text-catl-gold" : "text-catl-green"} />
-                  <span className="text-lg font-semibold text-primary">{g.count}</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{g.label}</p>
-              </button>
-            ))}
+        {/* Bottom row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Action Items */}
+          <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Action Items</span>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
+            </div>
+            <div style={{ maxHeight: 260, overflowY: "auto" }}>
+              {tasks.slice(0, 10).map(t => {
+                const isOverdue = t.due_date && new Date(t.due_date) < today;
+                const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
+                return (
+                  <div key={t.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors"
+                    style={{ borderBottom: "0.5px solid #F5F5F0" }}>
+                    <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0" />
+                    <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
+                      className="flex-1 text-[13px] text-left font-medium truncate" style={{ color: "#1A1A1A" }}>
+                      {t.title}
+                    </button>
+                    {t.priority && t.priority !== "normal" && (
+                      <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 flex-shrink-0 ${priorityColors[t.priority] || ""}`}>{t.priority}</span>
+                    )}
+                    {t.due_date && (
+                      <span className="text-[11px] flex-shrink-0"
+                        style={{ color: isOverdue ? "#E8503A" : isToday ? "#F3D12A" : "#717182", fontWeight: isOverdue ? 600 : 400 }}>
+                        {new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                    {t.source_type === "voice_memo" && <Mic size={11} style={{ color: "#717182", flexShrink: 0 }} />}
+                    {t.source_type === "chat" && <MessageCircle size={11} style={{ color: "#717182", flexShrink: 0 }} />}
+                  </div>
+                );
+              })}
+              {tasks.length === 0 && <p className="text-sm text-center py-5" style={{ color: "#717182" }}>No open tasks</p>}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {/* Voice Memos */}
+            <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+                <Mic size={12} style={{ color: "#55BAAA" }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Recent Memos</span>
+                <button onClick={() => navigate("/voice-memos")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
+              </div>
+              {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No memos yet</p>}
+              {recentMemos.map(memo => (
+                <button key={memo.id} onClick={() => navigate("/voice-memos")}
+                  className="w-full px-4 py-2.5 text-left hover:bg-[#F9F9F7] transition-colors"
+                  style={{ borderBottom: "0.5px solid #F5F5F0" }}>
+                  <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
+                    {memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Untranscribed memo"}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                    {formatTime(memo.created_at)}
+                    {memo.status && memo.status !== "processed" && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "#FFF0DC", color: "#B85C00" }}>{memo.status}</span>
+                    )}
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {/* Paperwork Gaps */}
+            <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+                <AlertTriangle size={12} style={{ color: "#55BAAA" }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Paperwork Gaps</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-3">
+                {[
+                  { label: "Missing PO", count: missingPO },
+                  { label: "Missing Bill", count: missingBill },
+                  { label: "Missing Invoice", count: missingInvoice },
+                  { label: "Missing Estimate", count: missingEstimate },
+                ].map(g => (
+                  <button key={g.label} onClick={() => navigate("/orders")}
+                    className="rounded-lg p-3 text-left active:scale-[0.97] transition-transform"
+                    style={{ background: "#F5F5F0" }}>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: g.count > 0 ? "#F3D12A" : "#22C55E" }} />
+                      <span className="text-[17px] font-bold" style={{ color: "#0E2646" }}>{g.count}</span>
+                    </div>
+                    <p className="text-[11px]" style={{ color: "#717182" }}>{g.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ═══ RIGHT — Chat Panel ═══ */}
-      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 border-l border-border bg-card">
-        {/* Chat header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
-            <Mic size={16} className="text-accent" />
+      {/* RIGHT — Chat */}
+      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0"
+        style={{ borderLeft: "0.5px solid #D4D4D0", background: "#fff" }}>
+        <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+          style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="4" fill="#fff" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </div>
           <div>
-            <p className="text-sm font-semibold text-primary">CATL assistant</p>
-            <p className="text-[11px] text-accent">Online</p>
+            <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
+            <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
           </div>
         </div>
 
-        {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-3">
           <div className="space-y-3">
             {chatHistory.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-xl rounded-br-sm"
-                    : "bg-secondary text-primary rounded-xl rounded-bl-sm"
-                }`}>
+              <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                <div className="max-w-[88%] px-3.5 py-2.5 text-[12px] leading-relaxed rounded-xl"
+                  style={msg.role === "user"
+                    ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
+                    : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
                   {msg.content}
                 </div>
+                {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[88%]">
+                    {msg.actions.map((action, ai) => (
+                      <button key={ai} onClick={() => navigate(action.route)}
+                        className="text-[11px] font-bold rounded-full px-3 py-1 active:scale-[0.97] transition-transform"
+                        style={{ background: "#F3D12A", color: "#0E2646" }}>
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {chatLoading && (
               <div className="flex justify-start">
-                <div className="bg-secondary rounded-xl rounded-bl-sm px-4 py-3 flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                <div className="rounded-xl rounded-bl-sm px-4 py-3 flex gap-1" style={{ background: "#F5F5F0" }}>
+                  {[0, 150, 300].map(d => (
+                    <span key={d} className="w-2 h-2 rounded-full animate-bounce"
+                      style={{ background: "#717182", animationDelay: `${d}ms` }} />
+                  ))}
                 </div>
               </div>
             )}
@@ -412,37 +533,28 @@ export default function Dashboard() {
           </div>
         </ScrollArea>
 
-        {/* Suggestion chips */}
-        <div className="px-4 py-2 flex flex-wrap gap-1.5">
-          {SUGGESTIONS.slice(0, 3).map(s => (
-            <button
-              key={s}
-              onClick={() => setChatInput(s)}
-              className="text-[11px] px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors bg-secondary"
-            >
+        <div className="px-4 py-2 flex flex-wrap gap-1.5 flex-shrink-0" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+          {SUGGESTIONS.map(s => (
+            <button key={s} onClick={() => setChatInput(s)}
+              className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
+              style={{ border: "0.5px solid #D4D4D0", color: "#717182", background: "#F5F5F0" }}>
               {s}
             </button>
           ))}
         </div>
 
-        {/* Input */}
-        <div className="px-4 pb-4 pt-1">
-          <form
-            onSubmit={e => { e.preventDefault(); sendChat(chatInput); }}
-            className="flex gap-2"
-          >
-            <input
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              placeholder="Ask about orders, customers, inventory..."
-              className="flex-1 text-sm bg-secondary border border-border rounded-full px-4 py-2.5 text-primary placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={chatLoading || !chatInput.trim()}
-              className="w-10 h-10 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center transition-colors disabled:opacity-50"
-            >
-              <Send size={16} />
+        <div className="px-4 pb-4 pt-2 flex-shrink-0">
+          <form onSubmit={e => { e.preventDefault(); sendChat(chatInput); }} className="flex gap-2">
+            <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+              placeholder="Ask about orders, leads, inventory..."
+              className="flex-1 text-[12px] rounded-full px-4 py-2.5 transition-colors focus:outline-none"
+              style={{ background: "#F5F5F0", border: "0.5px solid #D4D4D0", color: "#1A1A1A" }}
+              onFocus={e => { e.currentTarget.style.borderColor = "#F3D12A"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(243,209,42,0.2)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "#D4D4D0"; e.currentTarget.style.boxShadow = "none"; }} />
+            <button type="submit" disabled={chatLoading || !chatInput.trim()}
+              className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
+              style={{ background: "#55BAAA" }}>
+              <Send size={15} color="#fff" />
             </button>
           </form>
         </div>
