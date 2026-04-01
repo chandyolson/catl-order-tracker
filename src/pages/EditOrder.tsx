@@ -101,6 +101,7 @@ export default function EditOrder() {
   const queryClient = useQueryClient();
 
   const [initialized, setInitialized] = useState(false);
+  const [optionsInitialized, setOptionsInitialized] = useState(false);
   const [manufacturerId, setManufacturerId] = useState("");
   const [baseModelId, setBaseModelId] = useState("");
   const [quickBuildId, setQuickBuildId] = useState("");
@@ -298,13 +299,13 @@ export default function EditOrder() {
 
   // Pre-fill selections from saved selected_options
   useEffect(() => {
-    if (!initialized || !optionsQuery.data || !orderQuery.data) return;
+    if (!initialized || optionsInitialized || !optionsQuery.data || !orderQuery.data) return;
     const savedOpts = (orderQuery.data.selected_options || []) as any[];
-    if (savedOpts.length === 0) return;
+    if (savedOpts.length === 0) { setOptionsInitialized(true); return; }
     const newSel = new Map<string, OptionSelection>();
     const newPick = new Map<string, string>();
     for (const saved of savedOpts) {
-      const opt = optionsQuery.data.find((o) => o.id === saved.option_id);
+      const opt = optionsQuery.data.find((o: any) => o.id === saved.option_id);
       if (!opt) continue;
       if (opt.short_code === "DC") { setDualChecked(true); continue; }
       if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
@@ -327,7 +328,8 @@ export default function EditOrder() {
     }
     setSelections(newSel);
     setPickOneSelections(newPick);
-  }, [initialized, optionsQuery.data]);
+    setOptionsInitialized(true);
+  }, [initialized, optionsInitialized, optionsQuery.data, orderQuery.data]);
 
   /* ─── Derived state ────────────────────────────────────────── */
 
