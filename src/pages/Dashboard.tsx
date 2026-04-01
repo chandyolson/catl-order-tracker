@@ -214,7 +214,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (greetingCalled.current) return;
     greetingCalled.current = true;
-    sendChat("Generate a brief morning greeting for Tim. Mention the most important thing he should focus on today based on overdue tasks, open estimates, and orders ready to deliver.", true);
+    sendChat("Generate a brief greeting for Tim based on the current time of day. Use bullet points for any lists. Mention the most important thing he should focus on right now based on overdue tasks, open estimates, orders ready to deliver, and any unlinked voice memos.", true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
