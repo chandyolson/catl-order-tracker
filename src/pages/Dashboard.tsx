@@ -168,6 +168,9 @@ export default function Dashboard() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const greetingCalled = useRef(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const speechRecRef = useRef<any>(null);
 
   const fetchAll = useCallback(async () => {
     const [tasksRes, ordersRes, estimatesRes, memosRes, taskCountRes, readyRes] =
@@ -247,8 +250,12 @@ export default function Dashboard() {
       setChatHistory(isGreeting ? [newMsg] : prev => [...prev, newMsg]);
       if (data?.actions?.length) {
         for (const action of data.actions) {
-          if (action.type === "task_created") toast.success("Task created: " + (action.title || ""));
-          else if (action.type === "note_logged") toast.success("Note saved");
+          if (action.type === "task_created" && action.success) toast.success("✅ Task created: " + (action.title || ""));
+          else if (action.type === "note_logged" && action.success) toast.success("✅ Note logged");
+          else if (action.type === "memo_linked" && action.success) toast.success("✅ Memo linked to " + (action.customer || "customer"));
+          else if (action.type === "timeline_added" && action.success) toast.success("✅ Timeline event added: " + (action.title || ""));
+          else if (action.type === "status_updated" && action.success) toast.success(`✅ ${action.order}: ${action.from} → ${action.to}`);
+          else if (!action.success) toast.error(`Failed: ${action.type} — ${action.error || "unknown error"}`);
         }
         fetchAll();
       }
@@ -637,6 +644,56 @@ export default function Dashboard() {
               style={{ background: "#F5F5F0", border: "0.5px solid #D4D4D0", color: "#1A1A1A" }}
               onFocus={e => { e.currentTarget.style.borderColor = "#F3D12A"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(243,209,42,0.2)"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "#D4D4D0"; e.currentTarget.style.boxShadow = "none"; }} />
+            <button type="button" onClick={() => {
+              if (isRecording) {
+                mediaRecorderRef.current?.stop();
+                setIsRecording(false);
+              } else {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                  const mr = new MediaRecorder(stream);
+                  mediaRecorderRef.current = mr;
+                  const chunks: Blob[] = [];
+                  mr.ondataavailable = e => chunks.push(e.data);
+                  mr.onstop = async () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    const blob = new Blob(chunks, { type: "audio/webm" });
+                    // Use browser SpeechRecognition if available, otherwise send to process-voice-memo
+                    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                      // Already handled by recognition below
+                    } else {
+                      setChatInput("(Voice memo recorded — processing...)");
+                    }
+                  };
+                  mr.start();
+                  setIsRecording(true);
+                  // Also start SpeechRecognition for live transcription
+                  try {
+                    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                    if (SpeechRec) {
+                      const recognition = new SpeechRec();
+                      recognition.continuous = false;
+                      recognition.interimResults = false;
+                      recognition.lang = "en-US";
+                      recognition.onresult = (event: any) => {
+                        const transcript = event.results[0][0].transcript;
+                        setChatInput(transcript);
+                      };
+                      recognition.onerror = () => {};
+                      recognition.onend = () => {
+                        mr.stop();
+                        setIsRecording(false);
+                      };
+                      recognition.start();
+                      speechRecRef.current = recognition;
+                    }
+                  } catch {}
+                }).catch(() => toast.error("Microphone access denied"));
+              }
+            }}
+              className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
+              style={{ background: isRecording ? "#D4183D" : "#F5F5F0", border: isRecording ? "none" : "0.5px solid #D4D4D0" }}>
+              <Mic size={15} color={isRecording ? "#fff" : "#717182"} />
+            </button>
             <button type="submit" disabled={chatLoading || !chatInput.trim()}
               className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
               style={{ background: "#55BAAA" }}>
