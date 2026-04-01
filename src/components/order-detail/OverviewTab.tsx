@@ -193,8 +193,9 @@ export default function OverviewTab({
   const isPortalDone = portalOrdered || paperwork.some((p) => p.document_type === "vendor_po_submitted" && p.status === "complete");
   const isQBPODone = !!order.qb_po_id;
   const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
-  const pendingTasks = paperwork.filter((p) => p.status === "pending" || p.status === "missing");
-  const completedTasks = paperwork.filter((p) => p.status === "complete");
+  const manualTasks = paperwork.filter((p) => p.is_manual);
+  const pendingTasks = manualTasks.filter((p) => p.status === "pending" || p.status === "missing");
+  const completedTasks = manualTasks.filter((p) => p.status === "complete");
   const slots = slotsQuery.data || [];
 
   const slotConfig: Record<string, { label: string; color: string }> = {
@@ -318,7 +319,7 @@ export default function OverviewTab({
         {/* RIGHT: Task List */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#F5F5F0" }}>
-            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{paperwork.length})</h3>
+            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{manualTasks.length})</h3>
             <button onClick={() => setShowAddTask(!showAddTask)} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-[0.95] transition-transform" style={{ backgroundColor: "#55BAAA", color: "#fff" }}><Plus size={12} /> Add task</button>
           </div>
           <div className="p-3 space-y-1">
@@ -331,8 +332,8 @@ export default function OverviewTab({
             {pendingTasks.map((task) => (
               <div key={task.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/30 group">
                 <button onClick={() => toggleTaskMutation.mutate({ taskId: task.id, done: true })} className="w-4 h-4 rounded border border-border shrink-0 hover:border-[#55BAAA]" />
-                <span className="text-[12px] text-foreground flex-1">{task.is_manual ? task.title : (DOC_LABELS[task.document_type] || task.document_type)}</span>
-                {task.is_manual && <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>}
+                <span className="text-[12px] text-foreground flex-1">{task.title}</span>
+                <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
               </div>
             ))}
             {completedTasks.length > 0 && (
@@ -341,13 +342,13 @@ export default function OverviewTab({
                 {completedTasks.map((task) => (
                   <div key={task.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg group">
                     <button onClick={() => toggleTaskMutation.mutate({ taskId: task.id, done: false })} className="w-4 h-4 rounded border shrink-0 flex items-center justify-center" style={{ backgroundColor: "#27AE60", borderColor: "#27AE60" }}><Check size={10} className="text-white" /></button>
-                    <span className="text-[12px] text-muted-foreground flex-1 line-through">{task.is_manual ? task.title : (DOC_LABELS[task.document_type] || task.document_type)}</span>
-                    {task.is_manual && <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>}
+                    <span className="text-[12px] text-muted-foreground flex-1 line-through">{task.title}</span>
+                    <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
                   </div>
                 ))}
               </>
             )}
-            {paperwork.length === 0 && <p className="text-[12px] text-muted-foreground px-2 py-3">No tasks yet</p>}
+            {manualTasks.length === 0 && <p className="text-[12px] text-muted-foreground px-2 py-3">No tasks yet</p>}
           </div>
         </div>
       </div>
