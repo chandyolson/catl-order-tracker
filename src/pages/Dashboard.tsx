@@ -331,9 +331,10 @@ export default function Dashboard() {
     <div className="flex gap-3 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0, background: "#F5F5F0" }}>
 
       {/* LEFT */}
-      <div className="flex-1 min-w-0 flex flex-col" style={{ background: "#F5F5F0" }}>
-        {/* Header — flush to top, aligned with chat header */}
-        <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6" style={{ background: "#F5F5F0" }}>
+
+        {/* Header — same width as content cards */}
+        <div className="rounded-xl mb-4 px-5 py-4 flex items-center justify-between"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div>
             <p className="text-[10px] font-semibold tracking-widest mb-0.5" style={{ color: "#55BAAA" }}>CATL RESOURCES</p>
@@ -344,9 +345,6 @@ export default function Dashboard() {
             <p className="text-[11px] font-bold tracking-widest mt-0.5" style={{ color: "#F3D12A" }}>CATL</p>
           </div>
         </div>
-
-        {/* Scrollable content below header */}
-        <div className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -572,12 +570,11 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        </div>
       </div>
 
       {/* RIGHT — Chat */}
-      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 rounded-xl overflow-hidden my-3 mr-3"
-        style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
+      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0"
+        style={{ background: "#fff", borderLeft: "1px solid #E5E5E0" }}>
         <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
