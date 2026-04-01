@@ -331,10 +331,9 @@ export default function Dashboard() {
     <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
 
       {/* LEFT */}
-      <div className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6" style={{ background: "#F5F5F0" }}>
-
-        {/* Header */}
-        <div className="rounded-xl mb-4 px-5 py-4 flex items-center justify-between"
+      <div className="flex-1 min-w-0 flex flex-col" style={{ background: "#F5F5F0" }}>
+        {/* Header — flush to top, aligned with chat header */}
+        <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div>
             <p className="text-[10px] font-semibold tracking-widest mb-0.5" style={{ color: "#55BAAA" }}>CATL RESOURCES</p>
@@ -345,6 +344,9 @@ export default function Dashboard() {
             <p className="text-[11px] font-bold tracking-widest mt-0.5" style={{ color: "#F3D12A" }}>CATL</p>
           </div>
         </div>
+
+        {/* Scrollable content below header */}
+        <div className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -569,6 +571,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
