@@ -98,7 +98,7 @@ export default function Orders() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, sortIdx],
+    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, inventoryFilter, sortIdx],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
@@ -115,6 +115,12 @@ export default function Orders() {
 
       if (mfgFilter !== "all") {
         query = query.eq("manufacturer_id", mfgFilter);
+      }
+
+      if (inventoryFilter === "inventory") {
+        query = query.is("customer_id", null).eq("from_inventory", true);
+      } else if (inventoryFilter === "assigned") {
+        query = query.not("customer_id", "is", null);
       }
 
       if ((sort as any).isCustomer) {
