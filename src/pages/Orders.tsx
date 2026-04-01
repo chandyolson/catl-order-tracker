@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Package, FileText } from "lucide-react";
+import { Search, Plus, Package, FileText, X } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -40,12 +40,23 @@ function fmtDate(d: string | null | undefined) {
 
 export default function Orders() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Read URL params
+  const urlStatus = searchParams.get("status") || "all";
+  const urlManufacturer = searchParams.get("manufacturer") || "all";
+  const inventoryFilter = searchParams.get("filter"); // "inventory" or "assigned"
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [mfgFilter, setMfgFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
+  const [mfgFilter, setMfgFilter] = useState(urlManufacturer);
   const [sortIdx, setSortIdx] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
+
+  // Sync URL params to state when they change
+  useEffect(() => { setStatusFilter(urlStatus); }, [urlStatus]);
+  useEffect(() => { setMfgFilter(urlManufacturer); }, [urlManufacturer]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
