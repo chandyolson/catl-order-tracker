@@ -20,9 +20,7 @@ import StatusBadge from "@/components/StatusBadge";
 import OverviewTab from "@/components/order-detail/OverviewTab";
 import EstimatesTab from "@/components/order-detail/EstimatesTab";
 import FinancialsTab from "@/components/order-detail/FinancialsTab";
-import DocumentsTab from "@/components/order-detail/DocumentsTab";
 import CompareTab from "@/components/order-detail/CompareTab";
-import ActivityTab from "@/components/order-detail/ActivityTab";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -111,20 +109,6 @@ export default function OrderDetail() {
         .select("*")
         .eq("order_id", id!)
         .order("version_number", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
-
-  const changeOrdersQuery = useQuery({
-    queryKey: ["change_orders", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("change_orders")
-        .select("*")
-        .eq("order_id", id!)
-        .order("change_number", { ascending: true });
       if (error) throw error;
       return data;
     },
