@@ -210,14 +210,14 @@ export default function Dashboard() {
   const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8">
+    <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
       {/* ═══ LEFT — Dashboard ═══ */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 min-w-0 lg:min-w-[600px] overflow-y-auto p-4 md:p-8 bg-background">
         {/* Header */}
         <div className="flex items-end justify-between mb-6">
           <div>
-            <p className="text-accent text-[11px] font-bold uppercase tracking-[2px] mb-1">CATL Resources</p>
-            <h1 className="text-[22px] font-bold text-primary">Equipment dashboard</h1>
+            <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-1">CATL Resources</p>
+            <h1 className="text-[22px] font-medium text-primary">Equipment dashboard</h1>
           </div>
           <span className="text-sm text-muted-foreground">{dateStr}</span>
         </div>
@@ -233,38 +233,38 @@ export default function Dashboard() {
             <button
               key={m.label}
               onClick={() => navigate(m.to)}
-              className="bg-secondary rounded-lg border border-border p-4 text-left hover:border-accent transition-colors cursor-pointer"
+              className="bg-secondary rounded-lg p-3 text-left cursor-pointer transition-colors hover:bg-muted"
             >
               <div className="flex items-center gap-2 mb-2">
                 <m.icon size={16} className="text-accent" />
                 <span className="text-xs text-muted-foreground">{m.label}</span>
               </div>
-              <p className="text-2xl font-bold text-primary">{m.value}</p>
+              <p className="text-[22px] font-semibold text-primary">{m.value}</p>
             </button>
           ))}
         </div>
 
         {/* Action Items */}
-        <div className="bg-card rounded-lg border mb-6">
-          <div className="px-4 py-3 border-b flex items-center gap-2">
-            <span className="text-accent text-[11px] font-bold uppercase tracking-[2px]">Action Items</span>
-            <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
+        <div className="bg-card rounded-xl border border-border mb-6 shadow-none">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+            <span className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px]">Action Items</span>
+            <Badge variant="secondary" className="text-[10px] font-semibold rounded-full">{tasks.length}</Badge>
           </div>
-          <div className="divide-y max-h-[300px] overflow-y-auto">
+          <div className="divide-y divide-border max-h-[300px] overflow-y-auto">
             {tasks.slice(0, 15).map(t => {
               const isOverdue = t.due_date && new Date(t.due_date) < today;
               const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
               return (
-                <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30">
+                <div key={t.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-secondary transition-colors">
                   <Checkbox onCheckedChange={() => completeTask(t.id)} />
                   <button
                     onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
-                    className="flex-1 text-sm text-left font-medium text-foreground hover:text-accent truncate"
+                    className="flex-1 text-sm text-left font-medium text-primary hover:text-accent truncate"
                   >
                     {t.title}
                   </button>
-                  {t.priority && <Badge className={`text-[10px] ${priorityColors[t.priority] || ""}`}>{t.priority}</Badge>}
-                  {t.task_type && <Badge className={`text-[10px] ${typeColors[t.task_type] || "bg-muted text-muted-foreground"}`}>{t.task_type}</Badge>}
+                  {t.priority && <Badge className={`text-[10px] font-semibold rounded-full ${priorityColors[t.priority] || ""}`}>{t.priority}</Badge>}
+                  {t.task_type && <Badge className={`text-[10px] font-semibold rounded-full ${typeColors[t.task_type] || "bg-muted text-muted-foreground"}`}>{t.task_type}</Badge>}
                   {t.due_date && (
                     <span className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : isToday ? "text-catl-gold font-medium" : "text-muted-foreground"}`}>
                       {new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -281,23 +281,23 @@ export default function Dashboard() {
 
         {/* Inventory by Manufacturer */}
         <div className="mb-6">
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[2px] mb-3">Inventory by Manufacturer</p>
+          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Inventory by Manufacturer</p>
           <div className="flex flex-wrap gap-2">
             {Object.values(byMfg).map(m => (
               <button
                 key={m.id}
                 onClick={() => navigate(`/orders?manufacturer=${m.id}`)}
-                className="bg-card border rounded-lg px-4 py-3 hover:border-accent transition-colors"
+                className="bg-secondary rounded-lg px-4 py-3 cursor-pointer transition-colors hover:bg-muted"
               >
-                <p className="text-lg font-bold text-primary">{m.count}</p>
+                <p className="text-xl font-semibold text-primary">{m.count}</p>
                 <p className="text-xs text-muted-foreground">{m.name}</p>
               </button>
             ))}
             <button
               onClick={() => navigate("/orders?filter=assigned")}
-              className="bg-card border rounded-lg px-4 py-3 hover:border-accent transition-colors"
+              className="bg-secondary rounded-lg px-4 py-3 cursor-pointer transition-colors hover:bg-muted"
             >
-              <p className="text-lg font-bold text-primary">{assignedCount}</p>
+              <p className="text-xl font-semibold text-primary">{assignedCount}</p>
               <p className="text-xs text-muted-foreground">With customer</p>
             </button>
             {Object.keys(byMfg).length === 0 && <p className="text-sm text-muted-foreground">No inventory orders</p>}
@@ -305,8 +305,8 @@ export default function Dashboard() {
         </div>
 
         {/* Pipeline */}
-        <div className="bg-card border border-border rounded-xl p-5 mb-6">
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[1.5px] mb-3">Order pipeline</p>
+        <div className="bg-card rounded-xl border border-border p-5 mb-6 shadow-none">
+          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Order pipeline</p>
           <div className="space-y-2">
             {pipelineStages.filter(s => s !== "closed").map(stage => {
               const count = statusCounts[stage] || 0;
@@ -323,7 +323,7 @@ export default function Dashboard() {
                 <button
                   key={stage}
                   onClick={() => navigate(`/orders?status=${stage}`)}
-                  className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors w-full text-left"
+                  className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-secondary cursor-pointer transition-colors w-full text-left"
                 >
                   <span className="text-sm text-primary font-medium w-[140px] shrink-0">
                     {stageLabels[stage]}
@@ -349,7 +349,7 @@ export default function Dashboard() {
 
         {/* Paperwork Gaps */}
         <div className="mb-6">
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[2px] mb-3">Paperwork Gaps</p>
+          <p className="text-accent text-[11px] font-semibold uppercase tracking-[1.5px] mb-3">Paperwork Gaps</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
               { label: "Missing estimate in QB", count: missingEstimate },
@@ -360,11 +360,11 @@ export default function Dashboard() {
               <button
                 key={g.label}
                 onClick={() => navigate("/orders")}
-                className="bg-card border rounded-lg p-3 text-left hover:border-catl-gold transition-colors"
+                className="bg-card border border-border rounded-xl p-4 text-left cursor-pointer transition-colors hover:border-accent shadow-none"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <AlertTriangle size={14} className={g.count > 0 ? "text-catl-gold" : "text-catl-green"} />
-                  <span className="text-lg font-bold text-primary">{g.count}</span>
+                  <span className="text-lg font-semibold text-primary">{g.count}</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">{g.label}</p>
               </button>
@@ -374,11 +374,11 @@ export default function Dashboard() {
       </div>
 
       {/* ═══ RIGHT — Chat Panel ═══ */}
-      <div className="hidden lg:flex flex-col w-[380px] flex-shrink-0 border-l bg-card">
+      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 border-l border-border bg-card">
         {/* Chat header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b">
-          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center">
-            <Mic size={16} className="text-accent-foreground" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+            <Mic size={16} className="text-accent" />
           </div>
           <div>
             <p className="text-sm font-semibold text-primary">CATL assistant</p>
@@ -391,10 +391,10 @@ export default function Dashboard() {
           <div className="space-y-3">
             {chatHistory.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                <div className={`max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed ${
                   msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-muted text-foreground rounded-bl-md"
+                    ? "bg-primary text-primary-foreground rounded-xl rounded-br-sm"
+                    : "bg-secondary text-primary rounded-xl rounded-bl-sm"
                 }`}>
                   {msg.content}
                 </div>
@@ -402,7 +402,7 @@ export default function Dashboard() {
             ))}
             {chatLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex gap-1">
+                <div className="bg-secondary rounded-xl rounded-bl-sm px-4 py-3 flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
                   <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
                   <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -419,7 +419,7 @@ export default function Dashboard() {
             <button
               key={s}
               onClick={() => setChatInput(s)}
-              className="text-[11px] px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              className="text-[11px] px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors bg-secondary"
             >
               {s}
             </button>
@@ -432,15 +432,19 @@ export default function Dashboard() {
             onSubmit={e => { e.preventDefault(); sendChat(chatInput); }}
             className="flex gap-2"
           >
-            <Input
+            <input
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               placeholder="Ask about orders, customers, inventory..."
-              className="flex-1 text-sm"
+              className="flex-1 text-sm bg-secondary border border-border rounded-full px-4 py-2.5 text-primary placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
             />
-            <Button type="submit" size="icon" className="rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={chatLoading || !chatInput.trim()}>
+            <button
+              type="submit"
+              disabled={chatLoading || !chatInput.trim()}
+              className="w-10 h-10 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center transition-colors disabled:opacity-50"
+            >
               <Send size={16} />
-            </Button>
+            </button>
           </form>
         </div>
       </div>
