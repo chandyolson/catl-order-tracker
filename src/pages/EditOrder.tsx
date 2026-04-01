@@ -1298,60 +1298,7 @@ export default function EditOrder() {
           </div>
         )}
 
-        {/* ── CONTRACT IDENTIFIERS ────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
-            <input
-              type="text"
-              value={contractName}
-              onChange={(e) => setContractName(e.target.value)}
-              placeholder="e.g. Smith Ranch Chute"
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-            />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>MOLY contract #</p>
-            <input
-              type="text"
-              value={molyContractNumber}
-              onChange={(e) => setMolyContractNumber(e.target.value)}
-              placeholder="e.g. 2025-76"
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-            />
-          </div>
-        </div>
-
-        {/* ── EQUIPMENT ──────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p>
-            <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">Select manufacturer</option>
-              {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            {errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p>
-            <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">Select base model</option>
-              {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
-            </select>
-            {errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}
-          </div>
-        </div>
-        {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
-          <div className="mb-3">
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p>
-            <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">None — custom build</option>
-              {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* ── NAVY RECEIPT CARD ─────────────────────────────── */}
+        {/* ── NAVY RECEIPT CARD — right under customer ─────── */}
         {selectedBaseModel && (
           <div className="rounded-xl p-4 mb-3" style={{ backgroundColor: "#0E2646" }}>
             <div className="flex justify-between mb-1.5">
@@ -1397,15 +1344,85 @@ export default function EditOrder() {
           </div>
         )}
 
-        {/* ── OPTIONS — collapsible groups ────────────────────── */}
-        {extendedChuteOption && (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
-            <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-            <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
-            <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
+        {/* ── TWO-COLUMN: Equipment (left) + Contract (right) ── */}
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {/* LEFT: Equipment stack */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p>
+              <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                <option value="">Select manufacturer</option>
+                {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              {errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p>
+              <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                <option value="">Select base model</option>
+                {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
+              </select>
+              {errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}
+            </div>
+            {extendedChuteOption && (
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
+                <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
+                <span className="text-[13px] font-semibold flex-1" style={{ color: "#0E2646" }}>Extended Length</span>
+                <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
+              </div>
+            )}
+            {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p>
+                <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                  <option value="">None — custom build</option>
+                  {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p>
+              <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
+            </div>
           </div>
-        )}
 
+          {/* RIGHT: Contract / admin stack */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
+              <input type="text" value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="e.g. Smith Ranch Chute" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>MOLY contract #</p>
+              <input type="text" value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="e.g. 2025-76" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>CATL #</p>
+              <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Status</p>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none capitalize text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. date</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
+                    {estimateDate ? format(estimateDate, "M/d/yy") : "—"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+
+        {/* ── OPTIONS — collapsible groups ────────────────────── */}
         {groupedOptions.length > 0 && (
           <div>
             {groupedOptions.map(([group, opts]) => {
@@ -1416,108 +1433,47 @@ export default function EditOrder() {
           </div>
         )}
 
-        {/* ── BUILD SUMMARY ──────────────────────────────────── */}
-        {selectedBaseModel && (
-          <div className="flex items-center gap-2 mt-4 mb-2 flex-wrap">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>{selectedBaseModel.short_name}</span>
-            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
-          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
-            <button key={i} type="button" onClick={() => handlePillClick(pill)} className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform" style={{
-              background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
-              border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
-              color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
-            }}>{pill.label}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p>
-          <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
-          {errors.buildShorthand && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.buildShorthand}</p>}
-        </div>
-
-        {/* ── DETAILS CARD — 3-column grid ───────────────────── */}
+        {/* ── PRICING & DETAILS ──────────────────────────────── */}
         <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Discount</p>
+              <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
               <div className="flex items-center gap-1">
-                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-1.5 bg-card text-sm outline-none text-[16px]" style={{ width: 44 }}>
+                <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-2 bg-card text-sm outline-none text-[16px]" style={{ width: 48 }}>
                   <option value="$">$</option>
                   <option value="%">%</option>
                 </select>
-                <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-right text-[16px]" />
+                <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-2 bg-card text-sm outline-none text-right text-[16px]" />
               </div>
             </div>
+            <div>
+              <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Freight</p>
+              <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-2">
             {(orderQuery.data?.source_type === "estimate" || forEstimate) && (
               <div>
-                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Sales Tax</p>
-                <select
-                  value={taxState}
-                  onChange={(e) => {
-                    const st = e.target.value;
-                    setTaxState(st);
-                    if (st === "SD") setTaxRate(4.2);
-                    else if (st === "ND") setTaxRate(3.0);
-                    else { setTaxState(""); setTaxRate(0); }
-                  }}
-                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]"
-                >
+                <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Sales Tax</p>
+                <select value={taxState} onChange={(e) => { const st = e.target.value; setTaxState(st); if (st === "SD") setTaxRate(4.2); else if (st === "ND") setTaxRate(3.0); else { setTaxState(""); setTaxRate(0); } }} className="w-full border border-border rounded px-2 py-2 bg-card text-sm outline-none text-[16px]">
                   <option value="">No tax</option>
                   <option value="SD">SD (4.2%)</option>
                   <option value="ND">ND (3.0%)</option>
                 </select>
-                {taxRate > 0 && (
-                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
-                    +${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${totalWithTax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                )}
+                {taxRate > 0 && <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>+${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
               </div>
             )}
             <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
-              <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none capitalize text-[16px]">
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>CATL #</p>
-              <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Serial #</p>
-              <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Est. date</p>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
-                    {estimateDate ? format(estimateDate, "M/d/yy") : "—"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
+              <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Serial #</p>
+              <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded px-2 py-2 bg-card text-sm outline-none text-[16px]" />
             </div>
           </div>
           {showCompletionDate && (
-            <div className="mb-2" style={{ maxWidth: "calc(33.33% - 6px)" }}>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Completion</p>
+            <div className="mb-2" style={{ maxWidth: "50%" }}>
+              <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Completion</p>
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
+                  <button className={cn("w-full text-left border border-border rounded px-2 py-2 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
                     {estCompletionDate ? format(estCompletionDate, "M/d/yy") : "—"}
                   </button>
                 </PopoverTrigger>
@@ -1528,8 +1484,8 @@ export default function EditOrder() {
             </div>
           )}
           <div>
-            <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Notes</p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded px-2 py-1.5 bg-card text-foreground outline-none resize-none text-[16px]" />
+            <p className="text-[10px] font-semibold mb-1" style={{ color: "#717182" }}>Notes</p>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded px-2 py-2 bg-card text-foreground outline-none resize-none text-[16px]" />
           </div>
         </div>
       </div>
