@@ -3,9 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ClipboardList,
-  FileText,
   Receipt,
-  Factory,
   Users,
   Warehouse,
   FolderOpen,
@@ -13,8 +11,6 @@ import {
   Plus,
   Menu,
   X,
-  CheckSquare,
-  Mic,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -23,10 +19,6 @@ const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Orders", path: "/orders", icon: ClipboardList },
   { label: "Estimates", path: "/estimates", icon: Receipt },
-  { label: "Tasks", path: "/tasks", icon: CheckSquare },
-  { label: "Voice Memos", path: "/voice-memos", icon: Mic },
-  { label: "Paperwork", path: "/paperwork", icon: FileText },
-  { label: "Production", path: "/production", icon: Factory },
   { label: "Customers", path: "/customers", icon: Users },
   { label: "Inventory", path: "/inventory", icon: Warehouse },
   { label: "Documents", path: "/documents", icon: FolderOpen },
