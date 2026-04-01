@@ -137,8 +137,8 @@ const stageLabels: Record<string, string> = {
   ready: "Ready", delivered: "Delivered",
 };
 const stageColors: Record<string, string> = {
-  estimate: "#55BAAA", order_pending: "#3B82F6",
-  building: "#F3D12A", ready: "#22C55E", delivered: "#717182",
+  estimate: "#F3D12A", order_pending: "#55BAAA",
+  building: "#0E2646", ready: "#27AE60", delivered: "#717182",
 };
 const pipelineStages = ["estimate", "order_pending", "building", "ready", "delivered"];
 const categoryLabels: Record<string, string> = {
@@ -298,6 +298,28 @@ export default function Dashboard() {
   const overdueCount = tasks.filter(t => t.due_date && new Date(t.due_date) < today).length;
   const maxPipeCount = Math.max(...pipelineStages.map(s => statusCounts[s] || 0), 1);
 
+  // Segmented pipeline: count orders per stage by manufacturer
+  const mfgColors: Record<string, string> = {
+    "MOLY": "#0E2646", "Moly": "#0E2646", "Silencer": "#0E2646",
+    "DAN": "#55BAAA", "Daniels": "#55BAAA",
+    "RAW": "#F3D12A", "Rawhide": "#F3D12A",
+    "MJE": "#8B5CF6", "Conquistador": "#8B5CF6",
+    "LEM": "#E8503A", "Rupp": "#E8503A",
+    "LINN": "#717182", "Linn": "#717182",
+  };
+  const pipelineSegments: Record<string, { mfg: string; count: number; color: string }[]> = {};
+  for (const stage of pipelineStages) {
+    const stageOrders = orders.filter(o => o.status === stage);
+    const mfgCounts: Record<string, number> = {};
+    for (const o of stageOrders) {
+      const mfgName = o.manufacturers?.short_name || o.manufacturers?.name || "Other";
+      mfgCounts[mfgName] = (mfgCounts[mfgName] || 0) + 1;
+    }
+    pipelineSegments[stage] = Object.entries(mfgCounts).map(([mfg, count]) => ({
+      mfg, count, color: mfgColors[mfg] || "#717182",
+    })).sort((a, b) => b.count - a.count);
+  }
+
   return (
     <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
 
@@ -433,9 +455,15 @@ export default function Dashboard() {
                 <button key={stage} onClick={() => navigate(`/orders?status=${stage}`)}
                   className="flex items-center gap-3 w-full px-4 py-2 hover:bg-[#F9F9F7] active:scale-[0.99] transition-all text-left">
                   <span className="text-[12px] font-medium w-[85px] flex-shrink-0" style={{ color: "#1A1A1A" }}>{stageLabels[stage]}</span>
-                  <div className="flex-1 h-6 rounded-md overflow-hidden" style={{ background: "#F5F5F0" }}>
-                    <div className="h-full rounded-md transition-all duration-500"
-                      style={{ width: `${widthPct}%`, background: stageColors[stage], minWidth: count > 0 ? "20px" : "0", opacity: count > 0 ? 1 : 0 }} />
+                  <div className="flex-1 h-6 rounded-md overflow-hidden flex" style={{ background: "#F5F5F0" }}>
+                    {(pipelineSegments[stage] || []).map((seg, si) => {
+                      const segPct = (seg.count / maxPipeCount) * 100;
+                      return (
+                        <div key={si} className="h-full transition-all duration-500 first:rounded-l-md last:rounded-r-md"
+                          style={{ width: `${segPct}%`, background: seg.color, minWidth: seg.count > 0 ? "8px" : "0" }}
+                          title={`${seg.mfg}: ${seg.count}`} />
+                      );
+                    })}
                   </div>
                   <span className="text-[14px] font-bold w-8 text-right" style={{ color: count > 0 ? "#0E2646" : "#D4D4D0" }}>{count}</span>
                 </button>
@@ -452,7 +480,7 @@ export default function Dashboard() {
               <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Action Items</span>
               <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
             </div>
-            <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            <div>
               {tasks.slice(0, 10).map(t => {
                 const isOverdue = t.due_date && new Date(t.due_date) < today;
                 const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
