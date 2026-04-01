@@ -550,46 +550,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
           </div>
         </div>
 
-        {/* ─── RIGHT: Financials ──────────────────────── */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5" style={{ backgroundColor: "#F5F5F0" }}>
-            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Financials</h3>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="flex justify-between items-baseline">
-              <span className="text-[13px] text-muted-foreground">Customer Price</span>
-              <span className="text-[15px] font-semibold text-foreground">{fmtCurrency(order.customer_price)}</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-[13px] text-muted-foreground">Our Cost</span>
-              <span className="text-[15px] font-semibold text-foreground">{fmtCurrency(order.our_cost)}</span>
-            </div>
-            <div className="h-px bg-border" />
-            {order.freight_estimate != null && (
-              <div className="flex justify-between items-baseline">
-                <span className="text-[13px] text-muted-foreground">Freight Estimate</span>
-                <span className="text-[13px] font-medium text-foreground">{fmtCurrency(order.freight_estimate)}</span>
-              </div>
-            )}
-            {(order.discount_amount != null && order.discount_amount > 0) && (
-              <div className="flex justify-between items-baseline">
-                <span className="text-[13px] text-muted-foreground">Discount</span>
-                <span className="text-[13px] font-medium" style={{ color: "#D4183D" }}>
-                  {order.discount_type === "%" ? `${order.discount_amount}%` : fmtCurrency(order.discount_amount)}
-                </span>
-              </div>
-            )}
-            {order.subtotal != null && (
-              <>
-                <div className="h-px bg-border" />
-                <div className="flex justify-between items-baseline">
-                  <span className="text-[13px] font-medium text-foreground">Subtotal</span>
-                  <span className="text-[15px] font-bold text-foreground">{fmtCurrency(order.subtotal)}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* ─── CUSTOMER ────────────────────────────────────── */}
@@ -1001,24 +961,6 @@ export default function OverviewTab({ order, customer, manufacturer, baseModel, 
         })()}
       </div>
 
-      {/* ─── INTERNAL (collapsible) ─────────────────────── */}
-      <details className="mt-4">
-        <summary className="text-[12px] font-semibold cursor-pointer select-none" style={{ color: "#717182" }}>
-          Internal (tap to show)
-        </summary>
-        <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(14,38,70,0.05)", border: "1px solid rgba(14,38,70,0.1)" }}>
-          <div className="flex justify-between text-sm mb-1">
-            <span style={{ color: "#717182" }}>Our cost</span>
-            <span style={{ color: "#717182" }}>{fmtCurrency(order.our_cost)}</span>
-          </div>
-          <div className="flex justify-between text-sm font-semibold">
-            <span style={{ color: marginColor }}>Margin</span>
-            <span style={{ color: marginColor }}>
-              {margin ? `${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}
-            </span>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }

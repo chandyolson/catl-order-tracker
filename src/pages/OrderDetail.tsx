@@ -19,8 +19,9 @@ import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import StatusBadge from "@/components/StatusBadge";
 import OverviewTab from "@/components/order-detail/OverviewTab";
 import EstimatesTab from "@/components/order-detail/EstimatesTab";
-import ActivityTab from "@/components/order-detail/ActivityTab";
+import FinancialsTab from "@/components/order-detail/FinancialsTab";
 import DocumentsTab from "@/components/order-detail/DocumentsTab";
+import ActivityTab from "@/components/order-detail/ActivityTab";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -39,7 +40,7 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "documents" | "activity">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "estimates" | "financials">("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
 
@@ -232,8 +233,7 @@ export default function OrderDetail() {
   const tabs = [
     { key: "overview" as const, label: "Overview" },
     ...(hasEstimates ? [{ key: "estimates" as const, label: "Estimates" }] : []),
-    { key: "documents" as const, label: "Documents" },
-    { key: "activity" as const, label: "Activity" },
+    { key: "financials" as const, label: "Financials 🔒" },
   ];
 
   const keyDates = [
@@ -397,15 +397,32 @@ export default function OrderDetail() {
 
       {/* ─── TAB CONTENT ─────────────────────────────────── */}
       {activeTab === "overview" && (
-        <OverviewTab
-          order={order}
-          customer={customer}
-          manufacturer={manufacturer}
-          baseModel={baseModelQuery.data}
-          paperwork={paperworkQuery.data || []}
-          margin={margin}
-          marginColor={marginColor}
-        />
+        <div className="space-y-6">
+          <OverviewTab
+            order={order}
+            customer={customer}
+            manufacturer={manufacturer}
+            baseModel={baseModelQuery.data}
+            paperwork={paperworkQuery.data || []}
+            margin={margin}
+            marginColor={marginColor}
+          />
+          {/* Documents inline */}
+          <DocumentsTab
+            orderId={id!}
+            molyContractNumber={(order as any).moly_contract_number}
+            driveFolderUrl={order.google_drive_folder_url}
+          />
+          {/* Activity inline */}
+          <ActivityTab
+            orderId={id!}
+            docs={paperworkQuery.data || []}
+            events={timelineQuery.data || []}
+            changes={changeOrdersQuery.data || []}
+            order={order}
+            queryClient={queryClient}
+          />
+        </div>
       )}
       {activeTab === "estimates" && (
         <EstimatesTab
@@ -415,17 +432,11 @@ export default function OrderDetail() {
           queryClient={queryClient}
         />
       )}
-      {activeTab === "documents" && (
-        <DocumentsTab orderId={id!} molyContractNumber={(order as any).moly_contract_number} driveFolderUrl={order.google_drive_folder_url} />
-      )}
-      {activeTab === "activity" && (
-        <ActivityTab
-          orderId={id!}
-          docs={paperworkQuery.data || []}
-          events={timelineQuery.data || []}
-          changes={changeOrdersQuery.data || []}
+      {activeTab === "financials" && (
+        <FinancialsTab
           order={order}
-          queryClient={queryClient}
+          margin={margin}
+          marginColor={marginColor}
         />
       )}
 
