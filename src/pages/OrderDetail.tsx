@@ -240,20 +240,72 @@ export default function OrderDetail() {
               <ChevronLeft size={22} />
             </button>
             <div className="min-w-0 flex-1">
+              {/* Row 1: Contract Name + MOLY # + Status */}
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-[20px] font-bold" style={{ color: "#F0F0F0" }}>
-                  {(order as any).contract_name || order.moly_contract_number || order.order_number || "New Order"}
-                  {customer?.name && (
-                    <span className="font-medium text-[16px] ml-2" style={{ color: "rgba(240,240,240,0.6)" }}>
-                      — {customer.name}
-                    </span>
-                  )}
+                  {(order as any).contract_name || "Untitled Order"}
                 </h1>
+                {(order as any).moly_contract_number && (
+                  <span className="text-[12px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#F3D12A" }}>
+                    #{(order as any).moly_contract_number}
+                  </span>
+                )}
                 <StatusBadge status={order.status} />
               </div>
-              <p className="text-[14px] font-medium mt-0.5" style={{ color: "#55BAAA" }}>
-                {order.build_shorthand}
-              </p>
+
+              {/* Row 2: Manufacturer + Base Model + Extended (the blue build box) */}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {manufacturer && (
+                  <span className="text-[12px] font-semibold px-2.5 py-1 rounded-lg" style={{ backgroundColor: "rgba(85,186,170,0.12)", color: "#55BAAA" }}>
+                    {manufacturer.short_name || manufacturer.name}
+                  </span>
+                )}
+                {baseModelQuery.data && (
+                  <span className="text-[14px] font-bold" style={{ color: "#F0F0F0" }}>
+                    {baseModelQuery.data.name}
+                  </span>
+                )}
+                {/* Extended length indicator */}
+                {Array.isArray(order.selected_options) && (order.selected_options as any[]).some((opt: any) => {
+                  const name = (opt.name || opt.display_name || "").toLowerCase();
+                  return name.includes("extended") || (opt.short_code || "").toLowerCase() === "ext";
+                }) && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.2)", color: "#F3D12A" }}>
+                    Extended
+                  </span>
+                )}
+                {customer?.name && (
+                  <span className="text-[13px] font-medium ml-auto" style={{ color: "rgba(240,240,240,0.5)" }}>
+                    {customer.name}
+                  </span>
+                )}
+              </div>
+
+              {/* Row 3: Spec pills */}
+              {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(order.selected_options as any[]).map((opt: any, i: number) => {
+                    const pillLabel = formatSavedOptionPill(opt);
+                    if (!pillLabel) return null;
+                    // Skip base model and extended (already shown above)
+                    if (opt.is_base_model) return null;
+                    const name = (opt.name || opt.display_name || "").toLowerCase();
+                    if (name.includes("extended") && (name.includes("length") || name.includes("chute"))) return null;
+                    return (
+                      <span key={i} className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
+                        {pillLabel}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Build shorthand if set */}
+              {order.build_shorthand && (
+                <p className="text-[12px] font-medium mt-1.5" style={{ color: "rgba(240,240,240,0.4)" }}>
+                  {order.build_shorthand}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -297,35 +349,6 @@ export default function OrderDetail() {
               </DropdownMenu>
             </div>
           </div>
-
-          {/* Right-side info: customer, manufacturer, margin */}
-          <div className="flex items-center gap-4 mt-3 flex-wrap">
-            {manufacturer && (
-              <div>
-                <span className="text-[11px] uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.35)" }}>Manufacturer</span>
-                <p className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>{manufacturer.short_name || manufacturer.name}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Option pills */}
-          {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
-              {(order.selected_options as any[]).map((opt: any, i: number) => {
-                const pillLabel = formatSavedOptionPill(opt);
-                if (!pillLabel) return null;
-                return (
-                  <span
-                    key={i}
-                    className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
-                    style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}
-                  >
-                    {pillLabel}
-                  </span>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* Key dates bar */}
