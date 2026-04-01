@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
-  CheckSquare, ShoppingCart, Warehouse, Mic, Send, ArrowRight,
-  MessageCircle, AlertTriangle, FileText, Clock,
+  CheckSquare, ShoppingCart, Warehouse, Mic, Send,
+  MessageCircle, AlertTriangle,
 } from "lucide-react";
 
 /* ──────── types ──────── */
