@@ -391,7 +391,27 @@ export default function OverviewTab({
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Document Chain</h3>
             <div className="flex items-center gap-2">
               {(order.qb_estimate_id || order.qb_po_id || order.qb_bill_id || order.qb_invoice_id) && (
-                <button onClick={async () => { try { const { data, error } = await supabase.functions.invoke("qb-check-sync", { body: { order_id: order.id } }); if (error) throw error; if (data?.success) { toast[data.has_issues ? "error" : "success"](data.summary); slotsQuery.refetch(); } } catch (err: any) { toast.error(err.message); } }} className="text-[10px] font-medium px-2 py-1 rounded-full" style={{ border: "1px solid #717182", color: "#717182" }}>QB Sync</button>
+                <button onClick={async (e) => {
+                  const btn = e.currentTarget;
+                  const origText = btn.textContent;
+                  btn.textContent = "Syncing...";
+                  btn.style.opacity = "0.6";
+                  btn.disabled = true;
+                  try {
+                    const { data, error } = await supabase.functions.invoke("qb-check-sync", { body: { order_id: order.id } });
+                    if (error) throw error;
+                    if (data?.success) {
+                      const downloadCount = data.downloads ? Object.values(data.downloads).filter((d: any) => d?.success).length : 0;
+                      toast[data.has_issues ? "error" : "success"](
+                        data.has_issues ? data.summary : `Synced! ${downloadCount} PDF(s) downloaded to Drive.`
+                      );
+                      slotsQuery.refetch();
+                    } else {
+                      toast.error(data?.error || "Sync failed");
+                    }
+                  } catch (err: any) { toast.error(err.message); }
+                  finally { btn.textContent = origText || "QB Sync"; btn.style.opacity = "1"; btn.disabled = false; }
+                }} className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: "#0E2646", color: "#F3D12A" }}>QB Sync</button>
               )}
               {order.google_drive_folder_url ? (
                 <a href={order.google_drive_folder_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><ExternalLink size={10} /> Drive</a>
