@@ -13,6 +13,8 @@ import {
   Plus,
   Menu,
   X,
+  CheckSquare,
+  Mic,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
