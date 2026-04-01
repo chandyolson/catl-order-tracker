@@ -573,22 +573,25 @@ export default function Dashboard() {
       </div>
 
       {/* RIGHT — Chat */}
-      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0"
-        style={{ background: "#fff", borderLeft: "1px solid #E5E5E0" }}>
-        <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
-          style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="8" r="4" fill="#fff" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
-            <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
+      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 overflow-hidden"
+        style={{ background: "#F5F5F0" }}>
+        <div className="px-4 pt-4 md:px-6 md:pt-6 flex-shrink-0">
+          <div className="rounded-xl px-5 py-4 flex items-center gap-3"
+            style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" fill="#fff" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
+              <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
+            </div>
           </div>
         </div>
 
+        <div className="flex-1 flex flex-col mx-4 mt-3 mb-4 md:mx-6 md:mb-6 rounded-xl overflow-hidden" style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
         <ScrollArea className="flex-1 px-4 py-3">
           <div className="space-y-3">
             {chatHistory.map((msg, i) => (
@@ -700,6 +703,7 @@ export default function Dashboard() {
               <Send size={15} color="#fff" />
             </button>
           </form>
+        </div>
         </div>
       </div>
     </div>
