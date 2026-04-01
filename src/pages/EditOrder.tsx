@@ -668,6 +668,7 @@ export default function EditOrder() {
       });
 
       // --- Save the order record (always) ---
+      console.log("[EditOrder] Saving status:", status, "for order:", id);
       const { error: updateError } = await supabase.from("orders").update({
         manufacturer_id: manufacturerId, base_model_id: baseModelId,
         base_model: selectedBaseModel?.name || null, build_shorthand: buildShorthand,
