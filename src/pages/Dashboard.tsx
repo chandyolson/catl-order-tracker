@@ -207,6 +207,7 @@ export default function Dashboard() {
   const today = new Date();
   const dateStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
+
   return (
     <div className="flex gap-0 h-[calc(100vh-56px)] md:h-screen overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0 }}>
       {/* ═══ LEFT — Dashboard ═══ */}
