@@ -206,8 +206,34 @@ export default function Orders() {
           ))}
         </select>
       </div>
+      {/* Active filter pills */}
+      {(statusFilter !== "all" || mfgFilter !== "all" || inventoryFilter) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Filtered by:</span>
+          {statusFilter !== "all" && (
+            <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">
+              Status: {statusFilter.replace(/_/g, " ")}
+            </span>
+          )}
+          {mfgFilter !== "all" && (
+            <span className="text-xs px-3 py-1 rounded-full bg-accent/10 text-accent font-medium">
+              Manufacturer: {(mfgQuery.data || []).find((m: any) => m.id === mfgFilter)?.short_name || mfgFilter}
+            </span>
+          )}
+          {inventoryFilter && (
+            <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-medium">
+              {inventoryFilter === "inventory" ? "Unsold inventory" : "Has buyer"}
+            </span>
+          )}
+          <button
+            onClick={() => navigate("/orders")}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
 
-      {/* Order Cards */}
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
