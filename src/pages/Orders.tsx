@@ -106,7 +106,11 @@ export default function Orders() {
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
-        query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},customers.name.ilike.${s},contract_name.ilike.${s},moly_contract_number.ilike.${s}`);
+        // NOTE: customers.name.ilike inside .or() causes PostgREST to exclude rows
+        // where customer_id is null (most inventory orders). Search order fields
+        // directly, and handle customer name matching via contract_name which often
+        // contains the customer name, or via customer_location.
+        query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},contract_name.ilike.${s},moly_contract_number.ilike.${s},customer_location.ilike.${s}`);
       }
 
       if (statusFilter !== "all") {
