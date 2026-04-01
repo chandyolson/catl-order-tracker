@@ -10,40 +10,40 @@
     --catl-navy: 214 65% 16%;
     --catl-teal: 168 37% 53%;
     --catl-gold: 51 88% 58%;
-    --catl-cream: 50 20% 95%;
-    --catl-red: 350 74% 46%;
+    --catl-cream: 60 14% 95%;
+    --catl-red: 6 78% 57%;
     --catl-orange: 28 87% 56%;
     --catl-green: 145 60% 42%;
     --catl-muted: 240 5% 47%;
 
     /* Semantic tokens mapped to CATL brand */
-    --background: 50 20% 95%;
-    --foreground: 0 0% 10%;
+    --background: 60 14% 95%;
+    --foreground: 214 65% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 214 65% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 214 65% 16%;
 
     --primary: 214 65% 16%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 50 20% 95%;
+    --secondary: 60 14% 95%;
     --secondary-foreground: 214 65% 16%;
 
-    --muted: 50 10% 91%;
+    --muted: 60 7% 91%;
     --muted-foreground: 240 5% 47%;
 
     --accent: 168 37% 53%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 350 74% 46%;
+    --destructive: 6 78% 57%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 50 6% 83%;
-    --input: 50 6% 83%;
-    --ring: 51 88% 58%;
+    --border: 60 6% 89%;
+    --input: 60 6% 89%;
+    --ring: 168 37% 53%;
 
     --radius: 0.75rem;
 
@@ -54,7 +54,7 @@
     --sidebar-accent: 214 60% 22%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 214 50% 25%;
-    --sidebar-ring: 51 88% 58%;
+    --sidebar-ring: 168 37% 53%;
   }
 }
 
