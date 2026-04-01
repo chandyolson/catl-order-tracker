@@ -20,9 +20,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
 
 const navItems = [
-  { label: "Dashboard", path: "/", icon: LayoutDashboard },
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Orders", path: "/orders", icon: ClipboardList },
   { label: "Estimates", path: "/estimates", icon: Receipt },
+  { label: "Tasks", path: "/tasks", icon: CheckSquare },
+  { label: "Voice Memos", path: "/voice-memos", icon: Mic },
   { label: "Paperwork", path: "/paperwork", icon: FileText },
   { label: "Production", path: "/production", icon: Factory },
   { label: "Customers", path: "/customers", icon: Users },
