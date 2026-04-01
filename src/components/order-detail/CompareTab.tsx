@@ -85,10 +85,14 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
           <select value={leftSlot} onChange={(e) => setLeftSlot(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card outline-none">
             {Object.entries(SLOT_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
-          {leftDoc?.file_url && (
+          {leftDoc?.file_url ? (
             <a href={leftDoc.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium mt-1.5 hover:underline" style={{ color: "#55BAAA" }}>
               <ExternalLink size={10} /> View PDF
             </a>
+          ) : (
+            <p className="text-[10px] mt-1.5 font-medium" style={{ color: left?.is_filled ? "#B8930A" : "#D1D5DB" }}>
+              {left?.is_filled ? "⚠ In QB but not downloaded — run QB Sync" : "⬡ Not uploaded yet"}
+            </p>
           )}
           {!leftHasData && <p className="text-[10px] mt-1" style={{ color: "#B8930A" }}>No line items</p>}
         </div>
@@ -106,10 +110,14 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
           <select value={rightSlot} onChange={(e) => setRightSlot(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card outline-none">
             {Object.entries(SLOT_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
-          {rightDoc?.file_url && (
+          {rightDoc?.file_url ? (
             <a href={rightDoc.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium mt-1.5 hover:underline" style={{ color: "#55BAAA" }}>
               <ExternalLink size={10} /> View PDF
             </a>
+          ) : (
+            <p className="text-[10px] mt-1.5 font-medium" style={{ color: right?.is_filled ? "#B8930A" : "#D1D5DB" }}>
+              {right?.is_filled ? "⚠ In QB but not downloaded — run QB Sync" : "⬡ Not uploaded yet"}
+            </p>
           )}
           {!rightHasData && <p className="text-[10px] mt-1" style={{ color: "#B8930A" }}>No line items</p>}
         </div>
