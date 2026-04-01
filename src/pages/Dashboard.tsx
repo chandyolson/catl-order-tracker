@@ -58,7 +58,65 @@ function daysAgo(iso: string): string {
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
+
+function FormattedMessage({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let inList = false;
+  let listItems: string[] = [];
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`ul-${elements.length}`} className="space-y-1 my-1.5 pl-3">
+          {listItems.map((li, i) => (
+            <li key={i} className="flex gap-1.5 items-start">
+              <span className="mt-[5px] w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#55BAAA" }} />
+              <span>{formatInline(li)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+    }
+    inList = false;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const bulletMatch = line.match(/^\s*[-•*]\s+(.+)/);
+    const numberedMatch = line.match(/^\s*\d+[.)]\s+(.+)/);
+
+    if (bulletMatch || numberedMatch) {
+      inList = true;
+      listItems.push(bulletMatch ? bulletMatch[1] : numberedMatch![1]);
+    } else {
+      flushList();
+      if (line.trim() === "") {
+        if (i > 0 && i < lines.length - 1) {
+          elements.push(<div key={`br-${i}`} className="h-1.5" />);
+        }
+      } else {
+        elements.push(<p key={`p-${i}`} className="my-0.5">{formatInline(line)}</p>);
+      }
+    }
+  }
+  flushList();
+
+  return <div>{elements}</div>;
+}
+
+function formatInline(text: string): React.ReactNode {
+  // Bold: **text**
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
   });
 }
 
@@ -504,7 +562,7 @@ export default function Dashboard() {
                   style={msg.role === "user"
                     ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
                     : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
-                  {msg.content}
+                  {msg.role === "user" ? msg.content : <FormattedMessage text={msg.content} />}
                 </div>
                 {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[88%]">
