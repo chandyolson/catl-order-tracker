@@ -5,7 +5,7 @@ import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
 import {
   Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink,
-  FileText, Users, Search, Trash2, Plus,
+  FileText, Users, Search, Trash2, Plus, FolderOpen,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,9 @@ export default function OverviewTab({
   const [showAddTask, setShowAddTask] = useState(false);
   const [unmatchedDriveFiles, setUnmatchedDriveFiles] = useState<{ id: string; name: string; url: string; size: string }[]>([]);
   const [linkingSlot, setLinkingSlot] = useState<string | null>(null);
+  const [browseFiles, setBrowseFiles] = useState<{ id: string; name: string; url: string; size: string; mime_type?: string; subfolder?: string | null }[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseSlot, setBrowseSlot] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCustSearch(custSearch), 300);
@@ -491,14 +494,64 @@ export default function OverviewTab({
                         <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
                       </a>
                     )}
+                    {!isFilled && !isVoided && order.google_drive_folder_url && (
+                      <button onClick={async () => {
+                        if (browseSlot === slotType) { setBrowseSlot(null); return; }
+                        setBrowseSlot(slotType);
+                        setLinkingSlot(null);
+                        if (browseFiles.length === 0) {
+                          setBrowseLoading(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("list-drive-files", { body: { order_id: order.id } });
+                            if (error) throw error;
+                            if (data?.success) setBrowseFiles(data.files || []);
+                            else toast.error(data?.error || "Failed to list files");
+                          } catch (err: any) { toast.error(err.message); }
+                          finally { setBrowseLoading(false); }
+                        }
+                      }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95] flex items-center gap-1" style={{ backgroundColor: browseSlot === slotType ? "#0E2646" : "rgba(14,38,70,0.08)", color: browseSlot === slotType ? "#F3D12A" : "#0E2646" }}>
+                        <FolderOpen size={10} />Browse
+                      </button>
+                    )}
                     {!isFilled && !isVoided && unmatchedDriveFiles.length > 0 && (
-                      <button onClick={() => setLinkingSlot(linkingSlot === slotType ? null : slotType)} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: linkingSlot === slotType ? "#55BAAA" : "rgba(85,186,170,0.1)", color: linkingSlot === slotType ? "#fff" : "#55BAAA" }}>
+                      <button onClick={() => { setLinkingSlot(linkingSlot === slotType ? null : slotType); setBrowseSlot(null); }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: linkingSlot === slotType ? "#55BAAA" : "rgba(85,186,170,0.1)", color: linkingSlot === slotType ? "#fff" : "#55BAAA" }}>
                         <Plus size={10} className="inline mr-0.5" />Link
                       </button>
                     )}
-                    {!isFilled && !isVoided && unmatchedDriveFiles.length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
+                    {!isFilled && !isVoided && unmatchedDriveFiles.length === 0 && !order.google_drive_folder_url && <span className="text-[10px] text-muted-foreground">—</span>}
                   </div>
-                  {/* Manual link file picker */}
+                  {/* Browse Drive file picker */}
+                  {browseSlot === slotType && (
+                    <div className="px-3 pb-2 space-y-1">
+                      {browseLoading && <p className="text-[11px] text-muted-foreground py-2">Loading Drive files...</p>}
+                      {!browseLoading && browseFiles.length === 0 && <p className="text-[11px] text-muted-foreground py-2">No files in Drive folder</p>}
+                      {!browseLoading && browseFiles.map((f) => (
+                        <button key={f.id} onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.functions.invoke("link-document-to-slot", {
+                              body: { order_id: order.id, slot_type: slotType, drive_file_id: f.id, drive_file_name: f.name, drive_file_url: f.url }
+                            });
+                            if (error) throw error;
+                            if (data?.success) {
+                              toast.success(data.summary || `Linked ${f.name}`);
+                              setBrowseSlot(null);
+                              setBrowseFiles([]);
+                              slotsQuery.refetch();
+                            } else {
+                              toast.error(data?.error || "Link failed");
+                            }
+                          } catch (err: any) { toast.error(err.message); }
+                        }} className="w-full text-left flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-white/80 transition-colors text-[11px]" style={{ backgroundColor: "rgba(14,38,70,0.04)" }}>
+                          <FileText size={12} style={{ color: "#0E2646" }} />
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate block font-medium" style={{ color: "#0E2646" }}>{f.name}</span>
+                            {f.subfolder && <span className="text-[9px] text-muted-foreground">in {f.subfolder}/</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Unmatched file picker (from scan) */}
                   {linkingSlot === slotType && unmatchedDriveFiles.length > 0 && (
                     <div className="px-3 pb-2 space-y-1">
                       {unmatchedDriveFiles.map((f) => (
