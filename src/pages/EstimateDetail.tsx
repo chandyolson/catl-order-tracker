@@ -20,6 +20,7 @@ export default function EstimateDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [pushing, setPushing] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const estimateQuery = useQuery({
     queryKey: ["estimate_detail", id],
@@ -78,6 +79,35 @@ export default function EstimateDetail() {
       toast.error(err.message || "Push failed");
     } finally {
       setPushing(false);
+    }
+  }
+
+  async function handleSendEstimate() {
+    const recipientEmail = customer?.email;
+    if (!recipientEmail) {
+      toast.error("No customer email on file — add one first");
+      return;
+    }
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-estimate", {
+        body: {
+          estimate_id: estimate.id,
+          recipient_email: recipientEmail,
+          recipient_name: customer?.name || "",
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(`Estimate emailed to ${recipientEmail}`);
+        queryClient.invalidateQueries({ queryKey: ["estimate_detail", id] });
+      } else {
+        toast.error(data?.error || "Email failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Send failed");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -151,7 +181,7 @@ export default function EstimateDetail() {
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 flex-wrap">
         {!isConverted && (
           <button
             onClick={() => navigate(`/orders/new?edit_estimate=${estimate.id}`)}
@@ -159,6 +189,16 @@ export default function EstimateDetail() {
             style={{ border: "2px solid #55BAAA", color: "#55BAAA" }}
           >
             Edit Estimate
+          </button>
+        )}
+        {!isConverted && (
+          <button
+            onClick={handleSendEstimate}
+            disabled={sending}
+            className="flex-1 py-2.5 rounded-full text-[13px] font-semibold active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5 disabled:opacity-50"
+            style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}
+          >
+            <Send size={14} /> {sending ? "Sending..." : "Send Estimate"}
           </button>
         )}
         {!isConverted && (
