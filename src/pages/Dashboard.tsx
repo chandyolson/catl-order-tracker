@@ -631,14 +631,14 @@ export default function Dashboard() {
           <div className="space-y-3">
             {chatHistory.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                <div className="max-w-[85%] px-3.5 py-2.5 text-[12px] leading-relaxed rounded-xl"
+                <div className="max-w-[90%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-xl"
                   style={msg.role === "user"
-                    ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
-                    : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
+                    ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4, overflowWrap: "break-word", wordBreak: "break-word" }
+                    : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4, overflowWrap: "break-word", wordBreak: "break-word" }}>
                   {msg.role === "user" ? msg.content : <FormattedMessage text={msg.content} />}
                 </div>
                 {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[85%]">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[90%]">
                     {msg.actions.map((action, ai) => (
                       <button key={ai} onClick={() => navigate(action.route)}
                         className="text-[11px] font-bold rounded-full px-3 py-1 active:scale-[0.97] transition-transform"
@@ -783,14 +783,14 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {chatHistory.map((msg, i) => (
                   <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                    <div className="max-w-[85%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-xl"
+                    <div className="max-w-[90%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-xl"
                       style={msg.role === "user"
-                        ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
-                        : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
+                        ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4, overflowWrap: "break-word", wordBreak: "break-word" }
+                        : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4, overflowWrap: "break-word", wordBreak: "break-word" }}>
                       {msg.role === "user" ? msg.content : <FormattedMessage text={msg.content} />}
                     </div>
                     {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[85%]">
+                      <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[90%]">
                         {msg.actions.map((action, ai) => (
                           <button key={ai} onClick={() => { setMobileChatOpen(false); navigate(action.route); }}
                             className="text-[11px] font-bold rounded-full px-3 py-1 active:scale-[0.97] transition-transform"
