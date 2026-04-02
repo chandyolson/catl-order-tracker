@@ -606,7 +606,7 @@ export default function Dashboard() {
       </div>
 
       {/* RIGHT — Chat */}
-      <div className="hidden lg:flex flex-col w-[380px] min-w-[360px] flex-shrink-0 overflow-hidden"
+      <div className="hidden lg:flex flex-col w-[440px] min-w-[420px] flex-shrink-0 overflow-hidden"
         style={{ background: "#F5F5F0" }}>
         <div className="px-4 pt-4 md:px-6 md:pt-6 flex-shrink-0">
           <div className="rounded-xl px-5 py-4 flex items-center gap-3"
@@ -673,7 +673,7 @@ export default function Dashboard() {
         </div>
 
         <div className="px-4 pb-4 pt-2 flex-shrink-0">
-          <form onSubmit={e => { e.preventDefault(); sendChat(chatInput); }} className="flex gap-2">
+          <form onSubmit={e => { e.preventDefault(); sendChat(chatInput); }} className="flex gap-2 items-center flex-nowrap">
             <input value={chatInput} onChange={e => setChatInput(e.target.value)}
               placeholder="Ask about orders, leads, inventory..."
               className="flex-1 text-[12px] rounded-full px-4 py-2.5 transition-colors focus:outline-none"
