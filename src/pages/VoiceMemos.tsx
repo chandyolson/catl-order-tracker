@@ -37,6 +37,7 @@ import {
   User,
   ShoppingCart,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 
 /* ──── types ──── */
@@ -286,6 +287,14 @@ export default function VoiceMemos() {
     else { toast.success("Reprocessing started"); queryClient.invalidateQueries({ queryKey: ["voice_memos"] }); }
   };
 
+  const deleteMemo = async (memoId: string) => {
+    if (!confirm("Delete this voice memo and its tasks?")) return;
+    await supabase.from("tasks").delete().eq("source_id", memoId).eq("source_type", "voice_memo");
+    await supabase.from("voice_memos").delete().eq("id", memoId);
+    toast.success("Memo deleted");
+    queryClient.invalidateQueries({ queryKey: ["voice_memos"] });
+  };
+
   // realtime
   useEffect(() => {
     const channel = supabase.channel("voice-memos-rt")
@@ -461,6 +470,9 @@ export default function VoiceMemos() {
                           View order
                         </Button>
                       )}
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteMemo(m.id)}>
+                        <Trash2 size={12} /> Delete
+                      </Button>
                     </div>
                   </div>
                 </CollapsibleContent>

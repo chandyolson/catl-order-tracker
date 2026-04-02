@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   CheckSquare, Warehouse, Send, MessageCircle,
-  AlertTriangle, Truck, TrendingUp, Mic, ChevronRight,
+  AlertTriangle, Truck, TrendingUp, Mic, ChevronRight, Trash2, RefreshCw,
 } from "lucide-react";
 
 type Task = {
@@ -274,6 +274,35 @@ export default function Dashboard() {
     fetchAll();
   };
 
+  const deleteTask = async (id: string) => {
+    await supabase.from("tasks").delete().eq("id", id);
+    toast.success("Task deleted");
+    fetchAll();
+  };
+
+  const deleteMemo = async (id: string) => {
+    if (!confirm("Delete this voice memo?")) return;
+    await supabase.from("tasks").delete().eq("source_id", id).eq("source_type", "voice_memo");
+    await supabase.from("voice_memos").delete().eq("id", id);
+    toast.success("Memo deleted");
+    fetchAll();
+  };
+
+  const refreshMemos = async () => {
+    toast.info("Checking for new memos...");
+    const { data, error } = await supabase.functions.invoke("drive-watch-memos", { body: {} });
+    if (error) { toast.error("Refresh failed"); return; }
+    if (data?.results?.length > 0) {
+      const r = data.results[0];
+      toast.success(r.success ? `Processed: ${r.summary || r.file}` : (r.error || "Processing..."));
+    } else if (data?.mode === "retry_stuck") {
+      toast.success("Retried a stuck memo");
+    } else {
+      toast.info(data?.message || "No new memos");
+    }
+    fetchAll();
+  };
+
   // Derived
   const unsoldInventory = orders.filter(o => o.from_inventory && !o.customer_id);
   const unsoldTotal = unsoldInventory.length;
@@ -492,7 +521,7 @@ export default function Dashboard() {
                 const isOverdue = t.due_date && new Date(t.due_date) < today;
                 const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
                 return (
-                  <div key={t.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors"
+                  <div key={t.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
                     style={{ borderBottom: "0.5px solid #F5F5F0" }}>
                     <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0" />
                     <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
@@ -510,6 +539,7 @@ export default function Dashboard() {
                     )}
                     {t.source_type === "voice_memo" && <Mic size={11} style={{ color: "#717182", flexShrink: 0 }} />}
                     {t.source_type === "chat" && <MessageCircle size={11} style={{ color: "#717182", flexShrink: 0 }} />}
+                    <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} className="p-0.5 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
                   </div>
                 );
               })}
@@ -523,23 +553,26 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
                 <Mic size={12} style={{ color: "#55BAAA" }} />
                 <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Recent Memos</span>
-                <button onClick={() => navigate("/voice-memos")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
+                <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
+                <button onClick={() => navigate("/voice-memos")} className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
               </div>
               {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No memos yet</p>}
               {recentMemos.map(memo => (
-                <button key={memo.id} onClick={() => navigate("/voice-memos")}
-                  className="w-full px-4 py-2.5 text-left hover:bg-[#F9F9F7] transition-colors"
+                <div key={memo.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
                   style={{ borderBottom: "0.5px solid #F5F5F0" }}>
-                  <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
-                    {memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Untranscribed memo"}
-                  </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
-                    {formatTime(memo.created_at)}
-                    {memo.status && memo.status !== "processed" && (
-                      <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "#FFF0DC", color: "#B85C00" }}>{memo.status}</span>
-                    )}
+                  <button onClick={() => navigate("/voice-memos")} className="flex-1 text-left min-w-0">
+                    <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
+                      {memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Untranscribed memo"}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                      {formatTime(memo.created_at)}
+                      {memo.status && memo.status !== "processed" && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "#FFF0DC", color: "#B85C00" }}>{memo.status}</span>
+                      )}
                   </p>
                 </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
+                </div>
               ))}
             </div>
 
