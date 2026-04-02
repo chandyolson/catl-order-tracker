@@ -166,6 +166,7 @@ export default function Dashboard() {
   const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const greetingCalled = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -739,6 +740,110 @@ export default function Dashboard() {
         </div>
         </div>
       </div>
+
+      {/* MOBILE — Floating chat button (visible below lg breakpoint) */}
+      {!mobileChatOpen && (
+        <button
+          onClick={() => setMobileChatOpen(true)}
+          className="lg:hidden fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
+          <MessageCircle size={22} color="#55BAAA" />
+        </button>
+      )}
+
+      {/* MOBILE — Full-screen chat overlay */}
+      {mobileChatOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col" style={{ background: "#F5F5F0" }}>
+          {/* Header */}
+          <div className="px-4 pt-4 flex-shrink-0">
+            <div className="rounded-xl px-5 py-4 flex items-center gap-3"
+              style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="4" fill="#fff" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
+                <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
+              </div>
+              <button onClick={() => setMobileChatOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.1)" }}>
+                <span className="text-white text-lg leading-none">&times;</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 flex flex-col mx-4 mt-3 mb-3 rounded-xl overflow-hidden" style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
+            <ScrollArea className="flex-1 px-5 py-4">
+              <div className="space-y-3">
+                {chatHistory.map((msg, i) => (
+                  <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                    <div className="max-w-[85%] px-3.5 py-2.5 text-[13px] leading-relaxed rounded-xl"
+                      style={msg.role === "user"
+                        ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
+                        : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
+                      {msg.role === "user" ? msg.content : <FormattedMessage text={msg.content} />}
+                    </div>
+                    {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[85%]">
+                        {msg.actions.map((action, ai) => (
+                          <button key={ai} onClick={() => { setMobileChatOpen(false); navigate(action.route); }}
+                            className="text-[11px] font-bold rounded-full px-3 py-1 active:scale-[0.97] transition-transform"
+                            style={{ background: "#F3D12A", color: "#0E2646" }}>
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-xl rounded-bl-sm px-4 py-3 flex gap-1" style={{ background: "#F5F5F0" }}>
+                      {[0, 150, 300].map(d => (
+                        <span key={d} className="w-2 h-2 rounded-full animate-bounce"
+                          style={{ background: "#717182", animationDelay: `${d}ms` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            {/* Suggestions */}
+            <div className="px-5 py-2 flex flex-wrap gap-1.5 flex-shrink-0" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+              {SUGGESTIONS.map(s => (
+                <button key={s} onClick={() => setChatInput(s)}
+                  className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
+                  style={{ border: "0.5px solid #D4D4D0", color: "#717182", background: "#F5F5F0" }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div className="px-5 pb-4 pt-2 flex-shrink-0">
+              <form onSubmit={e => { e.preventDefault(); sendChat(chatInput); }} className="flex gap-2 items-center flex-nowrap">
+                <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                  placeholder="Ask about orders, leads, inventory..."
+                  className="flex-1 min-w-0 text-[13px] rounded-full px-4 py-2.5 transition-colors focus:outline-none"
+                  style={{ background: "#F5F5F0", border: "0.5px solid #D4D4D0", color: "#1A1A1A" }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "#F3D12A"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(243,209,42,0.2)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "#D4D4D0"; e.currentTarget.style.boxShadow = "none"; }} />
+                <button type="submit" disabled={chatLoading || !chatInput.trim()}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
+                  style={{ background: "#55BAAA" }}>
+                  <Send size={15} color="#fff" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
