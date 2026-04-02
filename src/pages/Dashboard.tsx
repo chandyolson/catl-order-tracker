@@ -745,7 +745,7 @@ export default function Dashboard() {
       {!mobileChatOpen && (
         <button
           onClick={() => setMobileChatOpen(true)}
-          className="lg:hidden fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          className="lg:hidden fixed bottom-24 right-5 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <MessageCircle size={22} color="#55BAAA" />
         </button>
