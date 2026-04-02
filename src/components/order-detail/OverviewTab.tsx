@@ -205,11 +205,11 @@ export default function OverviewTab({
 
   const slotConfig: Record<string, { label: string; color: string }> = {
     catl_estimate: { label: "CATL Estimate", color: "#F3D12A" }, catl_purchase_order: { label: "Purchase Order", color: "#0E2646" },
-    moly_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" }, signed_moly_so: { label: "Signed SO ✓", color: "#27AE60" },
+    moly_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
     moly_invoice: { label: "Mfg Invoice", color: "#8B5CF6" }, qb_bill: { label: "QB Bill", color: "#EF4444" },
     catl_customer_invoice: { label: "Customer Invoice", color: "#27AE60" },
   };
-  const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "signed_moly_so", "moly_invoice", "qb_bill", "catl_customer_invoice"];
+  const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "moly_invoice", "qb_bill", "catl_customer_invoice"];
 
   return (
     <div className="space-y-5">
@@ -494,7 +494,7 @@ export default function OverviewTab({
                         <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
                       </a>
                     )}
-                    {!isFilled && !isVoided && order.google_drive_folder_url && (
+                    {slot && !isFilled && !isVoided && order.google_drive_folder_url && (
                       <button onClick={async () => {
                         if (browseSlot === slotType) { setBrowseSlot(null); return; }
                         setBrowseSlot(slotType);
@@ -513,7 +513,7 @@ export default function OverviewTab({
                         <FolderOpen size={10} />Browse
                       </button>
                     )}
-                    {!isFilled && !isVoided && unmatchedDriveFiles.length > 0 && (
+                    {slot && !isFilled && !isVoided && unmatchedDriveFiles.length > 0 && (
                       <button onClick={() => { setLinkingSlot(linkingSlot === slotType ? null : slotType); setBrowseSlot(null); }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: linkingSlot === slotType ? "#55BAAA" : "rgba(85,186,170,0.1)", color: linkingSlot === slotType ? "#fff" : "#55BAAA" }}>
                         <Plus size={10} className="inline mr-0.5" />Link
                       </button>
