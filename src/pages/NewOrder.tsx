@@ -1597,6 +1597,14 @@ export default function NewOrder() {
               </Popover>
             </div>
           </div>
+          {!isDirectOrder && (
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div>
+                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
+                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
+              </div>
+            </div>
+          )}
           {showCompletionDate && (
             <div className="mb-2" style={{ maxWidth: "calc(33.33% - 6px)" }}>
               <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Completion</p>
