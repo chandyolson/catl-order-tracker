@@ -38,6 +38,10 @@ import {
   ShoppingCart,
   AlertCircle,
   Trash2,
+  Archive,
+  Edit3,
+  Check,
+  X,
 } from "lucide-react";
 
 /* ──── types ──── */
@@ -205,10 +209,13 @@ export default function VoiceMemos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSummary, setEditSummary] = useState("");
 
   const dateFilter = searchParams.get("date") || "all";
   const categoryFilter = searchParams.get("category") || "all";
   const statusFilter = searchParams.get("status") || "all";
+  const showArchived = searchParams.get("archived") === "true";
 
   const setFilter = (key: string, value: string) => {
     setSearchParams(prev => {
@@ -223,13 +230,14 @@ export default function VoiceMemos() {
   const weekAgoISO = new Date(now.getTime() - 7 * 86400000).toISOString();
 
   const { data: memos = [], isLoading } = useQuery({
-    queryKey: ["voice_memos", dateFilter, categoryFilter, statusFilter],
+    queryKey: ["voice_memos", dateFilter, categoryFilter, statusFilter, showArchived],
     queryFn: async () => {
       let query = (supabase.from("voice_memos").select("*, customers(id, name)") as any)
         .order("created_at", { ascending: false }).limit(50);
       if (dateFilter === "today") query = query.gte("created_at", todayISO);
       else if (dateFilter === "week") query = query.gte("created_at", weekAgoISO);
       if (statusFilter !== "all") query = query.eq("processing_status", statusFilter);
+      query = query.eq("archived", showArchived);
       const { data, error } = await query;
       if (error) throw error;
       let results = (data || []) as Memo[];
@@ -295,6 +303,25 @@ export default function VoiceMemos() {
     queryClient.invalidateQueries({ queryKey: ["voice_memos"] });
   };
 
+  const archiveMemo = async (memoId: string) => {
+    await (supabase.from("voice_memos").update({ archived: true } as any).eq("id", memoId));
+    toast.success("Memo archived");
+    queryClient.invalidateQueries({ queryKey: ["voice_memos"] });
+  };
+
+  const unarchiveMemo = async (memoId: string) => {
+    await (supabase.from("voice_memos").update({ archived: false } as any).eq("id", memoId));
+    toast.success("Memo restored");
+    queryClient.invalidateQueries({ queryKey: ["voice_memos"] });
+  };
+
+  const saveSummary = async (memoId: string) => {
+    await (supabase.from("voice_memos").update({ ai_summary: editSummary } as any).eq("id", memoId));
+    toast.success("Summary updated");
+    setEditingId(null);
+    queryClient.invalidateQueries({ queryKey: ["voice_memos"] });
+  };
+
   // realtime
   useEffect(() => {
     const channel = supabase.channel("voice-memos-rt")
@@ -340,6 +367,8 @@ export default function VoiceMemos() {
           {["all", "complete", "processing", "failed"].map(s => (
             <FilterPill key={s} label={s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)} active={statusFilter === s} onClick={() => setFilter("status", s)} />
           ))}
+          <span className="mx-2 text-muted-foreground/30">|</span>
+          <FilterPill label={showArchived ? "Showing Archived" : "Show Archived"} active={showArchived} onClick={() => setFilter("archived", showArchived ? "all" : "true")} />
         </div>
       </div>
 
@@ -394,6 +423,28 @@ export default function VoiceMemos() {
                 {/* Expanded content */}
                 <CollapsibleContent>
                   <div className="px-4 pb-4 pt-1 space-y-3 border-t ml-4 mr-2">
+                    {/* Edit summary inline */}
+                    {editingId === m.id && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Edit summary</p>
+                        <textarea
+                          value={editSummary}
+                          onChange={e => setEditSummary(e.target.value)}
+                          rows={3}
+                          className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none resize-none focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" className="gap-1 text-xs" style={{ backgroundColor: "#55BAAA", color: "#fff" }} onClick={() => saveSummary(m.id)}>
+                            <Check size={12} /> Save
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setEditingId(null)}>
+                            <X size={12} /> Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Error */}
                     {m.processing_status === "failed" && m.processing_error && (
                       <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-2">
@@ -469,6 +520,18 @@ export default function VoiceMemos() {
                       {m.order_id && (
                         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/orders/${m.order_id}`)}>
                           View order
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { setEditingId(m.id); setEditSummary(m.ai_summary || ""); }}>
+                        <Edit3 size={12} /> Edit summary
+                      </Button>
+                      {!showArchived ? (
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => archiveMemo(m.id)}>
+                          <Archive size={12} /> Archive
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-accent" onClick={() => unarchiveMemo(m.id)}>
+                          <Archive size={12} /> Restore
                         </Button>
                       )}
                       <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteMemo(m.id)}>
