@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Package, FileText } from "lucide-react";
-import { format } from "date-fns";
+import { Search, Plus, Package, FileText, LayoutGrid, List } from "lucide-react";
+import { format, isAfter, isBefore, addDays, addMonths } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
@@ -53,6 +53,8 @@ export default function Orders() {
   const [mfgFilter, setMfgFilter] = useState(urlManufacturer);
   const [sortIdx, setSortIdx] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [etaFilter, setEtaFilter] = useState("all");
 
   // Sync URL params to state when they change
   useEffect(() => { setStatusFilter(urlStatus); }, [urlStatus]);
@@ -98,7 +100,7 @@ export default function Orders() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, inventoryFilter, sortIdx],
+    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, inventoryFilter, sortIdx, etaFilter],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
@@ -106,10 +108,6 @@ export default function Orders() {
 
       if (debouncedSearch) {
         const s = `%${debouncedSearch}%`;
-        // NOTE: customers.name.ilike inside .or() causes PostgREST to exclude rows
-        // where customer_id is null (most inventory orders). Search order fields
-        // directly, and handle customer name matching via contract_name which often
-        // contains the customer name, or via customer_location.
         query = query.or(`order_number.ilike.${s},build_shorthand.ilike.${s},contract_name.ilike.${s},moly_contract_number.ilike.${s},customer_location.ilike.${s}`);
       }
 
@@ -125,6 +123,18 @@ export default function Orders() {
         query = query.is("customer_id", null).eq("from_inventory", true);
       } else if (inventoryFilter === "assigned") {
         query = query.not("customer_id", "is", null);
+      }
+
+      // ETA filters
+      const today = new Date().toISOString().split("T")[0];
+      if (etaFilter === "this_week") {
+        query = query.gte("est_completion_date", today).lte("est_completion_date", addDays(new Date(), 7).toISOString().split("T")[0]);
+      } else if (etaFilter === "this_month") {
+        query = query.gte("est_completion_date", today).lte("est_completion_date", addMonths(new Date(), 1).toISOString().split("T")[0]);
+      } else if (etaFilter === "overdue") {
+        query = query.lt("est_completion_date", today).neq("status", "delivered");
+      } else if (etaFilter === "no_eta") {
+        query = query.is("est_completion_date", null);
       }
 
       if ((sort as any).isCustomer) {
@@ -209,9 +219,28 @@ export default function Orders() {
             <option key={i} value={i}>{s.label}</option>
           ))}
         </select>
+        <select
+          value={etaFilter}
+          onChange={(e) => setEtaFilter(e.target.value)}
+          className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none"
+        >
+          <option value="all">All ETAs</option>
+          <option value="this_week">ETA this week</option>
+          <option value="this_month">ETA this month</option>
+          <option value="overdue">ETA overdue</option>
+          <option value="no_eta">No ETA set</option>
+        </select>
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          <button onClick={() => setViewMode("card")} className="px-2.5 py-2 transition-colors" style={{ backgroundColor: viewMode === "card" ? "#0E2646" : "transparent" }}>
+            <LayoutGrid size={14} color={viewMode === "card" ? "#F3D12A" : "#717182"} />
+          </button>
+          <button onClick={() => setViewMode("list")} className="px-2.5 py-2 transition-colors" style={{ backgroundColor: viewMode === "list" ? "#0E2646" : "transparent" }}>
+            <List size={14} color={viewMode === "list" ? "#F3D12A" : "#717182"} />
+          </button>
+        </div>
       </div>
       {/* Active filter pills */}
-      {(statusFilter !== "all" || mfgFilter !== "all" || inventoryFilter) && (
+      {(statusFilter !== "all" || mfgFilter !== "all" || inventoryFilter || etaFilter !== "all") && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Filtered by:</span>
           {statusFilter !== "all" && (
@@ -229,8 +258,13 @@ export default function Orders() {
               {inventoryFilter === "inventory" ? "Unsold inventory" : "Has buyer"}
             </span>
           )}
+          {etaFilter !== "all" && (
+            <span className="text-xs px-3 py-1 rounded-full bg-purple-50 text-purple-700 font-medium">
+              ETA: {etaFilter.replace(/_/g, " ")}
+            </span>
+          )}
           <button
-            onClick={() => navigate("/orders")}
+            onClick={() => { navigate("/orders"); setEtaFilter("all"); }}
             className="text-xs text-muted-foreground hover:text-foreground underline"
           >
             Clear filters
@@ -255,6 +289,62 @@ export default function Orders() {
           >
             Create your first order
           </button>
+        </div>
+      ) : viewMode === "list" ? (
+        <div>
+          {/* List header */}
+          <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ borderBottom: "1px solid #D4D4D0" }}>
+            <span className="w-[110px]">Contract</span>
+            <span className="flex-1 min-w-0">Customer</span>
+            <span className="w-[90px]">Model</span>
+            <span className="w-[60px] text-center">Status</span>
+            <span className="w-[55px] text-right">ETA</span>
+            <span className="w-[70px] text-right">Price</span>
+          </div>
+          {allOrders.map((order) => {
+            const customer = order.customers as any;
+            const manufacturer = order.manufacturers as any;
+            return (
+              <div
+                key={order.id}
+                onClick={() => navigate(`/orders/${order.id}`)}
+                className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors text-[12px]"
+                style={{ borderBottom: "1px solid rgba(212,212,208,0.5)" }}
+              >
+                <span className="w-[110px] font-semibold truncate" style={{ color: "#0E2646" }}>
+                  {(order as any).contract_name || order.moly_contract_number || "—"}
+                </span>
+                <span className="flex-1 min-w-0 truncate text-foreground">
+                  {customer?.name || <span className="text-muted-foreground italic">Unassigned</span>}
+                </span>
+                <span className="w-[90px] truncate" style={{ color: "#55BAAA" }}>
+                  {manufacturer?.short_name || ""} {order.build_shorthand ? `· ${order.build_shorthand.split(",")[0]}` : ""}
+                </span>
+                <span className="w-[60px] text-center">
+                  <StatusBadge status={order.status} />
+                </span>
+                <span className="w-[55px] text-right text-muted-foreground text-[11px]">
+                  {fmtDate(order.est_completion_date)}
+                </span>
+                <span className="w-[70px] text-right font-semibold" style={{ color: "#F3D12A" }}>
+                  {order.customer_price ? fmtCurrency(order.customer_price) : "—"}
+                </span>
+              </div>
+            );
+          })}
+          {/* Pagination */}
+          <div className="pt-2 space-y-2">
+            <p className="text-xs text-muted-foreground text-center">
+              Showing {allOrders.length} of {totalCount} orders
+            </p>
+            {hasNextPage && (
+              <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}
+                className="w-full py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+                style={{ color: "#55BAAA" }}>
+                {isFetchingNextPage ? "Loading…" : "Load more"}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
