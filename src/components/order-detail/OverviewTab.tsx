@@ -467,7 +467,8 @@ export default function OverviewTab({
                 const isOutOfSync = qbSync[slotType] === "out_of_sync";
                 const isVoided = qbSync[slotType] === "voided";
                 return (
-                  <div key={slotType} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors" style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isComplete ? "rgba(39,174,96,0.06)" : isPending ? "rgba(243,209,42,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
+                  <div key={slotType}>
+                  <div className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors" style={{ backgroundColor: isVoided ? "rgba(212,24,61,0.04)" : isOutOfSync ? "rgba(243,161,42,0.06)" : isComplete ? "rgba(39,174,96,0.06)" : isPending ? "rgba(243,209,42,0.06)" : "rgba(113,113,130,0.04)", border: isOutOfSync ? "1px solid rgba(243,161,42,0.3)" : isVoided ? "1px solid rgba(212,24,61,0.2)" : "1px solid transparent" }}>
                     {/* Checkbox */}
                     <div className="w-5 h-5 rounded flex items-center justify-center shrink-0" style={{
                       backgroundColor: isComplete ? "#27AE60" : isPending ? "#F3D12A" : isVoided ? "#D4183D" : "transparent",
@@ -523,6 +524,7 @@ export default function OverviewTab({
                       ))}
                     </div>
                   )}
+                  </div>
                 );
               })}
             </div>
