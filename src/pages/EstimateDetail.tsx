@@ -154,6 +154,15 @@ export default function EstimateDetail() {
       <div className="flex gap-2 mb-5">
         {!isConverted && (
           <button
+            onClick={() => navigate(`/orders/new?edit_estimate=${estimate.id}`)}
+            className="flex-1 py-2.5 rounded-full text-[13px] font-semibold active:scale-[0.97] transition-transform"
+            style={{ border: "2px solid #55BAAA", color: "#55BAAA" }}
+          >
+            Edit Estimate
+          </button>
+        )}
+        {!isConverted && (
+          <button
             onClick={() => navigate(`/estimates/${estimate.id}/convert`)}
             className="flex-1 py-2.5 rounded-full text-[13px] font-semibold active:scale-[0.97] transition-transform"
             style={{ backgroundColor: "#0E2646", color: "#F3D12A" }}

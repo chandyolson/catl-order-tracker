@@ -11,6 +11,7 @@ import {
   Plus,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Customers", path: "/customers", icon: Users },
   { label: "Inventory", path: "/inventory", icon: Warehouse },
   { label: "Documents", path: "/documents", icon: FolderOpen },
+  { label: "AI Assistant", path: "/dashboard?chat=open", icon: MessageCircle },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
