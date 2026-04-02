@@ -71,10 +71,13 @@ type Task = {
   source_type: string | null;
   created_at: string | null;
   completed_at: string | null;
+  assigned_to: string | null;
   customers: { id: string; name: string } | null;
 };
 
 type Customer = { id: string; name: string };
+
+const TEAM_MEMBERS = ["Tim", "Caleb", "Chandy", "Jen"];
 
 /* ──────── constants ──────── */
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -186,6 +189,7 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
   const [taskType, setTaskType] = useState("followup");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [assignedTo, setAssignedTo] = useState<string>("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -199,6 +203,7 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
       due_date: dueDate ? format(dueDate, "yyyy-MM-dd") : null,
       customer_id: customerId,
       description: description.trim() || null,
+      assigned_to: assignedTo && assignedTo !== "unassigned" ? assignedTo : null,
       status: "open",
       source_type: "manual",
       created_by: "tim",
@@ -255,6 +260,16 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
         <CustomerSearch value={customerId} onChange={(id) => setCustomerId(id)} />
       </div>
       <div>
+        <label className="text-sm font-medium text-foreground mb-1 block">Assign to</label>
+        <Select value={assignedTo} onValueChange={setAssignedTo}>
+          <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {TEAM_MEMBERS.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <label className="text-sm font-medium text-foreground mb-1 block">Description</label>
         <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional details..." rows={3} />
       </div>
@@ -279,6 +294,7 @@ export default function Tasks() {
   const statusFilter = searchParams.get("status") || "open";
   const priorityFilter = searchParams.get("priority") || "all";
   const sourceFilter = searchParams.get("source") || "all";
+  const assigneeFilter = searchParams.get("assignee") || "all";
 
   const setFilter = useCallback((key: string, value: string) => {
     setSearchParams(prev => {
@@ -294,13 +310,14 @@ export default function Tasks() {
   }, [setSearchParams]);
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ["tasks", statusFilter, priorityFilter, sourceFilter],
+    queryKey: ["tasks", statusFilter, priorityFilter, sourceFilter, assigneeFilter],
     queryFn: async () => {
       let query = (supabase.from("tasks").select("*, customers(id, name)") as any)
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
       if (sourceFilter !== "all") query = query.eq("source_type", sourceFilter);
+      if (assigneeFilter !== "all") query = query.eq("assigned_to", assigneeFilter);
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as Task[];
@@ -398,6 +415,12 @@ export default function Tasks() {
             <FilterPill key={s} label={s === "all" ? "All" : s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())} active={sourceFilter === s} onClick={() => setFilter("source", s)} />
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-14">Assigned</span>
+          {["all", ...TEAM_MEMBERS].map(name => (
+            <FilterPill key={name} label={name === "all" ? "All" : name} active={assigneeFilter === name} onClick={() => setFilter("assignee", name)} />
+          ))}
+        </div>
       </div>
 
       {/* Search */}
@@ -438,6 +461,11 @@ export default function Tasks() {
                   {t.task_type && <Badge className={cn("text-[10px]", typeColors[t.task_type] || typeColors.other)}>{t.task_type.replace(/_/g, " ")}</Badge>}
                 </div>
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  {t.assigned_to && (
+                    <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                      @{t.assigned_to}
+                    </span>
+                  )}
                   {t.customers?.name && (
                     <button onClick={() => navigate(`/customers/${t.customers!.id}`)} className="text-xs text-accent hover:underline">
                       {t.customers.name}
@@ -470,6 +498,16 @@ export default function Tasks() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {TEAM_MEMBERS.map(name => (
+                    <DropdownMenuItem key={name} onClick={async () => {
+                      await supabase.from("tasks").update({ assigned_to: t.assigned_to === name ? null : name } as any).eq("id", t.id);
+                      toast.success(t.assigned_to === name ? "Unassigned" : `Assigned to ${name}`);
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                    }}>
+                      <User size={14} className="mr-2" /> {t.assigned_to === name ? `✓ ${name}` : name}
+                    </DropdownMenuItem>
+                  ))}
+                  <div className="h-px bg-border my-1" />
                   {t.order_id && (
                     <DropdownMenuItem onClick={() => navigate(`/orders/${t.order_id}`)}>
                       <LinkIcon size={14} className="mr-2" /> View Order
