@@ -608,7 +608,7 @@ export default function Dashboard() {
       {/* RIGHT — Chat */}
       <div className="hidden lg:flex flex-col w-[440px] min-w-[420px] flex-shrink-0 overflow-hidden"
         style={{ background: "#F5F5F0" }}>
-        <div className="px-4 pt-4 md:px-6 md:pt-6 flex-shrink-0">
+        <div className="px-3 pt-3 md:px-4 md:pt-4 flex-shrink-0">
           <div className="rounded-xl px-5 py-4 flex items-center gap-3"
             style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#55BAAA" }}>
@@ -624,19 +624,19 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col mx-4 mt-3 mb-4 md:mx-6 md:mb-6 rounded-xl overflow-hidden" style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
-        <ScrollArea className="flex-1 px-4 py-3">
+        <div className="flex-1 flex flex-col mx-3 mt-3 mb-3 md:mx-4 md:mb-4 rounded-xl overflow-hidden" style={{ background: "#fff", border: "0.5px solid #D4D4D0" }}>
+        <ScrollArea className="flex-1 px-5 py-4">
           <div className="space-y-3">
             {chatHistory.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                <div className="max-w-[88%] px-3.5 py-2.5 text-[12px] leading-relaxed rounded-xl"
+                <div className="max-w-[85%] px-3.5 py-2.5 text-[12px] leading-relaxed rounded-xl"
                   style={msg.role === "user"
                     ? { background: "#0E2646", color: "#fff", borderBottomRightRadius: 4 }
                     : { background: "#F5F5F0", color: "#1A1A1A", borderBottomLeftRadius: 4 }}>
                   {msg.role === "user" ? msg.content : <FormattedMessage text={msg.content} />}
                 </div>
                 {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[88%]">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[85%]">
                     {msg.actions.map((action, ai) => (
                       <button key={ai} onClick={() => navigate(action.route)}
                         className="text-[11px] font-bold rounded-full px-3 py-1 active:scale-[0.97] transition-transform"
@@ -662,7 +662,7 @@ export default function Dashboard() {
           </div>
         </ScrollArea>
 
-        <div className="px-4 py-2 flex flex-wrap gap-1.5 flex-shrink-0" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+        <div className="px-5 py-2 flex flex-wrap gap-1.5 flex-shrink-0" style={{ borderTop: "0.5px solid #EBEBEB" }}>
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => setChatInput(s)}
               className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
@@ -672,11 +672,11 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="px-4 pb-4 pt-2 flex-shrink-0">
+        <div className="px-5 pb-4 pt-2 flex-shrink-0">
           <form onSubmit={e => { e.preventDefault(); sendChat(chatInput); }} className="flex gap-2 items-center flex-nowrap">
             <input value={chatInput} onChange={e => setChatInput(e.target.value)}
               placeholder="Ask about orders, leads, inventory..."
-              className="flex-1 text-[12px] rounded-full px-4 py-2.5 transition-colors focus:outline-none"
+              className="flex-1 min-w-0 text-[12px] rounded-full px-4 py-2.5 transition-colors focus:outline-none"
               style={{ background: "#F5F5F0", border: "0.5px solid #D4D4D0", color: "#1A1A1A" }}
               onFocus={e => { e.currentTarget.style.borderColor = "#F3D12A"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(243,209,42,0.2)"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "#D4D4D0"; e.currentTarget.style.boxShadow = "none"; }} />
