@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronDown, Plus, Minus } from "lucide-react";
+import { ChevronLeft, ChevronDown, Plus, Minus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -112,6 +112,7 @@ export default function EditOrder() {
   const [discountType, setDiscountType] = useState<"$" | "%">("$");
   const [discountAmount, setDiscountAmount] = useState("");
   const [freightEstimate, setFreightEstimate] = useState("");
+  const [customLineItems, setCustomLineItems] = useState<{ name: string; retail: string; cost: string }[]>([]);
   const [catl_number, setCatlNumber] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [status, setStatus] = useState("estimate");
@@ -272,6 +273,10 @@ export default function EditOrder() {
     setDiscountType(((o as any).discount_type as "$" | "%") || "$");
     setDiscountAmount((o as any).discount_amount ? String((o as any).discount_amount) : "");
     setFreightEstimate(o.freight_estimate ? String(o.freight_estimate) : "");
+    // Load custom line items from selected_options
+    const savedOptions = Array.isArray(o.selected_options) ? o.selected_options : [];
+    const customs = savedOptions.filter((opt: any) => opt.is_custom || (!opt.option_id && opt.display_name));
+    setCustomLineItems(customs.map((c: any) => ({ name: c.display_name || c.name || "", retail: String(c.retail_price_each || 0), cost: String(c.cost_price_each || 0) })));
     setCatlNumber(o.catl_number || "");
     setSerialNumber(o.serial_number || "");
     setContractName((o as any).contract_name || "");
@@ -450,17 +455,20 @@ export default function EditOrder() {
 
   /* ─── Pricing ──────────────────────────────────────────────── */
 
+  const customRetailTotal = customLineItems.reduce((s, c) => s + (parseFloat(c.retail) || 0), 0);
+  const customCostTotal = customLineItems.reduce((s, c) => s + (parseFloat(c.cost) || 0), 0);
+
   const calcRetail = useMemo(() => {
     let total = selectedBaseModel?.retail_price || 0;
     for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
-    return total;
-  }, [selectedBaseModel, selectedOptionsList]);
+    return total + customRetailTotal;
+  }, [selectedBaseModel, selectedOptionsList, customRetailTotal]);
 
   const calcCost = useMemo(() => {
     let total = selectedBaseModel?.cost_price || 0;
     for (const { option, quantity } of selectedOptionsList) total += option.cost_price * quantity;
-    return total;
-  }, [selectedBaseModel, selectedOptionsList]);
+    return total + customCostTotal;
+  }, [selectedBaseModel, selectedOptionsList, customCostTotal]);
 
   const discountValue = useMemo(() => {
     const amt = parseFloat(discountAmount) || 0;
@@ -667,6 +675,16 @@ export default function EditOrder() {
         };
       });
 
+      // Add custom line items
+      const customOptionsJson = customLineItems.filter(c => c.name.trim()).map(c => ({
+        option_id: null, is_custom: true,
+        display_name: c.name.trim(), name: c.name.trim(), short_code: "",
+        cost_price_each: parseFloat(c.cost) || 0, retail_price_each: parseFloat(c.retail) || 0,
+        left_qty: 0, right_qty: 0, quantity: 1,
+        total_cost: parseFloat(c.cost) || 0, total_retail: parseFloat(c.retail) || 0,
+      }));
+      const allOptionsJson = [...selectedOptionsJson, ...customOptionsJson];
+
       // --- Save the order record (always) ---
       console.log("[EditOrder] Saving status:", status, "for order:", id);
       const { error: updateError } = await supabase.from("orders").update({
@@ -682,7 +700,7 @@ export default function EditOrder() {
         est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
         from_inventory: fromInventory,
         inventory_location: fromInventory ? inventoryLocation || null : null,
-        selected_options: selectedOptionsJson,
+        selected_options: allOptionsJson,
         notes: notes || null,
         customer_id: customerId || null,
         tax_state: taxState || null,
@@ -710,6 +728,7 @@ export default function EditOrder() {
         const lineItems = [
           { type: "base_model", name: selectedBaseModel?.name, retail_price: selectedBaseModel?.retail_price, cost_price: (selectedBaseModel as any)?.cost_price },
           ...selectedOptionsJson.map((o: any) => ({ type: "option", ...o })),
+          ...customOptionsJson.map((o: any) => ({ type: "custom", ...o })),
         ];
 
         await supabase.from("estimates").insert({
@@ -759,7 +778,7 @@ export default function EditOrder() {
         const newConfig = {
           base_model_id: baseModelId,
           build_shorthand: buildShorthand,
-          selected_options: selectedOptionsJson,
+          selected_options: allOptionsJson,
           customer_price: customerPrice,
           our_cost: ourCost,
         };
@@ -767,7 +786,7 @@ export default function EditOrder() {
         const priceImpact = customerPrice - parseFloat(originalPrice);
 
         const oldOpts = previousConfig.selected_options || [];
-        const newOpts = selectedOptionsJson || [];
+        const newOpts = allOptionsJson || [];
         const changesSummary: any[] = [];
 
         for (const newOpt of newOpts) {
@@ -1312,6 +1331,12 @@ export default function EditOrder() {
                 <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(optionRetailTotal)}</span>
               </div>
             )}
+            {customLineItems.filter(c => c.name.trim() && parseFloat(c.retail) > 0).map((c, i) => (
+              <div key={`custom-${i}`} className="flex justify-between mb-1">
+                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>{c.name}</span>
+                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(parseFloat(c.retail))}</span>
+              </div>
+            ))}
             <div className="flex justify-between pt-2 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
               <span className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>Subtotal</span>
               <span className="text-[15px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(calcRetail)}</span>
@@ -1431,6 +1456,45 @@ export default function EditOrder() {
               if (filtered.length === 0) return null;
               return renderGroupCard(group, filtered);
             })}
+          </div>
+        )}
+
+        {/* ── CUSTOM LINE ITEMS ─────────────────────────────── */}
+        {selectedBaseModel && (
+          <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#717182" }}>Custom line items</p>
+              <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
+                className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform"
+                style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
+                + Add item
+              </button>
+            </div>
+            {customLineItems.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, miscellaneous, or any custom-priced item.</p>
+            )}
+            {customLineItems.map((item, idx) => (
+              <div key={idx} className="flex gap-2 items-end mb-2">
+                <div className="flex-1">
+                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}
+                  <input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
+                    placeholder="e.g. Additional Spool Valves"
+                    className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+                </div>
+                <div style={{ width: 90 }}>
+                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}
+                  <CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" />
+                </div>
+                <div style={{ width: 90 }}>
+                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}
+                  <CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" />
+                </div>
+                <button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))}
+                  className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5">
+                  <Trash2 size={14} style={{ color: "#D4183D" }} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
