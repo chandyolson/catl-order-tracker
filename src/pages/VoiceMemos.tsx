@@ -234,7 +234,7 @@ export default function VoiceMemos() {
       if (error) throw error;
       let results = (data || []) as Memo[];
       if (categoryFilter !== "all") {
-        results = results.filter(m => (m.memo_type || "general") === categoryFilter);
+        results = results.filter(m => (m.memo_type || "general").startsWith(categoryFilter));
       }
       return results;
     },
@@ -354,7 +354,8 @@ export default function VoiceMemos() {
         {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Loading memos...</p>}
         {!isLoading && filtered.map(m => {
           const isOpen = expanded.has(m.id);
-          const cat = m.memo_type || "general";
+          const cat = (m.memo_type || "general").split(":")[0];
+          const catLabel = m.memo_type || "general";
           const equipment = Array.isArray(m.equipment_mentioned) ? m.equipment_mentioned : [];
           const commitments = Array.isArray(m.commitments) ? m.commitments : [];
 
@@ -366,7 +367,7 @@ export default function VoiceMemos() {
                   <button className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/20 transition-colors">
                     {isOpen ? <ChevronDown size={14} className="text-muted-foreground shrink-0" /> : <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
                     <StatusDot status={m.processing_status} />
-                    <Badge className={cn("text-[10px] shrink-0", categoryBadge[cat] || categoryBadge.general)}>{cat}</Badge>
+                    <Badge className={cn("text-[10px] shrink-0", categoryBadge[cat] || categoryBadge.general)}>{catLabel}</Badge>
                     <span className="flex-1 text-sm text-foreground line-clamp-2 min-w-0">
                       {m.ai_summary || (m.processing_status === "complete" ? "No summary" : m.processing_status === "failed" ? "Processing failed" : "Processing...")}
                     </span>
