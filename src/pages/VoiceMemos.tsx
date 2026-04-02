@@ -368,7 +368,7 @@ export default function VoiceMemos() {
                     {isOpen ? <ChevronDown size={14} className="text-muted-foreground shrink-0" /> : <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
                     <StatusDot status={m.processing_status} />
                     <Badge className={cn("text-[10px] shrink-0", categoryBadge[cat] || categoryBadge.general)}>{catLabel}</Badge>
-                    <span className="flex-1 text-sm text-foreground line-clamp-2 min-w-0">
+                    <span className="flex-1 text-sm text-foreground min-w-0">
                       {m.ai_summary || (m.processing_status === "complete" ? "No summary" : m.processing_status === "failed" ? "Processing failed" : "Processing...")}
                     </span>
                     <div className="flex items-center gap-3 shrink-0">
