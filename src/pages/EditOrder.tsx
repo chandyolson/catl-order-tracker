@@ -602,15 +602,12 @@ export default function EditOrder() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
-    // build shorthand is optional
     if (pivotChecked) {
       if (!pivotType) e.pivotType = "Select pivot type";
       if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
     }
-    for (const [optId, sel] of selections) {
-      const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected && sel.quantity === 0) e[`side_${optId}`] = "Select a side";
-    }
+    // Side validation removed — was blocking saves when options loaded from saved orders
+    // had side selection_type but no explicit left/right breakdown
     setErrors(e);
     if (Object.keys(e).length > 0) {
       toast.error("Fix the errors above: " + Object.values(e).join(", "));
