@@ -294,9 +294,9 @@ export default function Orders() {
         <div>
           {/* List header */}
           <div className="flex items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" style={{ borderBottom: "1px solid #D4D4D0" }}>
-            <span className="w-[110px]">Contract</span>
-            <span className="flex-1 min-w-0">Customer</span>
-            <span className="w-[90px]">Model</span>
+            <span className="flex-1 min-w-0">Contract</span>
+            <span className="w-[110px]">Customer</span>
+            <span className="w-[120px]">Model</span>
             <span className="w-[60px] text-center">Status</span>
             <span className="w-[55px] text-right">ETA</span>
             <span className="w-[70px] text-right">Price</span>
@@ -311,13 +311,13 @@ export default function Orders() {
                 className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors text-[12px]"
                 style={{ borderBottom: "1px solid rgba(212,212,208,0.5)" }}
               >
-                <span className="w-[110px] font-semibold truncate" style={{ color: "#0E2646" }}>
+                <span className="flex-1 min-w-0 font-semibold truncate" style={{ color: "#0E2646" }}>
                   {(order as any).contract_name || order.moly_contract_number || "—"}
                 </span>
-                <span className="flex-1 min-w-0 truncate text-foreground">
+                <span className="w-[110px] truncate text-foreground">
                   {customer?.name || <span className="text-muted-foreground italic">Unassigned</span>}
                 </span>
-                <span className="w-[90px] truncate" style={{ color: "#55BAAA" }}>
+                <span className="w-[120px] truncate" style={{ color: "#55BAAA" }}>
                   {manufacturer?.short_name || ""} {order.build_shorthand ? `· ${order.build_shorthand.split(",")[0]}` : ""}
                 </span>
                 <span className="w-[60px] text-center">
@@ -326,7 +326,7 @@ export default function Orders() {
                 <span className="w-[55px] text-right text-muted-foreground text-[11px]">
                   {fmtDate(order.est_completion_date)}
                 </span>
-                <span className="w-[70px] text-right font-semibold" style={{ color: "#F3D12A" }}>
+                <span className="w-[70px] text-right font-semibold" style={{ color: "#0E2646" }}>
                   {order.customer_price ? fmtCurrency(order.customer_price) : "—"}
                 </span>
               </div>
