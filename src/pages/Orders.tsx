@@ -55,6 +55,7 @@ export default function Orders() {
   const [showPicker, setShowPicker] = useState(false);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [etaFilter, setEtaFilter] = useState("all");
+  const [customerFilter, setCustomerFilter] = useState("all"); // "all", "sold", "unsold"
 
   // Sync URL params to state when they change
   useEffect(() => { setStatusFilter(urlStatus); }, [urlStatus]);
@@ -100,7 +101,7 @@ export default function Orders() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery({
-    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, inventoryFilter, sortIdx, etaFilter],
+    queryKey: ["orders-list", debouncedSearch, statusFilter, mfgFilter, inventoryFilter, sortIdx, etaFilter, customerFilter],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("orders")
@@ -123,6 +124,13 @@ export default function Orders() {
         query = query.is("customer_id", null).eq("from_inventory", true);
       } else if (inventoryFilter === "assigned") {
         query = query.not("customer_id", "is", null);
+      }
+
+      // Customer sold/unsold filter
+      if (customerFilter === "sold") {
+        query = query.not("customer_id", "is", null);
+      } else if (customerFilter === "unsold") {
+        query = query.is("customer_id", null);
       }
 
       // ETA filters
@@ -211,6 +219,15 @@ export default function Orders() {
           ))}
         </select>
         <select
+          value={customerFilter}
+          onChange={(e) => setCustomerFilter(e.target.value)}
+          className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none"
+        >
+          <option value="all">All Orders</option>
+          <option value="sold">Sold (has customer)</option>
+          <option value="unsold">Not Sold (no customer)</option>
+        </select>
+        <select
           value={sortIdx}
           onChange={(e) => setSortIdx(Number(e.target.value))}
           className="border border-border rounded-lg bg-card px-3 py-2 text-sm outline-none ml-auto"
@@ -240,7 +257,7 @@ export default function Orders() {
         </div>
       </div>
       {/* Active filter pills */}
-      {(statusFilter !== "all" || mfgFilter !== "all" || inventoryFilter || etaFilter !== "all") && (
+      {(statusFilter !== "all" || mfgFilter !== "all" || inventoryFilter || etaFilter !== "all" || customerFilter !== "all") && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Filtered by:</span>
           {statusFilter !== "all" && (
@@ -263,8 +280,13 @@ export default function Orders() {
               ETA: {etaFilter.replace(/_/g, " ")}
             </span>
           )}
+          {customerFilter !== "all" && (
+            <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ backgroundColor: "rgba(85,186,170,0.12)", color: "#2A8A7C" }}>
+              {customerFilter === "sold" ? "Sold (has customer)" : "Not sold"}
+            </span>
+          )}
           <button
-            onClick={() => { navigate("/orders"); setEtaFilter("all"); }}
+            onClick={() => { navigate("/orders"); setEtaFilter("all"); setCustomerFilter("all"); }}
             className="text-xs text-muted-foreground hover:text-foreground underline"
           >
             Clear filters
@@ -381,11 +403,18 @@ export default function Orders() {
                     )}
                     <StatusBadge status={order.status} />
                   </div>
-                  {order.customer_price != null && (
-                    <span className="text-[17px] font-bold shrink-0" style={{ color: "#F3D12A" }}>
-                      {fmtCurrency(order.customer_price)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {customer?.name && (
+                      <span className="text-[13px] font-semibold" style={{ color: "#55BAAA" }}>
+                        {customer.name}
+                      </span>
+                    )}
+                    {order.customer_price != null && (
+                      <span className="text-[17px] font-bold" style={{ color: "#F3D12A" }}>
+                        {fmtCurrency(order.customer_price)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Card Body — White */}
