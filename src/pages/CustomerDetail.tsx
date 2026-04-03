@@ -166,14 +166,16 @@ export default function CustomerDetail() {
                         <MapPin size={12} /> {address}
                       </span>
                     )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {customer.phone && (
-                      <a href={`tel:${customer.phone}`} className="flex items-center gap-1 text-[12px]" style={{ color: "#55BAAA" }}>
-                        <Phone size={12} /> {customer.phone}
+                      <a href={`tel:${customer.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium active:scale-[0.95] transition-transform" style={{ border: "1.5px solid #55BAAA", color: "#55BAAA" }}>
+                        <Phone size={14} /> {customer.phone}
                       </a>
                     )}
                     {customer.email && (
-                      <a href={`mailto:${customer.email}`} className="flex items-center gap-1 text-[12px]" style={{ color: "#55BAAA" }}>
-                        <Mail size={12} /> {customer.email}
+                      <a href={`mailto:${customer.email}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium active:scale-[0.95] transition-transform" style={{ border: "1.5px solid #55BAAA", color: "#55BAAA" }}>
+                        <Mail size={14} /> {customer.email}
                       </a>
                     )}
                   </div>
