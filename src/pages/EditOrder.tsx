@@ -610,7 +610,11 @@ export default function EditOrder() {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected) e[`side_${optId}`] = "Select a side";
     }
-    setErrors(e); return Object.keys(e).length === 0;
+    setErrors(e);
+    if (Object.keys(e).length > 0) {
+      toast.error("Fix the errors above: " + Object.values(e).join(", "));
+    }
+    return Object.keys(e).length === 0;
   }
 
   function hasConfigChanged(): boolean {
@@ -630,18 +634,19 @@ export default function EditOrder() {
   /* ─── Submit (UPDATE) ──────────────────────────────────────── */
 
   async function handleSubmit() {
-    if (!validate()) return;
+    console.log("[EditOrder] handleSubmit called. status:", status, "configChanged:", hasConfigChanged(), "forEstimate:", forEstimate);
+    if (!validate()) { console.log("[EditOrder] validation failed"); return; }
 
     const configChanged = hasConfigChanged();
 
     if (!configChanged && !forEstimate) {
-      // Path 1: Admin-only changes — save directly
+      console.log("[EditOrder] Path 1: direct save (admin-only changes)");
       await doSave();
     } else if (status === "estimate" || forEstimate) {
-      // Path 2: Config changed or creating estimate for customer — show estimate dialog
+      console.log("[EditOrder] Path 2: estimate dialog");
       setShowEstimateDialog(true);
     } else {
-      // Path 3: Config changed, already ordered — show change order dialog
+      console.log("[EditOrder] Path 3: change order dialog");
       setShowChangeOrderDialog(true);
     }
   }
