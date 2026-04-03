@@ -33,7 +33,7 @@ type Estimate = {
   customers: { name: string; company: string | null } | null;
 };
 type VoiceMemo = {
-  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null; is_archived: boolean | null;
+  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null; archived: boolean | null;
 };
 
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -165,6 +165,8 @@ export default function Dashboard() {
   const [recentMemos, setRecentMemos] = useState<VoiceMemo[]>([]);
   const [openTaskCount, setOpenTaskCount] = useState(0);
   const [readyCount, setReadyCount] = useState(0);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const TEAM = ["Tim", "Caleb", "Chandy", "Jen"];
   const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -189,8 +191,8 @@ export default function Dashboard() {
           .not("status", "in", '("closed","rejected")')
           .order("created_at", { ascending: false })
           .limit(15),
-        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status, is_archived")
-          .eq("processing_status", "complete").or("is_archived.is.null,is_archived.eq.false")
+        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status, archived")
+          .eq("processing_status", "complete").or("archived.is.null,archived.eq.false")
           .order("created_at", { ascending: false }).limit(5),
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
@@ -285,10 +287,9 @@ export default function Dashboard() {
   };
 
   const deleteMemo = async (id: string) => {
-    if (!confirm("Delete this voice memo?")) return;
-    await supabase.from("tasks").delete().eq("source_id", id).eq("source_type", "voice_memo");
-    await supabase.from("voice_memos").delete().eq("id", id);
-    toast.success("Memo deleted");
+    if (!confirm("Archive this voice memo?")) return;
+    await supabase.from("voice_memos").update({ archived: true } as any).eq("id", id);
+    toast.success("Memo archived");
     fetchAll();
   };
 
@@ -512,23 +513,25 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* Action Items */}
-          <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Action Items</span>
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
-            </div>
-            <div>
-              {tasks.slice(0, 10).map(t => {
-                const isOverdue = t.due_date && new Date(t.due_date) < today;
-                const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
-                return (
-                  <div key={t.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
-                    style={{ borderBottom: "0.5px solid #F5F5F0" }}>
+        {/* Action Items — full width */}
+        <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <CheckSquare size={12} style={{ color: "#55BAAA" }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Action Items</span>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
+            <button onClick={() => navigate("/tasks")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
+          </div>
+          <div>
+            {tasks.slice(0, 12).map(t => {
+              const isOverdue = t.due_date && new Date(t.due_date) < today;
+              const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
+              const isEditing = editingTaskId === t.id;
+              return (
+                <div key={t.id}>
+                  <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
+                    style={{ borderBottom: isEditing ? "none" : "0.5px solid #F5F5F0" }}>
                     <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0 h-3.5 w-3.5" />
-                    <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
+                    <button onClick={() => setEditingTaskId(isEditing ? null : t.id)}
                       className="flex-1 text-[13px] text-left font-medium leading-snug min-w-0" style={{ color: "#1A1A1A" }}>
                       {t.title}
                     </button>
@@ -555,64 +558,72 @@ export default function Dashboard() {
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} className="p-0.5 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
                   </div>
-                );
-              })}
-              {tasks.length === 0 && <p className="text-sm text-center py-5" style={{ color: "#717182" }}>No open tasks</p>}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {/* Voice Memos */}
-            <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
-                <Mic size={12} style={{ color: "#55BAAA" }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Recent Memos</span>
-                <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
-                <button onClick={() => navigate("/voice-memos")} className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
-              </div>
-              {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No memos yet</p>}
-              {recentMemos.map(memo => (
-                <div key={memo.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
-                  style={{ borderBottom: "0.5px solid #F5F5F0" }}>
-                  <button onClick={() => navigate("/voice-memos")} className="flex-1 text-left min-w-0">
-                    <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
-                      {memo.ai_summary ? memo.ai_summary.slice(0, 85) + (memo.ai_summary.length > 85 ? "…" : "") : memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Processing…"}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
-                      {formatTime(memo.created_at)}
-                  </p>
-                </button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
-                </div>
-              ))}
-            </div>
-
-            {/* Paperwork Gaps */}
-            <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
-                <AlertTriangle size={12} style={{ color: "#55BAAA" }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Paperwork Gaps</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 p-3">
-                {[
-                  { label: "Missing PO", count: missingPO },
-                  { label: "Missing Bill", count: missingBill },
-                  { label: "Missing Invoice", count: missingInvoice },
-                  { label: "Missing Estimate", count: missingEstimate },
-                ].map(g => (
-                  <button key={g.label} onClick={() => navigate("/orders")}
-                    className="rounded-lg p-3 text-left active:scale-[0.97] transition-transform"
-                    style={{ background: "#F5F5F0" }}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: g.count > 0 ? "#F3D12A" : "#22C55E" }} />
-                      <span className="text-[17px] font-bold" style={{ color: "#0E2646" }}>{g.count}</span>
+                  {/* Inline edit panel */}
+                  {isEditing && (
+                    <div className="px-4 pb-3 pt-1 flex items-center gap-2 flex-wrap" style={{ backgroundColor: "#F9F9F7", borderBottom: "0.5px solid #F5F5F0" }}>
+                      <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
+                      {TEAM.map(name => (
+                        <button key={name} onClick={async () => {
+                          const newVal = t.assigned_to === name ? null : name;
+                          await supabase.from("tasks").update({ assigned_to: newVal } as any).eq("id", t.id);
+                          setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, assigned_to: newVal } : tk));
+                          toast.success(newVal ? `Assigned to ${newVal}` : "Unassigned");
+                        }}
+                          className="text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
+                          style={{ backgroundColor: t.assigned_to === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: t.assigned_to === name ? "#F3D12A" : "#0E2646" }}>
+                          {name}
+                        </button>
+                      ))}
+                      <span className="text-[10px] font-semibold ml-3" style={{ color: "#717182" }}>Priority:</span>
+                      {["urgent", "high", "normal", "low"].map(p => (
+                        <button key={p} onClick={async () => {
+                          await supabase.from("tasks").update({ priority: p } as any).eq("id", t.id);
+                          setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, priority: p } : tk));
+                        }}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${t.priority === p ? priorityColors[p] || "" : ""}`}
+                          style={t.priority !== p ? { backgroundColor: "rgba(113,113,130,0.08)", color: "#717182" } : {}}>
+                          {p}
+                        </button>
+                      ))}
+                      {t.order_id && (
+                        <button onClick={() => navigate(`/orders/${t.order_id}`)} className="text-[10px] font-medium ml-auto" style={{ color: "#55BAAA" }}>
+                          Go to order →
+                        </button>
+                      )}
                     </div>
-                    <p className="text-[11px]" style={{ color: "#717182" }}>{g.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+                  )}
+                </div>
+              );
+            })}
+            {tasks.length === 0 && <p className="text-sm text-center py-5" style={{ color: "#717182" }}>No open tasks</p>}
           </div>
+        </div>
+
+        {/* Recent Memos — full width */}
+        <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <Mic size={12} style={{ color: "#55BAAA" }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Recent Memos</span>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{recentMemos.length}</span>
+            <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
+            <button onClick={() => navigate("/voice-memos")} className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
+          </div>
+          {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No recent memos</p>}
+          {recentMemos.map(memo => (
+            <div key={memo.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
+              style={{ borderBottom: "0.5px solid #F5F5F0" }}>
+              <Mic size={11} style={{ color: "#55BAAA", flexShrink: 0 }} />
+              <button onClick={() => navigate("/voice-memos")} className="flex-1 text-left min-w-0">
+                <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
+                  {memo.ai_summary ? memo.ai_summary.slice(0, 120) + (memo.ai_summary.length > 120 ? "…" : "") : memo.transcript ? memo.transcript.slice(0, 100) + (memo.transcript.length > 100 ? "…" : "") : "Processing…"}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                  {formatTime(memo.created_at)}
+                </p>
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
+            </div>
+          ))}
         </div>
       </div>
 
