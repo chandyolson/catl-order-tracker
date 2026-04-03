@@ -233,8 +233,8 @@ export default function OverviewTab({
                 </div>
               </div>
               <div className="flex gap-2">
-                {customer.phone && <a href={`tel:${customer.phone}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Phone size={12} /> {customer.phone}</a>}
-                {customer.email && <a href={`mailto:${customer.email}`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Mail size={12} /> Email</a>}
+                {customer.phone && <a href={`tel:${customer.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Phone size={12} /> {customer.phone}</a>}
+                {customer.email && <a href={`mailto:${customer.email}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Mail size={12} /> {customer.email}</a>}
               </div>
             </>
           ) : (
