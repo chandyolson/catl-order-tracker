@@ -323,9 +323,9 @@ export default function NewOrder() {
   const isExtendedVariant = (opt: FullOption) =>
     /\(ext(ended)?\)/i.test(opt.name) || opt.requires_extended;
   const isCarrierOption = (opt: FullOption) =>
-    opt.option_group === "Carrier" || opt.name.toLowerCase().includes("carrier");
+    (opt.option_group || "").toLowerCase() === "carrier" || opt.name.toLowerCase().includes("carrier");
   const isScalesOption = (opt: FullOption) =>
-    opt.option_group === "Scales" || opt.name.toLowerCase().includes("scales");
+    (opt.option_group || "").toLowerCase() === "scales" || opt.name.toLowerCase().includes("scales");
   const isStandardCarrierOrScales = (opt: FullOption) =>
     (isCarrierOption(opt) || isScalesOption(opt)) && !isExtendedVariant(opt);
   const isExtendedCarrierOrScales = (opt: FullOption) =>
@@ -391,7 +391,7 @@ export default function NewOrder() {
     const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
     // Pick-one groups (exclude Controls)
     for (const [group, optId] of pickOneSelections) {
-      if (group === "Controls") continue;
+      if (group.toLowerCase() === "controls") continue;
       const opt = optionsQuery.data?.find((o) => o.id === optId);
       if (opt && opt.is_included !== true) {
         result.push({ option: opt, quantity: 1, left: 0, right: 0 });
@@ -896,9 +896,9 @@ export default function NewOrder() {
   const isOverheadScalesSelected = useMemo(() => {
     const opts = optionsQuery.data || [];
     const scalesOpts = opts.filter((o) =>
-      o.option_group === "Scales" && o.name.toLowerCase().includes("overhead")
+      (o.option_group || "").toLowerCase() === "scales" && o.name.toLowerCase().includes("overhead")
     );
-    return scalesOpts.some((o) => pickOneSelections.get("Scales") === o.id);
+    return scalesOpts.some((o) => pickOneSelections.get("scales") === o.id || pickOneSelections.get("Scales") === o.id);
   }, [optionsQuery.data, pickOneSelections]);
 
   const pivotOnScalesOption = useMemo(() =>
@@ -934,7 +934,7 @@ export default function NewOrder() {
   /* ─── Render helpers ───────────────────────────────────────── */
 
   function renderPickOneGroup(group: string, options: FullOption[]) {
-    if (group === "Controls") return renderControlsGroup(options);
+    if (group.toLowerCase() === "controls") return renderControlsGroup(options);
     const selectedId = pickOneSelections.get(group) || null;
     const hasIncluded = options.some((o) => o.is_included);
     return (
@@ -1154,7 +1154,7 @@ export default function NewOrder() {
   function getGroupSummary(group: string, options: FullOption[]): { text: string; total: number } {
     const parts: string[] = [];
     let total = 0;
-    if (group === "Controls") {
+    if (group.toLowerCase() === "controls") {
       if (dualChecked) {
         const dc = options.find(o => o.short_code === "DC");
         if (dc) { parts.push("Dual Controls"); total += dc.retail_price; }
@@ -1248,7 +1248,7 @@ export default function NewOrder() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="py-2">
-            {group === "Scales" ? renderScalesContent(options) : isPick ? renderPickOneGroup(group, options) : (
+            {group.toLowerCase() === "scales" ? renderScalesContent(options) : isPick ? renderPickOneGroup(group, options) : (
               <div className="space-y-0.5">
                 {options.map((opt) => {
                   if (opt.selection_type === "side") return renderSideOption(opt);
