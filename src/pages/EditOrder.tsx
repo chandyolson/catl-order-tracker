@@ -1247,6 +1247,40 @@ export default function EditOrder() {
         <span className="text-xs text-muted-foreground ml-2">{orderQuery.data.order_number}</span>
       </div>
 
+      {/* Imported Specs Reference */}
+      {orderQuery.data?.selected_options && (orderQuery.data.selected_options as any[]).length > 0 && (
+        <div className="mx-4 mb-2 md:max-w-[680px] md:mx-auto">
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(85,186,170,0.3)", backgroundColor: "rgba(85,186,170,0.04)" }}>
+            <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(85,186,170,0.15)" }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Saved Specs on Order</span>
+              <span className="text-[10px] ml-auto" style={{ color: "#717182" }}>
+                Cost: ${fmtCurrency((orderQuery.data.selected_options as any[]).reduce((s: number, o: any) => s + (o.cost_price_each || 0) * (o.quantity || 1), 0))}
+                {' · '}Retail: ${fmtCurrency((orderQuery.data.selected_options as any[]).reduce((s: number, o: any) => s + (o.retail_price_each || 0) * (o.quantity || 1), 0))}
+              </span>
+            </div>
+            <div className="px-3 py-2 flex flex-wrap gap-1.5">
+              {(orderQuery.data.selected_options as any[]).map((opt: any, i: number) => {
+                const isBase = opt.is_base_model;
+                const label = opt.display_name || opt.name || "Unknown";
+                const qty = opt.quantity || 1;
+                const noId = !opt.option_id;
+                return (
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{
+                      backgroundColor: isBase ? "rgba(14,38,70,0.1)" : noId ? "rgba(243,209,42,0.2)" : "rgba(85,186,170,0.12)",
+                      color: isBase ? "#0E2646" : noId ? "#854F0B" : "#2A8A7C",
+                      border: noId ? "1px dashed rgba(243,209,42,0.5)" : "none",
+                    }}>
+                    {label}{qty > 1 ? ` ×${qty}` : ""}
+                    {noId && <span title="Not in catalog">⚠</span>}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form Card */}
       <div className="bg-white border rounded-xl p-4 space-y-3 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
 
