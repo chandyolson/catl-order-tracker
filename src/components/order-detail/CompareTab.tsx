@@ -12,9 +12,9 @@ function fmt$(n: number | null | undefined) {
 const SLOT_LABELS: Record<string, string> = {
   catl_estimate: "CATL Estimate",
   catl_purchase_order: "Purchase Order",
-  moly_sales_order: "Mfg Sales Order",
+  mfg_sales_order: "Mfg Sales Order",
   signed_moly_so: "Signed Sales Order",
-  moly_invoice: "Mfg Invoice",
+  mfg_invoice: "Mfg Invoice",
   qb_bill: "QB Bill",
   catl_customer_invoice: "Customer Invoice",
 };
@@ -27,7 +27,7 @@ interface CompareTabProps {
 export default function CompareTab({ orderId, order }: CompareTabProps) {
   const queryClient = useQueryClient();
   const [leftSlot, setLeftSlot] = useState("catl_purchase_order");
-  const [rightSlot, setRightSlot] = useState("moly_sales_order");
+  const [rightSlot, setRightSlot] = useState("mfg_sales_order");
 
   const slotsQuery = useQuery({
     queryKey: ["compare_slots", orderId],

@@ -205,11 +205,11 @@ export default function OverviewTab({
 
   const slotConfig: Record<string, { label: string; color: string }> = {
     catl_estimate: { label: "CATL Estimate", color: "#F3D12A" }, catl_purchase_order: { label: "Purchase Order", color: "#0E2646" },
-    moly_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
-    moly_invoice: { label: "Mfg Invoice", color: "#8B5CF6" }, qb_bill: { label: "QB Bill", color: "#EF4444" },
+    mfg_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
+    mfg_invoice: { label: "Mfg Invoice", color: "#8B5CF6" }, qb_bill: { label: "QB Bill", color: "#EF4444" },
     catl_customer_invoice: { label: "Customer Invoice", color: "#27AE60" },
   };
-  const slotOrder = ["catl_estimate", "catl_purchase_order", "moly_sales_order", "moly_invoice", "qb_bill", "catl_customer_invoice"];
+  const slotOrder = ["catl_estimate", "catl_purchase_order", "mfg_sales_order", "mfg_invoice", "qb_bill", "catl_customer_invoice"];
 
   return (
     <div className="space-y-5">
