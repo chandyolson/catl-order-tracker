@@ -525,35 +525,39 @@ export default function Dashboard() {
                 const isOverdue = t.due_date && new Date(t.due_date) < today;
                 const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
                 return (
-                  <div key={t.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
+                  <div key={t.id} className="flex gap-2.5 px-4 py-3 hover:bg-[#F9F9F7] transition-colors group"
                     style={{ borderBottom: "0.5px solid #F5F5F0" }}>
-                    <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0 mt-0.5" />
-                    <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
-                      className="flex-1 text-[13px] text-left font-medium leading-snug" style={{ color: "#1A1A1A" }}>
-                      {t.title}
-                    </button>
-                    {t.priority && t.priority !== "normal" && (
-                      <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 flex-shrink-0 ${priorityColors[t.priority] || ""}`}>{t.priority}</span>
-                    )}
-                    {t.due_date && (
-                      <span className="text-[11px] flex-shrink-0"
-                        style={{ color: isOverdue ? "#E8503A" : isToday ? "#F3D12A" : "#717182", fontWeight: isOverdue ? 600 : 400 }}>
-                        {new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </span>
-                    )}
-                    {t.source_type === "voice_memo" && <Mic size={11} style={{ color: "#717182", flexShrink: 0 }} />}
-                    {t.source_type === "chat" && <MessageCircle size={11} style={{ color: "#717182", flexShrink: 0 }} />}
-                    {t.attachment_url && (
-                      <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
-                        <Paperclip size={11} style={{ color: "#55BAAA" }} />
-                      </a>
-                    )}
-                    {t.assigned_to && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
-                        @{t.assigned_to}
-                      </span>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} className="p-0.5 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
+                    <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0 mt-0.5 h-4 w-4" />
+                    <div className="flex-1 min-w-0">
+                      <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
+                        className="text-[13px] text-left font-medium leading-snug w-full" style={{ color: "#1A1A1A" }}>
+                        {t.title}
+                      </button>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {t.assigned_to && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                            @{t.assigned_to}
+                          </span>
+                        )}
+                        {t.due_date && (
+                          <span className="text-[10px]"
+                            style={{ color: isOverdue ? "#E8503A" : isToday ? "#F3D12A" : "#717182", fontWeight: isOverdue ? 600 : 400 }}>
+                            {isOverdue ? "Overdue · " : ""}{new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                        {t.priority && t.priority !== "normal" && (
+                          <span className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 ${priorityColors[t.priority] || ""}`}>{t.priority}</span>
+                        )}
+                        {t.attachment_url && (
+                          <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            <Paperclip size={10} style={{ color: "#55BAAA" }} />
+                          </a>
+                        )}
+                        {t.source_type === "voice_memo" && <Mic size={10} style={{ color: "#717182" }} />}
+                        {t.source_type === "chat" && <MessageCircle size={10} style={{ color: "#717182" }} />}
+                      </div>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} className="p-0.5 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-0.5"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
                   </div>
                 );
               })}

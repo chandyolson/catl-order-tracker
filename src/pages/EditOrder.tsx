@@ -324,7 +324,8 @@ export default function EditOrder() {
       } else if (opt.selection_type === "side") {
         const left = saved.left_qty ?? saved.left ?? 0;
         const right = saved.right_qty ?? saved.right ?? 0;
-        newSel.set(opt.id, { optionId: opt.id, left, right, selected: false, quantity: left + right });
+        const qty = saved.quantity || left + right || 1;
+        newSel.set(opt.id, { optionId: opt.id, left, right, selected: true, quantity: qty });
       } else if (opt.allows_quantity) {
         newSel.set(opt.id, { optionId: opt.id, left: 0, right: 0, selected: true, quantity: saved.quantity || 1 });
       } else {
@@ -608,7 +609,7 @@ export default function EditOrder() {
     }
     for (const [optId, sel] of selections) {
       const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected) e[`side_${optId}`] = "Select a side";
+      if (opt?.selection_type === "side" && sel.left === 0 && sel.right === 0 && !sel.selected && sel.quantity === 0) e[`side_${optId}`] = "Select a side";
     }
     setErrors(e);
     if (Object.keys(e).length > 0) {
