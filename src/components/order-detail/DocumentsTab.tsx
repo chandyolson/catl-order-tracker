@@ -13,15 +13,17 @@ interface DocumentsTabProps {
 }
 
 const DOC_TYPES = [
-  { value: "mfg_sales_order",     label: "Mfg Sales Order",     bg: "rgba(59,130,246,0.12)",  color: "#3B82F6" },
-  { value: "signed_moly_so",      label: "Signed Sales Order",  bg: "rgba(14,38,70,0.10)",    color: "#0E2646" },
-  { value: "mfg_so_confirmation", label: "Order Confirmation",  bg: "rgba(85,186,170,0.15)",  color: "#2A8A7C" },
-  { value: "mfg_invoice",         label: "Mfg Invoice",         bg: "rgba(39,174,96,0.12)",   color: "#27AE60" },
-  { value: "catl_purchase_order", label: "CATL Purchase Order", bg: "rgba(243,209,42,0.20)",  color: "#854F0B" },
-  { value: "catl_estimate",       label: "CATL Estimate",       bg: "rgba(243,209,42,0.15)",  color: "#854F0B" },
-  { value: "catl_customer_invoice", label: "Customer Invoice",  bg: "rgba(39,174,96,0.15)",   color: "#166534" },
-  { value: "qb_bill",             label: "QB Bill",             bg: "rgba(59,130,246,0.10)",  color: "#1D4ED8" },
-  { value: "other",               label: "Other",               bg: "rgba(113,113,130,0.12)", color: "#717182" },
+  { value: "approved_estimate",    label: "Approved Estimate",    bg: "rgba(243,209,42,0.15)",  color: "#854F0B" },
+  { value: "catl_purchase_order",  label: "CATL Purchase Order",  bg: "rgba(243,209,42,0.20)",  color: "#854F0B" },
+  { value: "mfg_web_order",       label: "Mfg Web Order",        bg: "rgba(85,186,170,0.15)",  color: "#2A8A7C" },
+  { value: "mfg_sales_order",     label: "Mfg Sales Order",      bg: "rgba(59,130,246,0.12)",  color: "#3B82F6" },
+  { value: "signed_sales_order",  label: "Signed Sales Order",   bg: "rgba(14,38,70,0.10)",    color: "#0E2646" },
+  { value: "mfg_invoice",         label: "Mfg Invoice",          bg: "rgba(39,174,96,0.12)",   color: "#27AE60" },
+  { value: "qb_bill",             label: "QB Bill",              bg: "rgba(59,130,246,0.10)",   color: "#1D4ED8" },
+  { value: "catl_customer_invoice", label: "Customer Invoice",   bg: "rgba(39,174,96,0.15)",   color: "#166534" },
+  { value: "photo",               label: "Photo",                bg: "rgba(168,85,247,0.12)",   color: "#7C3AED" },
+  { value: "attachment",          label: "Attachment",            bg: "rgba(113,113,130,0.12)",  color: "#717182" },
+  { value: "other",               label: "Other",                bg: "rgba(113,113,130,0.12)",  color: "#717182" },
 ];
 
 function typeBadge(docType: string) {
@@ -48,7 +50,7 @@ export default function DocumentsTab({ orderId, molyContractNumber, driveFolderU
   const queryClient = useQueryClient();
   const [scanning, setScanning] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newDoc, setNewDoc] = useState({ title: "", document_type: "mfg_sales_order", file_url: "", description: "" });
+  const [newDoc, setNewDoc] = useState({ title: "", document_type: "attachment", file_url: "", description: "" });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const docsQuery = useQuery({
@@ -82,7 +84,7 @@ export default function DocumentsTab({ orderId, molyContractNumber, driveFolderU
     },
     onSuccess: () => {
       toast.success("Document added");
-      setNewDoc({ title: "", document_type: "mfg_sales_order", file_url: "", description: "" });
+      setNewDoc({ title: "", document_type: "attachment", file_url: "", description: "" });
       setShowAddForm(false);
       queryClient.invalidateQueries({ queryKey: ["order_documents", orderId] });
       queryClient.invalidateQueries({ queryKey: ["order_documents_summary", orderId] });
@@ -255,7 +257,7 @@ export default function DocumentsTab({ orderId, molyContractNumber, driveFolderU
               {addDocMutation.isPending ? "Saving..." : "Save Document"}
             </button>
             <button
-              onClick={() => { setShowAddForm(false); setNewDoc({ title: "", document_type: "mfg_sales_order", file_url: "", description: "" }); }}
+              onClick={() => { setShowAddForm(false); setNewDoc({ title: "", document_type: "attachment", file_url: "", description: "" }); }}
               className="px-4 py-2 rounded-lg text-[13px] text-muted-foreground"
             >
               Cancel

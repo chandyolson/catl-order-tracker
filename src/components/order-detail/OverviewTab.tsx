@@ -204,12 +204,16 @@ export default function OverviewTab({
   const slots = slotsQuery.data || [];
 
   const slotConfig: Record<string, { label: string; color: string }> = {
-    catl_estimate: { label: "CATL Estimate", color: "#F3D12A" }, catl_purchase_order: { label: "Purchase Order", color: "#0E2646" },
+    approved_estimate: { label: "Approved Estimate", color: "#F3D12A" },
+    catl_purchase_order: { label: "CATL Purchase Order", color: "#0E2646" },
+    mfg_web_order: { label: "Mfg Web Order", color: "#55BAAA" },
     mfg_sales_order: { label: "Mfg Sales Order", color: "#3B82F6" },
-    mfg_invoice: { label: "Mfg Invoice", color: "#8B5CF6" }, qb_bill: { label: "QB Bill", color: "#EF4444" },
+    signed_sales_order: { label: "Signed Sales Order", color: "#1E40AF" },
+    mfg_invoice: { label: "Mfg Invoice", color: "#8B5CF6" },
+    qb_bill: { label: "QB Bill", color: "#EF4444" },
     catl_customer_invoice: { label: "Customer Invoice", color: "#27AE60" },
   };
-  const slotOrder = ["catl_estimate", "catl_purchase_order", "mfg_sales_order", "mfg_invoice", "qb_bill", "catl_customer_invoice"];
+  const slotOrder = ["approved_estimate", "catl_purchase_order", "mfg_web_order", "mfg_sales_order", "signed_sales_order", "mfg_invoice", "qb_bill", "catl_customer_invoice"];
 
   return (
     <div className="space-y-5">
@@ -494,7 +498,22 @@ export default function OverviewTab({
                         <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
                       </a>
                     )}
-                    {slot && !isFilled && !isVoided && order.google_drive_folder_url && (
+                    {isComplete && (
+                      <button onClick={async () => {
+                        if (!confirm(`Unlink ${cfg.label}? The file won't be deleted, just removed from this slot.`)) return;
+                        try {
+                          const { error: slotErr } = await supabase.from("order_document_slots").update({
+                            document_id: null, is_filled: false, filled_at: null, parsed_by: null, comparison_status: null, updated_at: new Date().toISOString(),
+                          }).eq("id", slot.id);
+                          if (slotErr) throw slotErr;
+                          toast.success(`${cfg.label} unlinked`);
+                          slotsQuery.refetch();
+                        } catch (err: any) { toast.error(err.message); }
+                      }} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors active:scale-[0.95]" title="Unlink document">
+                        <X size={12} style={{ color: "#D4183D" }} />
+                      </button>
+                    )}
+                    {slot && !isVoided && order.google_drive_folder_url && (
                       <button onClick={async () => {
                         if (browseSlot === slotType) { setBrowseSlot(null); return; }
                         setBrowseSlot(slotType);
@@ -510,7 +529,7 @@ export default function OverviewTab({
                           finally { setBrowseLoading(false); }
                         }
                       }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95] flex items-center gap-1" style={{ backgroundColor: browseSlot === slotType ? "#0E2646" : "rgba(14,38,70,0.08)", color: browseSlot === slotType ? "#F3D12A" : "#0E2646" }}>
-                        <FolderOpen size={10} />Browse
+                        <FolderOpen size={10} />{isFilled ? "" : "Browse"}
                       </button>
                     )}
                     {slot && !isFilled && !isVoided && unmatchedDriveFiles.length > 0 && (
