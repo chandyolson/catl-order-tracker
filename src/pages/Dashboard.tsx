@@ -32,7 +32,7 @@ type Estimate = {
   customers: { name: string; company: string | null } | null;
 };
 type VoiceMemo = {
-  id: string; transcript: string | null; created_at: string; status: string | null;
+  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null; is_archived: boolean | null;
 };
 
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -146,7 +146,7 @@ const categoryLabels: Record<string, string> = {
   corral: "Corrals", panel: "Panels", gate: "Gates", other: "Other",
 };
 const priorityColors: Record<string, string> = {
-  urgent: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700",
+  urgent: "bg-[#FDECEA] text-[#D4183D]", high: "bg-[#FFF8E1] text-[#854F0B]",
   normal: "bg-gray-100 text-gray-600", low: "bg-gray-50 text-gray-400",
 };
 
@@ -188,7 +188,8 @@ export default function Dashboard() {
           .not("status", "in", '("closed","rejected")')
           .order("created_at", { ascending: false })
           .limit(15),
-        supabase.from("voice_memos").select("id, transcript, created_at, status")
+        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status, is_archived")
+          .eq("processing_status", "complete").or("is_archived.is.null,is_archived.eq.false")
           .order("created_at", { ascending: false }).limit(5),
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
@@ -523,11 +524,11 @@ export default function Dashboard() {
                 const isOverdue = t.due_date && new Date(t.due_date) < today;
                 const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
                 return (
-                  <div key={t.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
+                  <div key={t.id} className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
                     style={{ borderBottom: "0.5px solid #F5F5F0" }}>
-                    <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0" />
+                    <Checkbox onCheckedChange={() => completeTask(t.id)} className="flex-shrink-0 mt-0.5" />
                     <button onClick={() => t.order_id ? navigate(`/orders/${t.order_id}`) : undefined}
-                      className="flex-1 text-[13px] text-left font-medium truncate" style={{ color: "#1A1A1A" }}>
+                      className="flex-1 text-[13px] text-left font-medium leading-snug" style={{ color: "#1A1A1A" }}>
                       {t.title}
                     </button>
                     {t.priority && t.priority !== "normal" && (
@@ -564,13 +565,10 @@ export default function Dashboard() {
                   style={{ borderBottom: "0.5px solid #F5F5F0" }}>
                   <button onClick={() => navigate("/voice-memos")} className="flex-1 text-left min-w-0">
                     <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
-                      {memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Untranscribed memo"}
+                      {memo.ai_summary ? memo.ai_summary.slice(0, 85) + (memo.ai_summary.length > 85 ? "…" : "") : memo.transcript ? memo.transcript.slice(0, 75) + (memo.transcript.length > 75 ? "…" : "") : "Processing…"}
                     </p>
                     <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
                       {formatTime(memo.created_at)}
-                      {memo.status && memo.status !== "processed" && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "#FFF0DC", color: "#B85C00" }}>{memo.status}</span>
-                      )}
                   </p>
                 </button>
                   <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
