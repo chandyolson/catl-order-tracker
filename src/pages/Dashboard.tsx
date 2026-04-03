@@ -6,14 +6,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   CheckSquare, Warehouse, Send, MessageCircle,
-  AlertTriangle, Truck, TrendingUp, Mic, ChevronRight, Trash2, RefreshCw,
+  AlertTriangle, Truck, TrendingUp, Mic, ChevronRight, Trash2, RefreshCw, Paperclip,
 } from "lucide-react";
 
 type Task = {
   id: string; title: string; description: string | null;
   status: string | null; priority: string | null; task_type: string | null;
   due_date: string | null; order_id: string | null; source_type: string | null;
-  created_at: string | null;
+  created_at: string | null; assigned_to: string | null;
+  attachment_url: string | null; attachment_name: string | null; attachment_type: string | null;
 };
 type ChatMsg = { role: "user" | "assistant"; content: string; actions?: ActionButton[] };
 type ActionButton = { label: string; route: string };
@@ -542,6 +543,16 @@ export default function Dashboard() {
                     )}
                     {t.source_type === "voice_memo" && <Mic size={11} style={{ color: "#717182", flexShrink: 0 }} />}
                     {t.source_type === "chat" && <MessageCircle size={11} style={{ color: "#717182", flexShrink: 0 }} />}
+                    {t.attachment_url && (
+                      <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                        <Paperclip size={11} style={{ color: "#55BAAA" }} />
+                      </a>
+                    )}
+                    {t.assigned_to && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                        @{t.assigned_to}
+                      </span>
+                    )}
                     <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} className="p-0.5 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
                   </div>
                 );

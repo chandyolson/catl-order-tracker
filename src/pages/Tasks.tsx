@@ -55,6 +55,8 @@ import {
   Trash2,
   Pencil,
   Link as LinkIcon,
+  Paperclip,
+  Image,
 } from "lucide-react";
 
 /* ──────── types ──────── */
@@ -72,6 +74,9 @@ type Task = {
   created_at: string | null;
   completed_at: string | null;
   assigned_to: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_type: string | null;
   customers: { id: string; name: string } | null;
 };
 
@@ -192,10 +197,28 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   const handleSubmit = async () => {
     if (!title.trim()) { toast.error("Title is required"); return; }
     setSaving(true);
+
+    let attachmentUrl: string | null = null;
+    let attachmentName: string | null = null;
+    let attachmentType: string | null = null;
+
+    // Upload file if one was selected
+    if (file) {
+      const ext = file.name.split(".").pop() || "bin";
+      const storagePath = `tasks/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error: uploadErr } = await supabase.storage.from("task-attachments").upload(storagePath, file, { contentType: file.type, upsert: true });
+      if (uploadErr) { toast.error("File upload failed: " + uploadErr.message); setSaving(false); return; }
+      const { data: pubUrl } = supabase.storage.from("task-attachments").getPublicUrl(storagePath);
+      attachmentUrl = pubUrl?.publicUrl || null;
+      attachmentName = file.name;
+      attachmentType = file.type;
+    }
+
     const { error } = await supabase.from("tasks").insert({
       title: title.trim(),
       priority,
@@ -204,6 +227,9 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
       customer_id: customerId,
       description: description.trim() || null,
       assigned_to: assignedTo && assignedTo !== "unassigned" ? assignedTo : null,
+      attachment_url: attachmentUrl,
+      attachment_name: attachmentName,
+      attachment_type: attachmentType,
       status: "open",
       source_type: "manual",
       created_by: "tim",
@@ -272,6 +298,24 @@ function NewTaskForm({ onCreated, onClose }: { onCreated: () => void; onClose: (
       <div>
         <label className="text-sm font-medium text-foreground mb-1 block">Description</label>
         <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional details..." rows={3} />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-foreground mb-1 block">Attachment</label>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border cursor-pointer hover:bg-muted/50 transition-colors text-sm text-muted-foreground">
+            <Paperclip size={14} />
+            {file ? file.name : "Upload photo or document"}
+            <input type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          </label>
+          {file && (
+            <button onClick={() => setFile(null)} className="text-xs text-destructive hover:underline">Remove</button>
+          )}
+        </div>
+        {file && file.type.startsWith("image/") && (
+          <div className="mt-2 rounded-lg overflow-hidden border border-border" style={{ maxWidth: 200 }}>
+            <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-auto" />
+          </div>
+        )}
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -484,12 +528,26 @@ export default function Tasks() {
                       <SourceIcon size={11} /> {(t.source_type || "").replace(/_/g, " ")}
                     </span>
                   )}
+                  {t.attachment_url && (
+                    <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-[11px] font-medium" style={{ color: "#55BAAA" }}>
+                      {t.attachment_type?.startsWith("image/") ? <Image size={11} /> : <Paperclip size={11} />}
+                      {t.attachment_name || "Attachment"}
+                    </a>
+                  )}
                   {t.created_at && (
                     <span className="text-[11px] text-muted-foreground">
                       {formatDistanceToNow(new Date(t.created_at), { addSuffix: true })}
                     </span>
                   )}
                 </div>
+                {t.description && (
+                  <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{t.description}</p>
+                )}
+                {t.attachment_url && t.attachment_type?.startsWith("image/") && (
+                  <a href={t.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="mt-2 block rounded-lg overflow-hidden border border-border" style={{ maxWidth: 180 }}>
+                    <img src={t.attachment_url} alt={t.attachment_name || "Attachment"} className="w-full h-auto" />
+                  </a>
+                )}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
