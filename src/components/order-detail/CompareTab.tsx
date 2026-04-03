@@ -10,6 +10,7 @@ function fmt$(n: number | null | undefined) {
 }
 
 const SLOT_LABELS: Record<string, string> = {
+  catl_estimate: "CATL Estimate",
   approved_estimate: "Approved Estimate",
   catl_purchase_order: "CATL Purchase Order",
   mfg_web_order: "Mfg Web Order",
