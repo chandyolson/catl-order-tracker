@@ -513,11 +513,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Action Items — full width */}
+        {/* Tasks — full width */}
         <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <CheckSquare size={12} style={{ color: "#55BAAA" }} />
-            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Action Items</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Tasks</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
             <button onClick={() => navigate("/tasks")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
           </div>

@@ -5,10 +5,12 @@ import { formatSavedOptionPill } from "@/lib/optionDisplay";
 import { toast } from "sonner";
 import {
   Edit2, Check, X, Phone, Mail, ArrowRightCircle, ExternalLink,
-  FileText, Users, Search, Trash2, Plus, FolderOpen,
+  FileText, Users, Search, Trash2, Plus, FolderOpen, Mic, Paperclip,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+
+const TEAM = ["Tim", "Caleb", "Chandy", "Jen"];
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -72,6 +74,9 @@ export default function OverviewTab({
   const [driveUrl, setDriveUrl] = useState(order.google_drive_folder_url || "");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("normal");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [unmatchedDriveFiles, setUnmatchedDriveFiles] = useState<{ id: string; name: string; url: string; size: string }[]>([]);
   const [linkingSlot, setLinkingSlot] = useState<string | null>(null);
   const [browseFiles, setBrowseFiles] = useState<{ id: string; name: string; url: string; size: string; mime_type?: string; subfolder?: string | null }[]>([]);
@@ -97,6 +102,24 @@ export default function OverviewTab({
     queryKey: ["order_document_slots", order.id],
     queryFn: async () => {
       const { data, error } = await supabase.from("order_document_slots").select("*, order_documents:document_id(id, file_url, file_name, title)").eq("order_id", order.id).order("slot_type");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const orderTasksQuery = useQuery({
+    queryKey: ["order_tasks", order.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tasks").select("*").eq("order_id", order.id).order("status").order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const orderMemosQuery = useQuery({
+    queryKey: ["order_memos", order.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("voice_memos").select("*").eq("order_id", order.id).eq("archived", false).order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -150,23 +173,23 @@ export default function OverviewTab({
 
   const addTaskMutation = useMutation({
     mutationFn: async (title: string) => {
-      const { error } = await supabase.from("paperwork").insert({ order_id: order.id, title, is_manual: true, status: "pending", side: "customer", document_type: "manual_task" });
+      const { error } = await supabase.from("tasks").insert({ order_id: order.id, title, status: "open", priority: newTaskPriority || "normal", assigned_to: newTaskAssignee || null, task_type: "manual_task", created_by: "user" });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] }); setNewTaskTitle(""); setShowAddTask(false); toast.success("Task added"); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }); setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskPriority("normal"); setShowAddTask(false); toast.success("Task added"); },
   });
 
   const toggleTaskMutation = useMutation({
     mutationFn: async ({ taskId, done }: { taskId: string; done: boolean }) => {
-      const { error } = await supabase.from("paperwork").update({ status: done ? "complete" : "pending", completed_date: done ? new Date().toISOString().split("T")[0] : null, updated_at: new Date().toISOString() }).eq("id", taskId);
+      const { error } = await supabase.from("tasks").update({ status: done ? "complete" : "open", completed_at: done ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", taskId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }),
   });
 
   const deleteTaskMutation = useMutation({
-    mutationFn: async (taskId: string) => { const { error } = await supabase.from("paperwork").delete().eq("id", taskId); if (error) throw error; },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["paperwork", order.id] }); toast.success("Task removed"); },
+    mutationFn: async (taskId: string) => { const { error } = await supabase.from("tasks").delete().eq("id", taskId); if (error) throw error; },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }); toast.success("Task removed"); },
   });
 
   async function handlePlaceOrderOnPortal() {
@@ -198,9 +221,10 @@ export default function OverviewTab({
   const isPortalDone = portalOrdered || paperwork.some((p) => p.document_type === "vendor_po_submitted" && p.status === "complete");
   const isQBPODone = !!order.qb_po_id;
   const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
-  const manualTasks = paperwork.filter((p) => p.is_manual);
-  const pendingTasks = manualTasks.filter((p) => p.status === "pending" || p.status === "missing");
-  const completedTasks = manualTasks.filter((p) => p.status === "complete");
+  const orderTasks = orderTasksQuery.data || [];
+  const pendingTasks = orderTasks.filter((t: any) => t.status === "open");
+  const completedTasks = orderTasks.filter((t: any) => t.status === "complete");
+  const orderMemos = orderMemosQuery.data || [];
   const slots = slotsQuery.data || [];
 
   const slotConfig: Record<string, { label: string; color: string }> = {
@@ -329,27 +353,86 @@ export default function OverviewTab({
         {/* RIGHT: Task List */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#F5F5F0" }}>
-            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{manualTasks.length})</h3>
+            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Tasks ({completedTasks.length}/{orderTasks.length})</h3>
             <button onClick={() => setShowAddTask(!showAddTask)} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-[0.95] transition-transform" style={{ backgroundColor: "#55BAAA", color: "#fff" }}><Plus size={12} /> Add task</button>
           </div>
           <div className="p-3 space-y-1">
             {showAddTask && (
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="New task..." className="flex-1 border border-border rounded-lg px-3 py-2 text-[13px] outline-none text-[16px]" autoFocus onKeyDown={(e) => { if (e.key === "Enter" && newTaskTitle.trim()) addTaskMutation.mutate(newTaskTitle.trim()); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); }}} />
-                <button onClick={() => { if (newTaskTitle.trim()) addTaskMutation.mutate(newTaskTitle.trim()); }} disabled={!newTaskTitle.trim()} className="px-3 py-2 rounded-lg text-[12px] font-medium text-white disabled:opacity-50" style={{ backgroundColor: "#55BAAA" }}>Add</button>
+              <div className="mb-3 px-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="New task..." className="flex-1 border border-border rounded-lg px-3 py-2 text-[13px] outline-none text-[16px]" autoFocus onKeyDown={(e) => { if (e.key === "Enter" && newTaskTitle.trim()) addTaskMutation.mutate(newTaskTitle.trim()); if (e.key === "Escape") { setShowAddTask(false); setNewTaskTitle(""); }}} />
+                  <button onClick={() => { if (newTaskTitle.trim()) addTaskMutation.mutate(newTaskTitle.trim()); }} disabled={!newTaskTitle.trim()} className="px-3 py-2 rounded-lg text-[12px] font-medium text-white disabled:opacity-50" style={{ backgroundColor: "#55BAAA" }}>Add</button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
+                  {TEAM.map(name => (
+                    <button key={name} onClick={() => setNewTaskAssignee(newTaskAssignee === name ? "" : name)}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: newTaskAssignee === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: newTaskAssignee === name ? "#F3D12A" : "#0E2646" }}>
+                      {name}
+                    </button>
+                  ))}
+                  <span className="text-[10px] font-semibold ml-2" style={{ color: "#717182" }}>Priority:</span>
+                  {["urgent", "high", "normal"].map(p => (
+                    <button key={p} onClick={() => setNewTaskPriority(p)}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: newTaskPriority === p ? (p === "urgent" ? "#E8503A" : p === "high" ? "#F3D12A" : "#55BAAA") : "rgba(113,113,130,0.08)", color: newTaskPriority === p ? (p === "urgent" ? "#fff" : "#0E2646") : "#717182" }}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            {pendingTasks.map((task) => (
-              <div key={task.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/30 group">
-                <button onClick={() => toggleTaskMutation.mutate({ taskId: task.id, done: true })} className="w-4 h-4 rounded border border-border shrink-0 hover:border-[#55BAAA]" />
-                <span className="text-[12px] text-foreground flex-1">{task.title}</span>
-                <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
-              </div>
-            ))}
+            {pendingTasks.map((task: any) => {
+              const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+              const isEditing = editingTaskId === task.id;
+              return (
+                <div key={task.id}>
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted/30 group">
+                    <button onClick={() => toggleTaskMutation.mutate({ taskId: task.id, done: true })} className="w-4 h-4 rounded border border-border shrink-0 hover:border-[#55BAAA]" />
+                    <button onClick={() => setEditingTaskId(isEditing ? null : task.id)} className="text-[12px] text-foreground flex-1 text-left font-medium leading-snug min-w-0">{task.title}</button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {task.assigned_to && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>@{task.assigned_to}</span>}
+                      {task.priority && task.priority !== "normal" && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: task.priority === "urgent" ? "rgba(232,80,58,0.15)" : "rgba(243,209,42,0.2)", color: task.priority === "urgent" ? "#E8503A" : "#854F0B" }}>{task.priority}</span>}
+                      {task.due_date && <span className="text-[10px]" style={{ color: isOverdue ? "#E8503A" : "#717182", fontWeight: isOverdue ? 600 : 400 }}>{new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+                      {task.attachment_url && <a href={task.attachment_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><Paperclip size={10} style={{ color: "#55BAAA" }} /></a>}
+                    </div>
+                    <button onClick={() => deleteTaskMutation.mutate(task.id)} className="p-0.5 opacity-0 group-hover:opacity-100"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
+                  </div>
+                  {isEditing && (
+                    <div className="px-4 pb-2 pt-1 flex items-center gap-2 flex-wrap" style={{ backgroundColor: "#F9F9F7", borderBottom: "0.5px solid #F5F5F0" }}>
+                      <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
+                      {TEAM.map(name => (
+                        <button key={name} onClick={async () => {
+                          const newVal = task.assigned_to === name ? null : name;
+                          const { error } = await supabase.from("tasks").update({ assigned_to: newVal }).eq("id", task.id);
+                          if (!error) { queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }); toast.success(newVal ? `Assigned to ${newVal}` : "Unassigned"); }
+                        }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: task.assigned_to === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: task.assigned_to === name ? "#F3D12A" : "#0E2646" }}>
+                          {name}
+                        </button>
+                      ))}
+                      <span className="text-[10px] font-semibold ml-2" style={{ color: "#717182" }}>Priority:</span>
+                      {["urgent", "high", "normal", "low"].map(p => (
+                        <button key={p} onClick={async () => {
+                          const { error } = await supabase.from("tasks").update({ priority: p }).eq("id", task.id);
+                          if (!error) queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] });
+                        }}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: task.priority === p ? (p === "urgent" ? "#E8503A" : p === "high" ? "#F3D12A" : "#55BAAA") : "rgba(113,113,130,0.08)", color: task.priority === p ? (p === "urgent" ? "#fff" : "#0E2646") : "#717182" }}>
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {completedTasks.length > 0 && (
               <>
                 <div className="text-[10px] font-medium uppercase tracking-wider pt-2 px-2" style={{ color: "#717182" }}>Done</div>
-                {completedTasks.map((task) => (
+                {completedTasks.map((task: any) => (
                   <div key={task.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg group">
                     <button onClick={() => toggleTaskMutation.mutate({ taskId: task.id, done: false })} className="w-4 h-4 rounded border shrink-0 flex items-center justify-center" style={{ backgroundColor: "#27AE60", borderColor: "#27AE60" }}><Check size={10} className="text-white" /></button>
                     <span className="text-[12px] text-muted-foreground flex-1 line-through">{task.title}</span>
@@ -358,7 +441,7 @@ export default function OverviewTab({
                 ))}
               </>
             )}
-            {manualTasks.length === 0 && <p className="text-[12px] text-muted-foreground px-2 py-3">No tasks yet</p>}
+            {orderTasks.length === 0 && <p className="text-[12px] text-muted-foreground px-2 py-3">No tasks yet</p>}
           </div>
         </div>
       </div>
@@ -604,6 +687,67 @@ export default function OverviewTab({
           </div>
         </div>
       </div>
+
+      {/* ━━━ 4. VOICE MEMOS (linked to this order) ━━━━━━━━ */}
+      {orderMemos.length > 0 && (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: "#F5F5F0" }}>
+            <Mic size={12} style={{ color: "#D85A30" }} />
+            <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Voice Memos</h3>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(216,90,48,0.1)", color: "#D85A30" }}>{orderMemos.length}</span>
+          </div>
+          <div className="p-3 space-y-2">
+            {orderMemos.map((memo: any) => (
+              <div key={memo.id} className="rounded-lg border border-border p-3" style={{ backgroundColor: "#FAFAF8" }}>
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {memo.memo_type && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(216,90,48,0.1)", color: "#993C1D" }}>{memo.memo_type.replace(":", " · ")}</span>
+                    )}
+                    {memo.assigned_to && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>@{memo.assigned_to}</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">{memo.created_at ? format(new Date(memo.created_at), "MMM d") : ""}</span>
+                </div>
+                {memo.ai_summary && (
+                  <p className="text-[12px] text-foreground leading-relaxed mb-1.5">{memo.ai_summary}</p>
+                )}
+                {memo.notes && (
+                  <p className="text-[11px] italic" style={{ color: "#717182" }}>{memo.notes}</p>
+                )}
+                {memo.commitments && Array.isArray(memo.commitments) && memo.commitments.length > 0 && (
+                  <div className="mt-1.5 pt-1.5" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#F3D12A" }}>Commitments</p>
+                    {memo.commitments.map((c: any, i: number) => (
+                      <p key={i} className="text-[11px]" style={{ color: "#0E2646" }}>• {typeof c === "string" ? c : c.description || c.text || JSON.stringify(c)}</p>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-2">
+                  {!memo.assigned_to && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px]" style={{ color: "#717182" }}>Assign:</span>
+                      {TEAM.map(name => (
+                        <button key={name} onClick={async () => {
+                          const { error } = await supabase.from("voice_memos").update({ assigned_to: name } as any).eq("id", memo.id);
+                          if (!error) { queryClient.invalidateQueries({ queryKey: ["order_memos", order.id] }); toast.success(`Memo assigned to ${name}`); }
+                        }} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(14,38,70,0.06)", color: "#0E2646" }}>{name}</button>
+                      ))}
+                    </div>
+                  )}
+                  {memo.assigned_to && (
+                    <button onClick={async () => {
+                      const { error } = await supabase.from("voice_memos").update({ assigned_to: null } as any).eq("id", memo.id);
+                      if (!error) { queryClient.invalidateQueries({ queryKey: ["order_memos", order.id] }); toast.success("Unassigned"); }
+                    }} className="text-[9px] text-muted-foreground hover:text-foreground">Unassign</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );
