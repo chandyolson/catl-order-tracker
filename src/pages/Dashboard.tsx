@@ -453,7 +453,7 @@ export default function Dashboard() {
         {/* Follow-up Leads */}
         <div className="bg-white rounded-xl mb-4 overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Follow-up Leads</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Follow-up Leads</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{leads.length}</span>
             <span className="text-[10px] ml-auto" style={{ color: "#717182" }}>sorted by priority</span>
           </div>
@@ -486,7 +486,7 @@ export default function Dashboard() {
         {/* Order Pipeline */}
         <div className="bg-white rounded-xl mb-4 overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Order Pipeline</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Order Pipeline</span>
           </div>
           <div className="py-1">
             {pipelineStages.map(stage => {
@@ -517,7 +517,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <CheckSquare size={12} style={{ color: "#55BAAA" }} />
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Action Items</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Action Items</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
             <button onClick={() => navigate("/tasks")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
           </div>
@@ -603,7 +603,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <Mic size={12} style={{ color: "#55BAAA" }} />
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Recent Memos</span>
+            <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Recent Memos</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{recentMemos.length}</span>
             <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
             <button onClick={() => navigate("/voice-memos")} className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
