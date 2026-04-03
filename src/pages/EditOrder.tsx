@@ -618,17 +618,16 @@ export default function EditOrder() {
   }
 
   function hasConfigChanged(): boolean {
-    const currentOptionsJson = JSON.stringify(
-      selectedOptionsList.map((s) => ({
-        option_id: s.option.id,
-        left: s.left,
-        right: s.right,
-        quantity: s.quantity,
-        pivotType: s.pivotType,
-        pivotSide: s.pivotSide,
-      }))
+    const normalize = (opts: any[]) => JSON.stringify(
+      (opts || []).filter((o: any) => o.option_id).map((o: any) => ({
+        option_id: o.option_id,
+        quantity: o.quantity || 1,
+      })).sort((a: any, b: any) => (a.option_id || "").localeCompare(b.option_id || ""))
     );
-    return baseModelId !== originalBaseModelId || currentOptionsJson !== originalSelectedOptions;
+    const currentNorm = normalize(selectedOptionsList.map((s) => ({ option_id: s.option.id, quantity: s.quantity })));
+    const originalOpts = (() => { try { return JSON.parse(originalSelectedOptions); } catch { return []; } })();
+    const originalNorm = normalize(originalOpts);
+    return baseModelId !== originalBaseModelId || currentNorm !== originalNorm;
   }
 
   /* ─── Submit (UPDATE) ──────────────────────────────────────── */
