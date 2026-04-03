@@ -177,6 +177,7 @@ export default function NewOrder() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [receiptTab, setReceiptTab] = useState<"summary" | "itemized">("summary");
   const [newCustomer, setNewCustomer] = useState({ name: "", email: "", phone: "", city: "", state: "", type: "" });
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [fromInventory, setFromInventory] = useState(false);
@@ -890,6 +891,7 @@ export default function NewOrder() {
 
   const optionCount = selectedOptionsList.length;
   const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
+  const optionCostTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.cost_price * quantity, 0);
 
   const isOverheadScalesSelected = useMemo(() => {
     const opts = optionsQuery.data || [];
@@ -1286,419 +1288,167 @@ export default function NewOrder() {
 
   /* ─── RENDER ───────────────────────────────────────────────── */
 
-  const modelLabel = selectedBaseModel
-    ? `${selectedBaseModel.short_name} · ${selectedManufacturer?.short_name || ""}`
-    : "Select a model";
-
-  const discountDisplay = discountValue > 0
-    ? (discountType === "%" ? `−${parseFloat(discountAmount) || 0}%` : `−$${fmtCurrency(discountValue)}`)
-    : "—";
-
   return (
     <div className="mx-auto pb-40 overflow-x-hidden max-w-full" style={{ background: "#F5F5F0" }}>
-      {/* Sticky Navy Price Bar */}
+      {/* ── NAVY HEADER: Status Pipeline ─────────────────── */}
       <div className="sticky top-0 z-10 md:max-w-[680px] md:mx-auto" style={{ background: "#0E2646", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: "rgba(240,240,240,0.45)" }}>{isDirectOrder ? "New order" : "New estimate"}</span>
-          <span className="text-[11px] truncate ml-2" style={{ color: "rgba(240,240,240,0.45)" }}>{modelLabel}</span>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="p-0.5" style={{ color: "#55BAAA" }}><ChevronLeft size={20} /></button>
+            <span className="text-[15px] font-medium" style={{ color: "#F5F5F0" }}>New order</span>
+          </div>
+          <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>{contractName || "Untitled"}</span>
         </div>
-        <div className="hidden sm:flex items-baseline justify-between gap-4">
-          <div className="flex items-baseline gap-4">
-            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Subtotal</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(calcRetail)}</p></div>
-            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Discount</p><p className="text-[14px] font-medium" style={{ color: discountValue > 0 ? "#F3D12A" : "rgba(240,240,240,0.25)" }}>{discountDisplay}</p></div>
-            <div><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Customer price</p><p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p></div>
-            {taxRate > 0 && (
-              <div>
-                <p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Total w/ tax ({taxState} {taxRate}%)</p>
-                <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(totalWithTax)}</p>
-              </div>
-            )}
-          </div>
-          <div className="text-right"><p className="text-[10px]" style={{ color: "rgba(240,240,240,0.35)" }}>Margin</p><p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</p></div>
-        </div>
-        <div className="flex sm:hidden items-baseline justify-between">
-          <p className="text-[18px] font-medium" style={{ color: "#F0F0F0" }}>${fmtCurrency(customerPrice)}</p>
-          <p className="text-[14px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `${margin.percent.toFixed(1)}%` : "—"}</p>
-        </div>
-      </div>
-
-      {/* Page Header */}
-      <div className="flex items-center gap-2 mt-2 mb-1 px-4 md:max-w-[680px] md:mx-auto">
-        <button onClick={() => navigate(-1)} className="p-1" style={{ color: "#55BAAA" }}><ChevronLeft size={20} /></button>
-        <h1 className="text-[22px] font-bold" style={{ color: "#1D9E75" }}>{isDirectOrder ? "New order" : "New estimate"}</h1>
-      </div>
-
-      {/* Form Card */}
-      <div className="bg-white border rounded-xl p-4 space-y-3 md:max-w-[680px] md:mx-auto mx-4 overflow-x-hidden" style={{ borderColor: "#D4D4D0" }}>
-
-        {/* ── CUSTOMER ─────────────────────────────────────── */}
-        <div className="mb-3">
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>{isDirectOrder ? "Customer (optional)" : "Customer"}</p>
-          <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                {selectedCustomer ? selectedCustomer.name : <span className="text-muted-foreground">Search customers...</span>}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-              <Command shouldFilter={false}>
-                <CommandInput placeholder="Type 2+ letters to search..." value={customerSearch} onValueChange={(val) => { setCustomerSearch(val); setCustomerId(""); }} />
-                <CommandList>
-                  {debouncedCustomerSearch.length < 2 ? (
-                    <div className="px-3 py-3 text-sm text-muted-foreground">Type 2+ letters to search...</div>
-                  ) : customerSearchQuery.isLoading ? (
-                    <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
-                  ) : (
-                    <>
-                      <CommandEmpty>No customers found</CommandEmpty>
-                      <CommandGroup>
-                        {filteredCustomers.map((c: any) => (
-                          <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); }}>
-                            <span className="font-medium">{c.name}</span>
-                            {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </>
-                  )}
-                  <div className="border-t border-border">
-                    <button type="button" onClick={() => { setShowNewCustomerForm(true); setCustomerPopoverOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1" style={{ color: "#55BAAA" }}>
-                      <Plus size={14} /> Add New Customer
-                    </button>
-                  </div>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          {selectedCustomer && (
-            <button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">Clear</button>
-          )}
-        </div>
-
-        {showNewCustomerForm && (
-          <div className="border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
-            <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-              <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-              <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-            </div>
-            <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
-              <option value="">Type (optional)</option>
-              <option value="rancher">Rancher</option>
-              <option value="feedlot">Feedlot</option>
-              <option value="dealer">Dealer</option>
-              <option value="other">Other</option>
-            </select>
-            <div className="flex gap-2">
-              <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>{addCustomerMutation.isPending ? "Saving..." : "Save Customer"}</button>
-              <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {/* ── CONTRACT IDENTIFIERS ────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
-            <input
-              type="text"
-              value={contractName}
-              onChange={(e) => setContractName(e.target.value)}
-              placeholder="e.g. Smith Ranch Chute"
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-            />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>MOLY contract #</p>
-            <input
-              type="text"
-              value={molyContractNumber}
-              onChange={(e) => setMolyContractNumber(e.target.value)}
-              placeholder="e.g. 2025-76"
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-            />
-          </div>
-        </div>
-
-        {/* ── ESTIMATE NUMBER (only for estimates, not direct orders) ── */}
-        {!isDirectOrder && (
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#F3D12A" }}>Estimate No.</p>
-              <input
-                type="text"
-                value={estimateNumber}
-                onChange={(e) => setEstimateNumber(e.target.value)}
-                placeholder="Auto-generated"
-                className="w-full border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:ring-2 focus:ring-catl-gold/25"
-                style={{ borderColor: "#F3D12A", fontWeight: 600 }}
-              />
-            </div>
-            <div />
-          </div>
-        )}
-
-        {/* ── EQUIPMENT ──────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p>
-            <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">Select manufacturer</option>
-              {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            {errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p>
-            <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">Select base model</option>
-              {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
-            </select>
-            {errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}
-          </div>
-        </div>
-        {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
-          <div className="mb-3">
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p>
-            <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-              <option value="">None — custom build</option>
-              {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
-            </select>
-          </div>
-        )}
-
-        {/* ── NAVY RECEIPT CARD ─────────────────────────────── */}
-        {selectedBaseModel && (
-          <div className="rounded-xl p-4 mb-3" style={{ backgroundColor: "#0E2646" }}>
-            <div className="flex justify-between mb-1.5">
-              <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Base: {selectedBaseModel.name}</span>
-              <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
-            </div>
-            {optionCount > 0 && (
-              <div className="flex justify-between mb-1.5">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>Options ({optionCount})</span>
-                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(optionRetailTotal)}</span>
-              </div>
-            )}
-            {customLineItems.filter(c => c.name.trim() && parseFloat(c.retail) > 0).map((c, i) => (
-              <div key={`custom-${i}`} className="flex justify-between mb-1">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.5)" }}>{c.name}</span>
-                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(parseFloat(c.retail))}</span>
-              </div>
-            ))}
-            <div className="flex justify-between pt-2 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-              <span className="text-[13px] font-medium" style={{ color: "#F0F0F0" }}>Subtotal</span>
-              <span className="text-[15px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(calcRetail)}</span>
-            </div>
-            {discountValue > 0 && (
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Discount {discountType === "%" ? `(${parseFloat(discountAmount) || 0}%)` : ""}</span>
-                <span className="text-[13px]" style={{ color: "#F3D12A" }}>−${fmtCurrency(discountValue)}</span>
-              </div>
-            )}
-            {freightEstimate && parseFloat(freightEstimate) > 0 && (
-              <div className="flex justify-between mt-1">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Freight</span>
-                <span className="text-[13px]" style={{ color: "#F0F0F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 mt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.15)" }}>
-              <span className="text-[14px] font-medium" style={{ color: "#F0F0F0" }}>Customer total</span>
-              <span className="text-[17px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</span>
-            </div>
-            <div className="pt-2 mt-2" style={{ borderTop: "1px dashed rgba(255,255,255,0.1)" }}>
-              <div className="flex justify-between">
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>Our cost</span>
-                <span className="text-[12px]" style={{ color: "rgba(240,240,240,0.4)" }}>${fmtCurrency(ourCost)}</span>
-              </div>
-              <div className="flex justify-between mt-0.5">
-                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>Margin</span>
-                <span className="text-[13px] font-medium" style={{ color: "#5DCAA5" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── OPTIONS — collapsible groups ────────────────────── */}
-        {extendedChuteOption && (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg border overflow-hidden" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
-            <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-            <span className="text-[13px] font-semibold flex-1 break-words min-w-0" style={{ color: "#0E2646" }}>Extended Chute</span>
-            <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
-          </div>
-        )}
-
-        {groupedOptions.length > 0 && (
-          <div>
-            {groupedOptions.map(([group, opts]) => {
-              const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
-              if (filtered.length === 0) return null;
-              return renderGroupCard(group, filtered);
-            })}
-          </div>
-        )}
-
-        {/* ── BUILD SUMMARY ──────────────────────────────────── */}
-        {selectedBaseModel && (
-          <div className="flex items-center gap-2 mt-4 mb-2 flex-wrap">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "#0E2646", color: "#F0F0F0" }}>{selectedBaseModel.short_name}</span>
-            <span className="text-xs" style={{ color: "#717182" }}>{selectedManufacturer?.name}</span>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-1.5 mb-3 max-w-full overflow-hidden">
-          {summaryPills.filter(p => p.variant !== "base").map((pill, i) => (
-            <button key={i} type="button" onClick={() => handlePillClick(pill)} className="px-2.5 py-1 rounded-full text-xs font-semibold break-words cursor-pointer active:scale-[0.95] transition-transform" style={{
-              background: pill.variant === "standard" ? "rgba(85,186,170,0.12)" : "rgba(243,209,42,0.15)",
-              border: pill.variant === "standard" ? "1px solid rgba(85,186,170,0.3)" : "1px solid rgba(243,209,42,0.35)",
-              color: pill.variant === "standard" ? "#55BAAA" : "#B8860B",
-            }}>{pill.label}</button>
+        <div className="flex gap-1.5 flex-wrap">
+          {STATUS_OPTIONS.map((s) => (
+            <button key={s} type="button" onClick={() => setStatus(s)}
+              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors"
+              style={status === s
+                ? { background: "#55BAAA", color: "#0E2646" }
+                : { border: "1px solid rgba(245,245,240,0.2)", color: "rgba(245,245,240,0.4)", background: "transparent" }
+              }>
+              {STATUS_LABELS[s] || s}
+            </button>
           ))}
         </div>
-
-        <div>
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p>
-          <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated from selections" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none min-w-0 text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
-          {errors.buildShorthand && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.buildShorthand}</p>}
+        <div className="flex items-baseline justify-between mt-2.5 pt-2" style={{ borderTop: "1px solid rgba(245,245,240,0.1)" }}>
+          <div className="flex items-baseline gap-3">
+            <div><p className="text-[9px] uppercase" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</p><p className="text-[16px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</p></div>
+            <div><p className="text-[9px] uppercase" style={{ color: "rgba(243,209,42,0.6)" }}>Customer</p><p className="text-[16px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</p></div>
+          </div>
+          <div className="text-right"><p className="text-[9px] uppercase" style={{ color: "rgba(240,240,240,0.3)" }}>Margin</p><p className="text-[13px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `${margin.percent.toFixed(1)}%` : "—"}</p></div>
         </div>
+      </div>
 
-        {/* ── CUSTOM LINE ITEMS ─────────────────────────────── */}
-        {selectedBaseModel && (
-          <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#717182" }}>Custom line items</p>
-              <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
-                className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform"
-                style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
-                + Add item
-              </button>
-            </div>
-            {customLineItems.length === 0 && (
-              <p className="text-[11px] text-muted-foreground">Add spool valves, bottle holders, miscellaneous, or any custom-priced item.</p>
-            )}
-            {customLineItems.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-end mb-2">
-                <div className="flex-1">
-                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}
-                  <input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
-                    placeholder="e.g. Additional Spool Valves"
-                    className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-                </div>
-                <div style={{ width: 90 }}>
-                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}
-                  <CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" />
-                </div>
-                <div style={{ width: 90 }}>
-                  {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}
-                  <CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" />
-                </div>
-                <button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))}
-                  className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5">
-                  <Trash2 size={14} style={{ color: "#D4183D" }} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── DETAILS CARD — 3-column grid ───────────────────── */}
-        <div className="border rounded-lg p-3 mt-3" style={{ borderColor: "#D4D4D0", background: "#FFFFFF" }}>
-          <div className={`grid gap-2 mb-2 ${isDirectOrder ? "grid-cols-2" : "grid-cols-3"}`}>
-            {!isDirectOrder && (
-              <div>
-                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Discount</p>
-                <div className="flex items-center gap-1">
-                  <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1 py-1.5 bg-card text-sm outline-none text-[16px]" style={{ width: 44 }}>
-                    <option value="$">$</option>
-                    <option value="%">%</option>
-                  </select>
-                  <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-1.5 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                </div>
-              </div>
-            )}
-            {!isDirectOrder && (
-              <div>
-                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Sales Tax</p>
-                <select
-                  value={taxState}
-                  onChange={(e) => {
-                    const st = e.target.value;
-                    setTaxState(st);
-                    if (st === "SD") setTaxRate(4.2);
-                    else if (st === "ND") setTaxRate(3.0);
-                    else { setTaxState(""); setTaxRate(0); }
-                  }}
-                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]"
-                >
-                  <option value="">No tax</option>
-                  <option value="SD">SD (4.2%)</option>
-                  <option value="ND">ND (3.0%)</option>
-                </select>
-                {taxRate > 0 && (
-                  <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
-                    +${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = ${totalWithTax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                )}
-              </div>
-            )}
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Status</p>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px]">
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
-              </select>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Est. date</p>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estimateDate && "text-muted-foreground")}>
-                    {estimateDate ? format(estimateDate, "M/d/yy") : "—"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          {!isDirectOrder && (
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div>
-                <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Freight</p>
-                <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
-              </div>
-            </div>
-          )}
-          {showCompletionDate && (
-            <div className="mb-2" style={{ maxWidth: "calc(33.33% - 6px)" }}>
-              <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Completion</p>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className={cn("w-full text-left border border-border rounded px-2 py-1.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
-                    {estCompletionDate ? format(estCompletionDate, "M/d/yy") : "—"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
+      {/* ── SECTION 1: CUSTOMER & CONTRACT ───────────────── */}
+      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Customer & contract</p>
+        <div className="space-y-3">
           <div>
-            <p className="text-[10px] font-semibold" style={{ color: "#717182" }}>Notes</p>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded px-2 py-1.5 bg-card text-foreground outline-none resize-none text-[16px]" />
+            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Customer <span className="font-normal">(optional)</span></p>
+            <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
+                  {selectedCustomer ? selectedCustomer.name : <span className="text-muted-foreground">Search customers...</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput placeholder="Type 2+ letters to search..." value={customerSearch} onValueChange={(val) => { setCustomerSearch(val); setCustomerId(""); }} />
+                  <CommandList>
+                    {debouncedCustomerSearch.length < 2 ? (<div className="px-3 py-3 text-sm text-muted-foreground">Type 2+ letters to search...</div>) : customerSearchQuery.isLoading ? (<div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>) : (<><CommandEmpty>No customers found</CommandEmpty><CommandGroup>{filteredCustomers.map((c: any) => (<CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); }}><span className="font-medium">{c.name}</span>{c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}</CommandItem>))}</CommandGroup></>)}
+                    <div className="border-t border-border"><button type="button" onClick={() => { setShowNewCustomerForm(true); setCustomerPopoverOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1" style={{ color: "#55BAAA" }}><Plus size={14} /> Add New Customer</button></div>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {selectedCustomer && (<button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">Clear</button>)}
+          </div>
+          {showNewCustomerForm && (
+            <div className="border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
+              <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
+              <div className="grid grid-cols-2 gap-2"><input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" /><input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" /></div>
+              <div className="grid grid-cols-2 gap-2"><input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" /><input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" /></div>
+              <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]"><option value="">Type (optional)</option><option value="rancher">Rancher</option><option value="feedlot">Feedlot</option><option value="dealer">Dealer</option><option value="other">Other</option></select>
+              <div className="flex gap-2"><button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>{addCustomerMutation.isPending ? "Saving..." : "Save Customer"}</button><button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button></div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p><input type="text" value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="e.g. Smith Ranch Chute" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" /></div>
+            <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Tax state</p><select value={taxState} onChange={(e) => { const st = e.target.value; setTaxState(st); if (st === "SD") setTaxRate(4.2); else if (st === "ND") setTaxRate(3.0); else { setTaxState(""); setTaxRate(0); } }} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"><option value="">No tax</option><option value="SD">SD (4.2%)</option><option value="ND">ND (3.0%)</option></select>{taxRate > 0 && <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>+${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}</div>
           </div>
         </div>
       </div>
+
+      {/* ── SECTION 2: ORDER DETAILS ────────────────────── */}
+      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Order details</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Mfg contract #</p><input type="text" value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="e.g. 44270" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" /></div>
+          {!isDirectOrder && (<div><p className="text-[11px] font-semibold mb-1" style={{ color: "#F3D12A" }}>Estimate No.</p><input type="text" value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="Auto-generated" className="w-full border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:ring-2 focus:ring-catl-gold/25" style={{ borderColor: "#F3D12A", fontWeight: 600 }} /></div>)}
+          <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. date</p><Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px] focus:border-catl-gold", !estimateDate && "text-muted-foreground")}>{estimateDate ? format(estimateDate, "M/d/yy") : "—"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" /></PopoverContent></Popover></div>
+          {showCompletionDate && (<div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Completion / ETA</p><Popover><PopoverTrigger asChild><button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>{estCompletionDate ? format(estCompletionDate, "M/d/yy") : "—"}</button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" /></PopoverContent></Popover></div>)}
+        </div>
+      </div>
+
+      {/* ── SECTION 3: PRICING ──────────────────────────── */}
+      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Pricing</p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p><div className="flex items-center gap-1"><select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-2.5 bg-card text-sm outline-none text-[16px]" style={{ width: 48 }}><option value="$">$</option><option value="%">%</option></select><input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-2.5 bg-card text-sm outline-none text-right text-[16px]" /></div></div>
+          <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight</p><CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" /></div>
+        </div>
+        <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Notes</p><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none text-[16px]" /></div>
+      </div>
+
+      {/* ── SECTION 4: EQUIPMENT ─────────────────────────── */}
+      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Equipment</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p><select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"><option value="">Select manufacturer</option>{manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>{errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}</div>
+            <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p><select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"><option value="">Select base model</option>{baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}</select>{errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}</div>
+          </div>
+          {extendedChuteOption && (<div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}><input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" /><span className="text-[13px] font-semibold flex-1" style={{ color: "#0E2646" }}>Extended length</span><span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span></div>)}
+          {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (<div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p><select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"><option value="">None — custom build</option>{quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}</select></div>)}
+          <div><p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p><input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />{errors.buildShorthand && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.buildShorthand}</p>}</div>
+          {groupedOptions.length > 0 && (<div>{groupedOptions.map(([group, opts]) => { const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id); if (filtered.length === 0) return null; return renderGroupCard(group, filtered); })}</div>)}
+        </div>
+      </div>
+
+      {/* ── SECTION 5: CUSTOM LINE ITEMS ────────────────── */}
+      {selectedBaseModel && (
+        <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
+          <div className="flex items-center justify-between mb-3"><p className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Custom line items</p><button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])} className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>+ Add item</button></div>
+          {customLineItems.length === 0 && (<p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, miscellaneous, or any custom-priced item.</p>)}
+          {customLineItems.map((item, idx) => (<div key={idx} className="flex gap-2 items-end mb-2"><div className="flex-1">{idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}<input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} placeholder="e.g. Additional Spool Valves" className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" /></div><div style={{ width: 90 }}>{idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}<CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" /></div><div style={{ width: 90 }}>{idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}<CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" /></div><button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5"><Trash2 size={14} style={{ color: "#D4183D" }} /></button></div>))}
+        </div>
+      )}
+
+      {/* ── RECEIPT CARD (tabbed) ────────────────────────── */}
+      {selectedBaseModel && (
+        <div className="md:max-w-[680px] md:mx-auto mx-4 mt-3 rounded-xl overflow-hidden" style={{ backgroundColor: "#0E2646" }}>
+          <div className="flex" style={{ borderBottom: "1px solid rgba(245,245,240,0.1)" }}>
+            <button type="button" onClick={() => setReceiptTab("summary")} className="flex-1 py-2.5 text-center text-[12px] font-medium" style={{ color: receiptTab === "summary" ? "#55BAAA" : "rgba(245,245,240,0.4)", borderBottom: receiptTab === "summary" ? "2px solid #55BAAA" : "2px solid transparent" }}>Summary</button>
+            <button type="button" onClick={() => setReceiptTab("itemized")} className="flex-1 py-2.5 text-center text-[12px] font-medium" style={{ color: receiptTab === "itemized" ? "#55BAAA" : "rgba(245,245,240,0.4)", borderBottom: receiptTab === "itemized" ? "2px solid #55BAAA" : "2px solid transparent" }}>Itemized</button>
+          </div>
+          <div className="p-4">
+            <div className="flex gap-2.5 mb-3">
+              <div className="flex-1 rounded-lg p-3" style={{ background: "rgba(85,186,170,0.12)" }}><p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "rgba(85,186,170,0.7)" }}>Our cost</p><p className="text-[20px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</p></div>
+              <div className="flex-1 rounded-lg p-3" style={{ background: "rgba(243,209,42,0.08)" }}><p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "rgba(243,209,42,0.7)" }}>Customer total</p><p className="text-[20px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</p></div>
+            </div>
+            {receiptTab === "summary" ? (
+              <>
+                <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Base model</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span></div></div>
+                {optionCount > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Options ({optionCount})</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(optionCostTotal)}</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(optionRetailTotal)}</span></div></div>}
+                {customLineItems.filter(c => c.name.trim()).length > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Custom items</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(customCostTotal)}</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(customRetailTotal)}</span></div></div>}
+                {discountValue > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Discount</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>—</span><span className="text-[12px]" style={{ color: "#F3D12A" }}>-${fmtCurrency(discountValue)}</span></div></div>}
+                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
+                {taxRate > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState} {taxRate}%)</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(taxAmount)}</span></div>}
+                {freightEstimate && parseFloat(freightEstimate) > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span></div>}
+                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
+                <div className="flex justify-between"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Margin</span><span className="text-[13px] font-medium" style={{ color: marginColor || "#55BAAA" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span></div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between mb-1.5"><span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Item</span><div className="flex gap-4"><span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span><span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span></div></div>
+                <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
+                <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Base model</p>
+                <div className="flex justify-between mb-1.5"><span className="text-[12px]" style={{ color: "#F5F5F0" }}>{selectedBaseModel.name}</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span></div></div>
+                {selectedOptionsList.length > 0 && (<><div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} /><p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Options</p>{selectedOptionsList.map(({ option, quantity }, i) => (<div key={i} className="flex justify-between mb-1"><span className="text-[12px] flex-1 min-w-0 truncate mr-2" style={{ color: "#F5F5F0" }}>{option.display_name || option.name}{quantity > 1 ? ` ×${quantity}` : ""}</span><div className="flex gap-4 flex-shrink-0"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span></div></div>))}</>)}
+                {customLineItems.filter(c => c.name.trim()).length > 0 && (<><div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} /><p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Custom items</p>{customLineItems.filter(c => c.name.trim()).map((c, i) => (<div key={i} className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "#F5F5F0" }}>{c.name}</span><div className="flex gap-4"><span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span></div></div>))}</>)}
+                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
+                <div className="flex justify-between"><span className="text-[12px] font-medium" style={{ color: "rgba(245,245,240,0.7)" }}>Totals</span><div className="flex gap-4"><span className="text-[13px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span><span className="text-[13px] font-medium" style={{ color: "#F5F5F0" }}>${fmtCurrency(calcRetail)}</span></div></div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Save Button */}
       <div className="px-4 mt-4 md:max-w-[680px] md:mx-auto">
-        <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50" style={{ background: "#F3D12A", color: "#0E2646" }}>
-          {submitting ? "Creating..." : isDirectOrder ? "Create order" : "Create estimate"}
+        <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50" style={{ background: "#55BAAA", color: "#0E2646" }}>
+          {submitting ? "Creating..." : "Create order"}
         </button>
       </div>
     </div>
