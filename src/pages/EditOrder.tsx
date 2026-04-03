@@ -316,7 +316,14 @@ export default function EditOrder() {
       if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
         setPivotChecked(true);
         setPivotType(saved.pivot_type === "front_to_back" ? "front_to_back" : "side_to_side");
-        setPivotSide((saved.side || "") as any);
+        // Try to get side from saved.side, or parse from description ("left side to side", "right front to back")
+        let side = saved.side || "";
+        if (!side && saved.description) {
+          const desc = (saved.description || "").toLowerCase();
+          if (desc.includes("left")) side = "left";
+          else if (desc.includes("right")) side = "right";
+        }
+        setPivotSide(side as any);
         continue;
       }
       if (opt.selection_type === "pick_one") {
@@ -602,12 +609,8 @@ export default function EditOrder() {
     const e: Record<string, string> = {};
     if (!manufacturerId) e.manufacturer = "Required";
     if (!baseModelId) e.baseModel = "Required";
-    if (pivotChecked) {
-      if (!pivotType) e.pivotType = "Select pivot type";
-      if (!pivotSide) e.pivotSide = pivotType === "front_to_back" ? "Select mounted side" : "Select dominant side";
-    }
-    // Side validation removed — was blocking saves when options loaded from saved orders
-    // had side selection_type but no explicit left/right breakdown
+    // Pivot validation: warn but don't block saves on existing orders
+    // The pivot side info may be in the description field from older saves
     setErrors(e);
     if (Object.keys(e).length > 0) {
       toast.error("Fix the errors above: " + Object.values(e).join(", "));
