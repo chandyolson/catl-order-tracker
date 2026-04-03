@@ -634,20 +634,16 @@ export default function EditOrder() {
   /* ─── Submit (UPDATE) ──────────────────────────────────────── */
 
   async function handleSubmit() {
-    console.log("[EditOrder] handleSubmit called. status:", status, "configChanged:", hasConfigChanged(), "forEstimate:", forEstimate);
-    if (!validate()) { console.log("[EditOrder] validation failed"); return; }
+    if (!validate()) return;
 
-    const configChanged = hasConfigChanged();
-
-    if (!configChanged && !forEstimate) {
-      console.log("[EditOrder] Path 1: direct save (admin-only changes)");
-      await doSave();
-    } else if (status === "estimate" || forEstimate) {
-      console.log("[EditOrder] Path 2: estimate dialog");
+    if (forEstimate || status === "estimate") {
+      // Estimate path — show estimate dialog
       setShowEstimateDialog(true);
     } else {
-      console.log("[EditOrder] Path 3: change order dialog");
-      setShowChangeOrderDialog(true);
+      // Everything else — save directly. No forced change order dialog.
+      // The specs on imported orders weren't verified, so "config changed"
+      // is expected and shouldn't require a change order log.
+      await doSave();
     }
   }
 
