@@ -362,10 +362,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex gap-3 lg:h-screen lg:overflow-hidden -m-4 md:-m-8" style={{ minWidth: 0, background: "#F5F5F0" }}>
+    <div className="flex gap-3 lg:h-[calc(100vh)] lg:overflow-hidden lg:-m-8 lg:-mt-8" style={{ minWidth: 0, background: "#F5F5F0" }}>
 
-      {/* LEFT */}
-      <div className="flex-1 min-w-0 lg:overflow-y-auto p-4 md:p-6" style={{ background: "#F5F5F0" }}>
+      {/* LEFT — mobile: natural page flow. Desktop: scrolls inside flex with chat */}
+      <div className="flex-1 min-w-0 lg:overflow-y-auto lg:p-6" style={{ background: "#F5F5F0" }}>
 
         {/* Header — same width as content cards */}
         <div className="rounded-xl mb-4 px-5 py-4 flex items-center justify-between"
