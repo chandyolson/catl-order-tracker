@@ -16,7 +16,7 @@ type CarrierType = "external_trucker" | "catl_vehicle";
 
 interface Carrier {
   id: string; name: string; type: CarrierType; phone: string | null;
-  vehicle_description: string | null; notes: string | null; is_active: boolean;
+  email: string | null; vehicle_description: string | null; notes: string | null; is_active: boolean;
 }
 interface FreightRun {
   id: string; name: string | null; pickup_location: string; pickup_address: string | null;
@@ -94,6 +94,25 @@ export default function Freight() {
     },
   });
 
+  // Get stop counts per run for the list view
+  const { data: stopCounts = {} } = useQuery({
+    queryKey: ["freight_stop_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("freight_run_stops")
+        .select("freight_run_id, orders(base_model, build_shorthand)");
+      if (error) throw error;
+      const counts: Record<string, { count: number; equipment: string[] }> = {};
+      (data || []).forEach((s: any) => {
+        if (!counts[s.freight_run_id]) counts[s.freight_run_id] = { count: 0, equipment: [] };
+        counts[s.freight_run_id].count++;
+        const eq = s.orders?.build_shorthand?.split(",")[0] || s.orders?.base_model;
+        if (eq) counts[s.freight_run_id].equipment.push(eq);
+      });
+      return counts;
+    },
+  });
+
   const { data: stops = [] } = useQuery({
     queryKey: ["freight_stops", activeRunId],
     enabled: !!activeRunId,
@@ -126,7 +145,7 @@ export default function Freight() {
     queryKey: ["ready_orders_for_freight"],
     enabled: showAddStop,
     queryFn: async () => {
-      // Get orders that are ready/building/order_pending that aren't already on an active run
+      // Get orders with "ready" status that aren't already on an active run
       const { data: onRuns } = await supabase
         .from("freight_run_stops")
         .select("order_id, freight_runs!inner(status)")
@@ -136,7 +155,7 @@ export default function Freight() {
       const { data, error } = await supabase
         .from("orders")
         .select("id, moly_contract_number, contract_name, base_model, build_shorthand, customer_id, delivery_instructions, status, customers(name, phone, address_line1, address_city, address_state, address_zip)")
-        .in("status", ["ready", "building", "order_pending"])
+        .in("status", ["ready"])
         .order("moly_contract_number", { ascending: true });
       if (error) throw error;
       return (data || []).filter((o: any) => !usedOrderIds.has(o.id)) as ReadyOrder[];
@@ -197,6 +216,7 @@ export default function Freight() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["freight_stops", activeRunId] });
       qc.invalidateQueries({ queryKey: ["ready_orders_for_freight"] });
+      qc.invalidateQueries({ queryKey: ["freight_stop_counts"] });
       toast.success("Stop added");
     },
     onError: (e: any) => toast.error(e.message),
@@ -219,6 +239,7 @@ export default function Freight() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["freight_stops", activeRunId] });
       qc.invalidateQueries({ queryKey: ["ready_orders_for_freight"] });
+      qc.invalidateQueries({ queryKey: ["freight_stop_counts"] });
       toast.success("Stop removed");
     },
     onError: (e: any) => toast.error(e.message),
@@ -327,6 +348,7 @@ export default function Freight() {
         )}
         {filteredRuns.map(run => {
           const sc = STATUS_COLORS[run.status] || STATUS_COLORS.planning;
+          const rc = stopCounts[run.id];
           return (
             <button key={run.id} onClick={() => setActiveRunId(run.id)}
               className="w-full text-left rounded-xl p-3 active:scale-[0.99] transition-transform"
@@ -339,11 +361,12 @@ export default function Freight() {
                   {sc.label}
                 </span>
               </div>
-              <div className="flex gap-4 text-[12px]" style={{ color: "#717182" }}>
+              <div className="flex gap-4 text-[12px] flex-wrap" style={{ color: "#717182" }}>
                 <span>{fmtDate(run.pickup_date)}</span>
                 <span>{run.carriers?.name || run.driver_name || "No carrier"}</span>
-                {run.pickup_location !== "custom" && (
-                  <span>{PICKUP_LOCATIONS[run.pickup_location]?.label.split("—")[0]?.trim()}</span>
+                <span>{rc?.count || 0} stop{(rc?.count || 0) !== 1 ? "s" : ""}</span>
+                {rc?.equipment && rc.equipment.length > 0 && (
+                  <span className="truncate" style={{ maxWidth: 200 }}>{rc.equipment.join(", ")}</span>
                 )}
               </div>
             </button>
@@ -477,6 +500,11 @@ function RunDetail({ run, stops, carriers, onBack, onUpdateRun, onDeleteRun, onA
               {run.carriers?.phone && (
                 <a href={`tel:${run.carriers.phone}`} className="text-[12px]" style={{ color: "#55BAAA" }}>
                   <Phone size={11} className="inline mr-0.5" />{run.carriers.phone}
+                </a>
+              )}
+              {run.carriers?.email && (
+                <a href={`mailto:${run.carriers.email}`} className="text-[12px]" style={{ color: "#55BAAA" }}>
+                  {run.carriers.email}
                 </a>
               )}
               {run.actual_cost && (
@@ -748,7 +776,9 @@ function AddStopModal({ runId, readyOrders, currentStopCount, onAdd, onClose }: 
                 Ready for pickup ({readyOrders.length})
               </p>
               {readyOrders.length === 0 && (
-                <p className="text-[12px] py-4 text-center" style={{ color: "#B4B2A9" }}>No orders ready to ship</p>
+                <p className="text-[12px] py-4 text-center" style={{ color: "#B4B2A9" }}>
+                  No orders with "ready" status. Equipment must be marked ready before it can go on a freight run.
+                </p>
               )}
               <div className="space-y-1 mb-4">
                 {readyOrders.map(order => (
@@ -959,12 +989,13 @@ function CarriersModal({ carriers, onAdd, onDelete, onClose }: {
   const [name, setName] = useState("");
   const [type, setType] = useState<CarrierType>("external_trucker");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [vehicle, setVehicle] = useState("");
 
   const handleAdd = () => {
     if (!name.trim()) return toast.error("Name required");
-    onAdd({ name: name.trim(), type, phone: phone || null, vehicle_description: vehicle || null });
-    setName(""); setPhone(""); setVehicle("");
+    onAdd({ name: name.trim(), type, phone: phone || null, email: email || null, vehicle_description: vehicle || null });
+    setName(""); setPhone(""); setEmail(""); setVehicle("");
   };
 
   return (
@@ -988,11 +1019,9 @@ function CarriersModal({ carriers, onAdd, onDelete, onClose }: {
                       {c.type === "catl_vehicle" ? "CATL" : "Trucker"}
                     </span>
                   </div>
-                  {(c.phone || c.vehicle_description) && (
-                    <p className="text-[11px]" style={{ color: "#717182" }}>
-                      {c.phone}{c.phone && c.vehicle_description ? " · " : ""}{c.vehicle_description}
-                    </p>
-                  )}
+                  <p className="text-[11px]" style={{ color: "#717182" }}>
+                    {[c.phone, c.email, c.vehicle_description].filter(Boolean).join(" · ") || "No details"}
+                  </p>
                 </div>
                 <button onClick={() => { if (confirm(`Remove ${c.name}?`)) onDelete(c.id); }}
                   className="p-1 rounded" style={{ color: "#E24B4A" }}>
@@ -1018,9 +1047,11 @@ function CarriersModal({ carriers, onAdd, onDelete, onClose }: {
               <div className="grid grid-cols-2 gap-2">
                 <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
                   className="text-[13px] rounded-lg px-2 py-2" style={{ border: "0.5px solid #D4D4D0" }} />
-                <input value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle description"
+                <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email"
                   className="text-[13px] rounded-lg px-2 py-2" style={{ border: "0.5px solid #D4D4D0" }} />
               </div>
+              <input value={vehicle} onChange={e => setVehicle(e.target.value)} placeholder="Vehicle description (e.g. White F-350 + 40ft gooseneck)"
+                className="w-full text-[13px] rounded-lg px-3 py-2" style={{ border: "0.5px solid #D4D4D0" }} />
               <button onClick={handleAdd}
                 className="w-full text-[13px] font-medium py-2 rounded-lg" style={{ backgroundColor: "#55BAAA", color: "#fff" }}>
                 Add carrier

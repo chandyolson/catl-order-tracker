@@ -20,6 +20,7 @@ export type Database = {
           name: string
           type: string
           phone: string | null
+          email: string | null
           vehicle_description: string | null
           notes: string | null
           is_active: boolean
@@ -31,6 +32,7 @@ export type Database = {
           name: string
           type?: string
           phone?: string | null
+          email?: string | null
           vehicle_description?: string | null
           notes?: string | null
           is_active?: boolean
@@ -42,6 +44,7 @@ export type Database = {
           name?: string
           type?: string
           phone?: string | null
+          email?: string | null
           vehicle_description?: string | null
           notes?: string | null
           is_active?: boolean
