@@ -33,7 +33,7 @@ type Estimate = {
   customers: { name: string; company: string | null } | null;
 };
 type VoiceMemo = {
-  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null; archived: boolean | null;
+  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null;
 };
 
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
