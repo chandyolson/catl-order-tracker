@@ -169,6 +169,7 @@ export default function Dashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskAssign, setNewTaskAssign] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("normal");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [showNewTask, setShowNewTask] = useState(false);
   const [savingNewTask, setSavingNewTask] = useState(false);
   const TEAM = ["Tim", "Caleb", "Chandy", "Jen"];
@@ -298,6 +299,7 @@ export default function Dashboard() {
       title: newTaskTitle.trim(),
       priority: newTaskPriority,
       assigned_to: newTaskAssign || null,
+      due_date: newTaskDueDate || null,
       status: "open",
       source_type: "manual",
       task_type: "manual_task",
@@ -309,6 +311,7 @@ export default function Dashboard() {
     setNewTaskTitle("");
     setNewTaskAssign("");
     setNewTaskPriority("normal");
+    setNewTaskDueDate("");
     setShowNewTask(false);
     fetchAll();
   };
@@ -586,6 +589,14 @@ export default function Dashboard() {
                     {p}
                   </button>
                 ))}
+                <span className="text-[10px] font-semibold ml-3" style={{ color: "#717182" }}>Due:</span>
+                <input
+                  type="date"
+                  value={newTaskDueDate}
+                  onChange={e => setNewTaskDueDate(e.target.value)}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-white outline-none"
+                  style={{ border: "0.5px solid #D4D4D0", color: "#0E2646" }}
+                />
               </div>
             </div>
           )}
