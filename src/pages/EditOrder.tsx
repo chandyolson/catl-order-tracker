@@ -1621,18 +1621,18 @@ export default function EditOrder() {
                 {/* Itemized view */}
                 <div className="flex justify-between mb-1.5">
                   <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Item</span>
-                  <div className="flex gap-4">
-                    <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span>
-                    <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span>
+                  <div className="flex">
+                    <span className="text-[9px] uppercase tracking-wider w-[70px] text-right" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span>
+                    <span className="text-[9px] uppercase tracking-wider w-[70px] text-right" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span>
                   </div>
                 </div>
                 <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
                 <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Base model</p>
                 <div className="flex justify-between mb-1.5">
                   <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{selectedBaseModel.name}</span>
-                  <div className="flex gap-4">
-                    <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
+                  <div className="flex flex-shrink-0">
+                    <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
+                    <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
                   </div>
                 </div>
                 {selectedOptionsList.length > 0 && (
@@ -1642,9 +1642,9 @@ export default function EditOrder() {
                     {selectedOptionsList.map(({ option, quantity }, i) => (
                       <div key={i} className="flex justify-between mb-1">
                         <span className="text-[12px] flex-1 min-w-0 truncate mr-2" style={{ color: "#F5F5F0" }}>{option.display_name || option.name}{quantity > 1 ? ` ×${quantity}` : ""}</span>
-                        <div className="flex gap-4 flex-shrink-0">
-                          <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span>
-                          <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span>
+                        <div className="flex flex-shrink-0">
+                          <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span>
+                          <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span>
                         </div>
                       </div>
                     ))}
@@ -1657,9 +1657,9 @@ export default function EditOrder() {
                     {customLineItems.filter(c => c.name.trim()).map((c, i) => (
                       <div key={i} className="flex justify-between mb-1">
                         <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{c.name}</span>
-                        <div className="flex gap-4">
-                          <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span>
-                          <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span>
+                        <div className="flex flex-shrink-0">
+                          <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span>
+                          <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span>
                         </div>
                       </div>
                     ))}
@@ -1668,44 +1668,44 @@ export default function EditOrder() {
                 <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
                 <div className="flex justify-between mb-1">
                   <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Subtotal</span>
-                  <div className="flex gap-4">
-                    <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(calcRetail)}</span>
+                  <div className="flex flex-shrink-0">
+                    <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
+                    <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(calcRetail)}</span>
                   </div>
                 </div>
                 {parseFloat(discountAmount) > 0 && (
                   <div className="flex justify-between mb-1">
                     <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Discount {discountType === "%" ? `(${discountAmount}%)` : ""}</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px]" style={{ color: "#D4183D" }}>−${fmtCurrency(discountType === "%" ? calcRetail * (parseFloat(discountAmount) / 100) : parseFloat(discountAmount))}</span>
+                    <div className="flex flex-shrink-0">
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "#D4183D" }}>−${fmtCurrency(discountType === "%" ? calcRetail * (parseFloat(discountAmount) / 100) : parseFloat(discountAmount))}</span>
                     </div>
                   </div>
                 )}
                 {freightEstimate && parseFloat(freightEstimate) > 0 && (
                   <div className="flex justify-between mb-1">
                     <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
+                    <div className="flex flex-shrink-0">
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
                     </div>
                   </div>
                 )}
                 {taxRate > 0 && (
                   <div className="flex justify-between mb-1">
                     <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState || ""} {taxRate}%)</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(taxAmount)}</span>
+                    <div className="flex flex-shrink-0">
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
+                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(taxAmount)}</span>
                     </div>
                   </div>
                 )}
                 <div className="my-1" style={{ height: 1, background: "rgba(245,245,240,0.15)" }} />
                 <div className="flex justify-between">
                   <span className="text-[12px] font-medium" style={{ color: "rgba(245,245,240,0.7)" }}>Total</span>
-                  <div className="flex gap-4">
-                    <span className="text-[13px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
-                    <span className="text-[13px] font-medium" style={{ color: "#F5F5F0" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0) + taxAmount)}</span>
+                  <div className="flex flex-shrink-0">
+                    <span className="text-[13px] font-medium w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
+                    <span className="text-[13px] font-medium w-[70px] text-right" style={{ color: "#F5F5F0" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0) + taxAmount)}</span>
                   </div>
                 </div>
               </>
