@@ -195,7 +195,7 @@ export default function OrangeSheet() {
         <SectionHeader title="Pricing" />
         <div style={{ backgroundColor: "#fff", borderRadius: 12, border: "1px solid #D4D4D0", padding: "14px 16px", marginBottom: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <PriceBox label="Our cost" value={order.cost_price || order.subtotal_cost || 0} color="#55BAAA" />
+            <PriceBox label="Our cost" value={order.our_cost || 0} color="#55BAAA" />
             <PriceBox label="Customer price" value={order.customer_price || order.subtotal || 0} color="#F3D12A" />
           </div>
           {order.freight_estimate && order.freight_estimate > 0 && (
