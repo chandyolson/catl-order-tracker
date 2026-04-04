@@ -218,13 +218,22 @@ function AddStopModal({runId,readyOrders,cnt,onAdd,onClose}:{runId:string;readyO
 
           {st==="pickup"&&<>
             <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Pickup at</p>
-            <LocSel value={mfg} onChange={setMfg} noHome/>
+            <LocSel value={mfg} onChange={setMfg}/>
             {mfg==="custom"&&<div className="grid grid-cols-2 gap-2 mt-2"><input value={pc.city} onChange={e=>setPc(p=>({...p,city:e.target.value}))} placeholder="City" className="text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/><input value={pc.state} onChange={e=>setPc(p=>({...p,state:e.target.value}))} placeholder="State" className="text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div>}
             <button onClick={()=>{const l=KL[mfg];onAdd({freight_run_id:runId,stop_order:cnt+1,stop_type:"pickup",customer_name:l?.label||pc.city||"Pickup",delivery_city:mfg==="custom"?pc.city:l?.city,delivery_state:mfg==="custom"?pc.state:l?.state});}} className="w-full mt-3 text-[14px] font-medium py-3 rounded-xl" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Add pickup stop</button>
           </>}
 
           {st==="delivery"&&!sel&&<>
-            <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Ready for delivery ({readyOrders.length})</p>
+            {/* Quick option: deliver to CATL yard */}
+            <button onClick={()=>onAdd({freight_run_id:runId,stop_order:cnt+1,stop_type:"delivery",customer_name:"CATL Resources — Wall, SD",delivery_city:"Wall",delivery_state:"SD",delivery_instructions:"Deliver to CATL yard"})}
+              className="w-full text-left p-3 rounded-xl mb-3 active:scale-[0.99] transition-transform" style={{backgroundColor:"rgba(14,38,70,0.06)",border:"1.5px solid rgba(14,38,70,0.15)"}}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{backgroundColor:"#0E2646",color:"#F3D12A"}}>C</div>
+                <div><p className="text-[13px] font-medium" style={{color:"#0E2646"}}>Deliver to CATL — Wall, SD</p><p className="text-[11px]" style={{color:"#717182"}}>Bring to our yard (will ship to customer later)</p></div>
+              </div>
+            </button>
+
+            <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Or deliver to customer ({readyOrders.length} ready)</p>
             {readyOrders.length===0&&<p className="text-[12px] py-4 text-center" style={{color:"#B4B2A9"}}>No orders with "ready" status. Mark equipment as ready first.</p>}
             <div className="space-y-1 mb-4">{readyOrders.map(o=><button key={o.id} onClick={()=>pick(o)} className="w-full text-left p-2.5 rounded-lg" style={{border:"0.5px solid #D4D4D0"}}><span className="text-[13px] font-medium" style={{color:"#0E2646"}}>{o.moly_contract_number||"—"} — {o.contract_name||"Unnamed"}</span><p className="text-[11px]" style={{color:"#717182"}}>{o.build_shorthand?.split(",")[0]||o.base_model||""}{o.customers?.name?` · ${o.customers.name}`:" · Inventory"}</p></button>)}</div>
             <div className="border-t pt-3" style={{borderColor:"#F0F0EC"}}><p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Or custom stop</p><input value={custom} onChange={e=>setCustom(e.target.value)} placeholder="Stop name" className="w-full text-[12px] rounded-lg px-3 py-2 mb-2" style={{border:"0.5px solid #D4D4D0"}}/>{custom&&<button onClick={()=>setSel({id:"",moly_contract_number:null,contract_name:custom,base_model:null,build_shorthand:null,customer_id:null,delivery_instructions:null,status:""} as any)} className="text-[12px] font-medium px-4 py-1.5 rounded-full" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Continue</button>}</div>
