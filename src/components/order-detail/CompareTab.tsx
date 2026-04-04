@@ -33,37 +33,44 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
   const [extractingSlot, setExtractingSlot] = useState<string | null>(null);
   const [mappingItem, setMappingItem] = useState<{ our: string; their: string } | null>(null);
 
+  // Fetch slots — only select the fields we need (avoid pulling huge raw_extracted_text)
   const slotsQuery = useQuery({
     queryKey: ["compare_slots", orderId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_document_slots")
-        .select("*, order_documents:document_id(id, file_url, file_name, title)")
+        .select("id, order_id, slot_type, is_filled, document_id, line_items, total_amount, comparison_status, comparison_notes, comparison_results, compared_against_slot, order_documents:document_id(id, file_url, file_name, title)")
         .eq("order_id", orderId);
       if (error) throw error;
       return data || [];
     },
   });
 
+  // Extract text from PDF — separate from render cycle
   const extractMutation = useMutation({
     mutationFn: async (slotType: string) => {
-      setExtractingSlot(slotType);
       const { data, error } = await supabase.functions.invoke("extract-document-text", {
         body: { order_id: orderId, slot_type: slotType, force: true },
       });
       if (error) throw error;
       return data;
     },
+    onMutate: (slotType: string) => {
+      setExtractingSlot(slotType);
+    },
     onSuccess: (data: any) => {
       setExtractingSlot(null);
-      queryClient.invalidateQueries({ queryKey: ["compare_slots", orderId] });
       if (data?.success) {
         toast.success(data.summary || `Extracted ${data.line_count} items`);
+        slotsQuery.refetch();
       } else {
         toast.error(data?.error || "Extraction failed");
       }
     },
-    onError: (err: any) => { setExtractingSlot(null); toast.error(err.message || "Extraction failed"); },
+    onError: (err: any) => {
+      setExtractingSlot(null);
+      toast.error(err.message || "Extraction failed");
+    },
   });
 
   const compareMutation = useMutation({
@@ -75,9 +82,9 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
       return data;
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["compare_slots", orderId] });
       if (data?.success) toast[data.has_issues ? "error" : "success"](data.summary);
       else toast.error(data?.error || "Comparison failed");
+      slotsQuery.refetch();
     },
     onError: (err: any) => toast.error(err.message || "Comparison failed"),
   });
@@ -99,8 +106,8 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
   const right = slots.find((s: any) => s.slot_type === rightSlot);
   const leftDoc = left?.order_documents as any;
   const rightDoc = right?.order_documents as any;
-  const leftHasData = left?.line_items && (left.line_items as any[]).length > 0;
-  const rightHasData = right?.line_items && (right.line_items as any[]).length > 0;
+  const leftHasData = left?.line_items && Array.isArray(left.line_items) && left.line_items.length > 0;
+  const rightHasData = right?.line_items && Array.isArray(right.line_items) && right.line_items.length > 0;
   const leftHasPdf = !!leftDoc?.file_url;
   const rightHasPdf = !!rightDoc?.file_url;
   const results = left?.comparison_results as any;
@@ -126,7 +133,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
                 <p className="text-[10px] font-medium" style={{ color: left?.is_filled ? "#B8930A" : "#D1D5DB" }}>{left?.is_filled ? "⚠ Run QB Sync" : "⬡ Not uploaded"}</p>
               )}
               {leftHasData ? (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>{(left.line_items as any[]).length} items</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>{(left!.line_items as any[]).length} items</span>
               ) : leftHasPdf ? (
                 <button onClick={() => extractMutation.mutate(leftSlot)} disabled={!!extractingSlot} className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full active:scale-[0.95] disabled:opacity-50" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
                   <Zap size={10} className={extractingSlot === leftSlot ? "animate-spin" : ""} />{extractingSlot === leftSlot ? "Extracting..." : "Extract Items"}
@@ -146,7 +153,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
                 <p className="text-[10px] font-medium" style={{ color: right?.is_filled ? "#B8930A" : "#D1D5DB" }}>{right?.is_filled ? "⚠ Run QB Sync" : "⬡ Not uploaded"}</p>
               )}
               {rightHasData ? (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>{(right.line_items as any[]).length} items</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(39,174,96,0.1)", color: "#27AE60" }}>{(right!.line_items as any[]).length} items</span>
               ) : rightHasPdf ? (
                 <button onClick={() => extractMutation.mutate(rightSlot)} disabled={!!extractingSlot} className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full active:scale-[0.95] disabled:opacity-50" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
                   <Zap size={10} className={extractingSlot === rightSlot ? "animate-spin" : ""} />{extractingSlot === rightSlot ? "Extracting..." : "Extract Items"}
@@ -210,7 +217,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
                     <td className="px-3 py-2 text-right text-foreground">{fmt$(row.their_price)}</td>
                     <td className="px-2 py-2 text-center">
                       {row.dismissed ? <span className="text-[10px] text-muted-foreground">✗</span>
-                      : row.match ? <span className="flex items-center justify-center gap-0.5"><Check size={10} style={{ color: "#27AE60" }} /><span className="text-[9px] text-muted-foreground">{row.match_method === "mapping_table" ? "map" : row.match_method === "fuzzy" ? "~" : ""}</span></span>
+                      : row.match ? <span className="flex items-center justify-center gap-0.5"><Check size={10} style={{ color: "#27AE60" }} /><span className="text-[9px] text-muted-foreground">{row.match_method === "mapping_table" ? "map" : row.match_method === "fuzzy" ? "~" : row.match_method === "combo" ? "⊕" : row.match_method === "qty_split" ? "×" : ""}</span></span>
                       : row.status === "price_mismatch" ? <span className="text-[10px] font-bold" style={{ color: "#D4183D" }}>Δ{fmt$(Math.abs(row.diff || 0))}</span>
                       : (row.status === "missing_from_their_doc" || row.status === "missing_from_our_doc") ? (
                         <button onClick={() => setMappingItem({ our: row.our_item || "", their: row.their_item || "" })}
@@ -256,7 +263,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
               ) : (
                 <select value={mappingItem.our} onChange={(e) => setMappingItem({ ...mappingItem, our: e.target.value })} className="w-full border border-border rounded-lg px-2 py-1.5 text-[12px] bg-card outline-none">
                   <option value="">Pick our item...</option>
-                  {leftOnly.map((r: any) => <option key={r.our_item} value={r.our_item}>{r.our_item} ({fmt$(r.our_price)})</option>)}
+                  {leftOnly.map((r: any, i: number) => <option key={i} value={r.our_item}>{r.our_item} ({fmt$(r.our_price)})</option>)}
                 </select>
               )}
             </div>
@@ -267,7 +274,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
               ) : (
                 <select value={mappingItem.their} onChange={(e) => setMappingItem({ ...mappingItem, their: e.target.value })} className="w-full border border-border rounded-lg px-2 py-1.5 text-[12px] bg-card outline-none">
                   <option value="">Pick their item...</option>
-                  {rightOnly.map((r: any) => <option key={r.their_item} value={r.their_item}>{r.their_item} ({fmt$(r.their_price)})</option>)}
+                  {rightOnly.map((r: any, i: number) => <option key={i} value={r.their_item}>{r.their_item} ({fmt$(r.their_price)})</option>)}
                 </select>
               )}
             </div>
