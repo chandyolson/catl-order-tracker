@@ -205,7 +205,7 @@ export default function Dashboard() {
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
       ]);
 
-    const sorted = ((tasksRes.data as Task[]) || []).sort(
+    const sorted = ((tasksRes.data as unknown as Task[]) || []).sort(
       (a, b) => (priorityOrder[a.priority || "normal"] ?? 2) - (priorityOrder[b.priority || "normal"] ?? 2)
     );
     setTasks(sorted);
