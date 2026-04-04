@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
     await supabase.from("order_timeline").insert({ order_id: order.id, event_type: "invoice_created", title: "Customer invoice created in QuickBooks", description: `QB Invoice #${invoiceDoc} linked to Estimate #${order.qb_estimate_doc_number || order.qb_estimate_id}`, created_by: "system" });
 
     return new Response(JSON.stringify({ success: true, qb_invoice_id: invoiceId, qb_invoice_doc_number: invoiceDoc, line_count: qbLines.length, steps }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message, steps }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (err: unknown) {
+    return new Response(JSON.stringify({ success: false, error: (err as Error).message, steps }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

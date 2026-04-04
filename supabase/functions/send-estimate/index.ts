@@ -93,8 +93,8 @@ ${order.tax_amount && order.tax_amount > 0 ? `<tr><td style="color:#717182;font-
     try {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const body = await req.clone().json().catch(() => ({}));
-      if (body.estimate_id) await supabase.from("email_log").insert({ estimate_id: body.estimate_id, recipient_email: body.recipient_email || "unknown", subject: "Estimate (failed)", status: "failed", error_message: err.message });
+      if (body.estimate_id) await supabase.from("email_log").insert({ estimate_id: body.estimate_id, recipient_email: body.recipient_email || "unknown", subject: "Estimate (failed)", status: "failed", error_message: (err as Error).message });
     } catch (_) {}
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, error: (err as Error).message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
