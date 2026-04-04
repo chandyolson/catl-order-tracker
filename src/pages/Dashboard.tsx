@@ -211,7 +211,7 @@ export default function Dashboard() {
     setTasks(sorted);
     setOrders((ordersRes.data as Order[]) || []);
     setOpenEstimates((estimatesRes.data as Estimate[]) || []);
-    setRecentMemos((memosRes.data as VoiceMemo[]) || []);
+    setRecentMemos((memosRes.data as unknown as VoiceMemo[]) || []);
     setOpenTaskCount(taskCountRes.count ?? 0);
     setReadyCount(readyRes.count ?? 0);
   }, []);

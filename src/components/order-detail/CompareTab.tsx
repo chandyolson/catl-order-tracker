@@ -91,7 +91,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
 
   const addMappingMutation = useMutation({
     mutationFn: async ({ ourName, theirName }: { ourName: string; theirName: string }) => {
-      const { error } = await supabase.from("manufacturer_item_mappings").insert({
+      const { error } = await (supabase.from("manufacturer_item_mappings") as any).insert({
         manufacturer_id: order.manufacturer_id, our_item_name: ourName,
         mfg_item_name: theirName, confidence: 0.95, confirmed_by: "tim",
       });
