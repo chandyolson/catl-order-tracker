@@ -641,12 +641,7 @@ export default function OverviewTab({
                         <FolderOpen size={10} />{isFilled ? "" : "Browse"}
                       </button>
                     )}
-                    {slot && !isFilled && !isVoided && unmatchedDriveFiles.length > 0 && (
-                      <button onClick={() => { setLinkingSlot(linkingSlot === slotType ? null : slotType); setBrowseSlot(null); }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95]" style={{ backgroundColor: linkingSlot === slotType ? "#55BAAA" : "rgba(85,186,170,0.1)", color: linkingSlot === slotType ? "#fff" : "#55BAAA" }}>
-                        <Plus size={10} className="inline mr-0.5" />Link
-                      </button>
-                    )}
-                    {!isFilled && !isVoided && unmatchedDriveFiles.length === 0 && !order.google_drive_folder_url && <span className="text-[10px] text-muted-foreground">—</span>}
+                    {!isFilled && !isVoided && !order.google_drive_folder_url && <span className="text-[10px] text-muted-foreground">No Drive folder</span>}
                   </div>
                   {/* Browse Drive file picker */}
                   {browseSlot === slotType && (
@@ -675,32 +670,6 @@ export default function OverviewTab({
                             <span className="truncate block font-medium" style={{ color: "#0E2646" }}>{f.name}</span>
                             {f.subfolder && <span className="text-[9px] text-muted-foreground">in {f.subfolder}/</span>}
                           </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {/* Unmatched file picker (from scan) */}
-                  {linkingSlot === slotType && unmatchedDriveFiles.length > 0 && (
-                    <div className="px-3 pb-2 space-y-1">
-                      {unmatchedDriveFiles.map((f) => (
-                        <button key={f.id} onClick={async () => {
-                          try {
-                            const { data, error } = await supabase.functions.invoke("link-document-to-slot", {
-                              body: { order_id: order.id, slot_type: slotType, drive_file_id: f.id, drive_file_name: f.name, drive_file_url: f.url }
-                            });
-                            if (error) throw error;
-                            if (data?.success) {
-                              toast.success(data.summary);
-                              setLinkingSlot(null);
-                              setUnmatchedDriveFiles(prev => prev.filter(uf => uf.id !== f.id));
-                              slotsQuery.refetch();
-                            } else {
-                              toast.error(data?.error || "Link failed");
-                            }
-                          } catch (err: any) { toast.error(err.message); }
-                        }} className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/80 transition-colors text-[11px]" style={{ backgroundColor: "rgba(14,38,70,0.04)" }}>
-                          <FileText size={12} style={{ color: "#0E2646" }} />
-                          <span className="truncate flex-1 font-medium" style={{ color: "#0E2646" }}>{f.name}</span>
                         </button>
                       ))}
                     </div>
