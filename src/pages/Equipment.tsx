@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Search, Plus, Package, Warehouse, LayoutGrid, List,
+  Search, Plus, Package, Warehouse, LayoutGrid, List, Columns3,
   CalendarIcon, AlertTriangle,
 } from "lucide-react";
 import { format, differenceInDays, addDays, addMonths } from "date-fns";
@@ -95,7 +95,7 @@ export default function Equipment() {
   const [mfgFilter, setMfgFilter] = useState(urlMfg);
   const [sortIdx, setSortIdx] = useState(0);
   const [etaFilter, setEtaFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"card" | "board">("card");
+  const [viewMode, setViewMode] = useState<"card" | "list" | "board">("card");
   const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => { setTab((searchParams.get("tab") as TabKey) || "all"); }, [searchParams]);
@@ -245,9 +245,13 @@ export default function Equipment() {
                 style={{ backgroundColor: viewMode === "card" ? "#0E2646" : "transparent" }}>
                 <LayoutGrid size={14} color={viewMode === "card" ? "#F3D12A" : "#717182"} />
               </button>
+              <button onClick={() => setViewMode("list")} className="px-2.5 py-2 transition-colors"
+                style={{ backgroundColor: viewMode === "list" ? "#0E2646" : "transparent" }}>
+                <List size={14} color={viewMode === "list" ? "#F3D12A" : "#717182"} />
+              </button>
               <button onClick={() => setViewMode("board")} className="px-2.5 py-2 transition-colors"
                 style={{ backgroundColor: viewMode === "board" ? "#0E2646" : "transparent" }}>
-                <List size={14} color={viewMode === "board" ? "#F3D12A" : "#717182"} />
+                <Columns3 size={14} color={viewMode === "board" ? "#F3D12A" : "#717182"} />
               </button>
             </div>
             <button onClick={() => setShowPicker(true)}
@@ -362,6 +366,8 @@ export default function Equipment() {
           <BoardView orders={filtered} navigate={navigate} queryClient={queryClient} />
         ) : filtered.length === 0 ? (
           <EmptyState tab={tab} onOrder={() => setShowPicker(true)} />
+        ) : viewMode === "list" ? (
+          <ListView orders={filtered} navigate={navigate} />
         ) : (
           <div className="space-y-3">
             {filtered.map((order: any) => (
@@ -472,6 +478,66 @@ function EquipmentCard({ order, tab, navigate }: { order: any; tab: TabKey; navi
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── list view ──────────────────────────────────────────────
+function ListView({ orders, navigate }: { orders: any[]; navigate: any }) {
+  return (
+    <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+      <div className="hidden sm:grid grid-cols-[1fr_130px_130px_90px_70px_80px] gap-2 px-3 py-2.5" style={{ backgroundColor: "#0E2646" }}>
+        {["Contract", "Customer", "Build", "Status", "ETA", "Price"].map(h => (
+          <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
+        ))}
+      </div>
+      {orders.map((order: any, idx: number) => {
+        const customer = order.customers as any;
+        const mfg = order.manufacturers as any;
+        const eta = etaInfo(order.est_completion_date, order.delivered_date);
+        return (
+          <div
+            key={order.id}
+            onClick={() => navigate(`/orders/${order.id}`)}
+            className={cn(
+              "grid grid-cols-1 sm:grid-cols-[1fr_130px_130px_90px_70px_80px] gap-1 sm:gap-2 px-3 py-2.5 border-b items-center cursor-pointer hover:bg-muted/50 transition-colors",
+              idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-white",
+              eta.overdue && "ring-1 ring-inset ring-red-300"
+            )}
+            style={{ borderColor: "rgba(212,212,208,0.5)" }}
+          >
+            <div className="min-w-0">
+              <span className="text-[13px] font-semibold truncate block" style={{ color: "#0E2646" }}>
+                {order.contract_name || order.moly_contract_number || order.order_number || "—"}
+              </span>
+              {order.moly_contract_number && order.contract_name && (
+                <span className="text-[10px]" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
+              )}
+            </div>
+            <span className="text-[12px] truncate" style={{ color: customer?.name ? "#0E2646" : "#717182" }}>
+              {customer?.name || "Unassigned"}
+            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              {mfg && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
+                  {mfg.short_name || mfg.name}
+                </span>
+              )}
+              <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand?.split(",")[0] || ""}</span>
+            </div>
+            <div><StatusBadge status={order.status} /></div>
+            <span className={cn("text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
+              {fmtDate(order.est_completion_date)}
+            </span>
+            <span className="text-[12px] font-semibold text-right" style={{ color: "#0E2646" }}>
+              {order.customer_price ? fmtCurrency(order.customer_price) : "—"}
+            </span>
+          </div>
+        );
+      })}
+      {orders.length === 0 && (
+        <p className="text-sm text-center py-8" style={{ color: "#717182" }}>No orders match filters.</p>
+      )}
     </div>
   );
 }
