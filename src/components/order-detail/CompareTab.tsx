@@ -39,8 +39,8 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_document_slots")
-        .select("id, order_id, slot_type, is_filled, document_id, line_items, total_amount, comparison_status, comparison_notes, comparison_results, compared_against_slot, order_documents:document_id(id, file_url, file_name, title)")
-        .eq("order_id", orderId);
+        .select("id, order_id, slot_type, is_filled, document_id, line_items, total_amount, comparison_status, comparison_notes, compared_against_slot, order_documents:document_id(id, file_url, file_name, title)")
+        .eq("order_id", orderId) as any;
       if (error) throw error;
       return data || [];
     },
@@ -75,7 +75,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
 
   const compareMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("compare_document_slots", {
+      const { data, error } = await (supabase.rpc as any)("compare_document_slots", {
         p_order_id: orderId, p_left_slot: leftSlot, p_right_slot: rightSlot,
       });
       if (error) throw error;
@@ -91,7 +91,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
 
   const addMappingMutation = useMutation({
     mutationFn: async ({ ourName, theirName }: { ourName: string; theirName: string }) => {
-      const { error } = await supabase.from("manufacturer_item_mappings").insert({
+      const { error } = await (supabase.from("manufacturer_item_mappings") as any).insert({
         manufacturer_id: order.manufacturer_id, our_item_name: ourName,
         mfg_item_name: theirName, confidence: 0.95, confirmed_by: "tim",
       });

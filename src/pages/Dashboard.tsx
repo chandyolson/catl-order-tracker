@@ -33,7 +33,7 @@ type Estimate = {
   customers: { name: string; company: string | null } | null;
 };
 type VoiceMemo = {
-  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null; archived: boolean | null;
+  id: string; transcript: string | null; ai_summary: string | null; created_at: string; processing_status: string | null;
 };
 
 const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -197,20 +197,20 @@ export default function Dashboard() {
           .not("status", "in", '("closed","rejected")')
           .order("created_at", { ascending: false })
           .limit(15),
-        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status, archived")
-          .eq("processing_status", "complete").or("archived.is.null,archived.eq.false")
+        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status")
+          .eq("processing_status", "complete")
           .order("created_at", { ascending: false }).limit(5),
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
       ]);
 
-    const sorted = ((tasksRes.data as Task[]) || []).sort(
+    const sorted = ((tasksRes.data as unknown as Task[]) || []).sort(
       (a, b) => (priorityOrder[a.priority || "normal"] ?? 2) - (priorityOrder[b.priority || "normal"] ?? 2)
     );
     setTasks(sorted);
     setOrders((ordersRes.data as Order[]) || []);
     setOpenEstimates((estimatesRes.data as Estimate[]) || []);
-    setRecentMemos((memosRes.data as VoiceMemo[]) || []);
+    setRecentMemos((memosRes.data as unknown as VoiceMemo[]) || []);
     setOpenTaskCount(taskCountRes.count ?? 0);
     setReadyCount(readyRes.count ?? 0);
   }, []);
