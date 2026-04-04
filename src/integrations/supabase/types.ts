@@ -61,6 +61,15 @@ export type Database = {
           pickup_address: string | null
           pickup_city: string | null
           pickup_state: string | null
+          start_location: string | null
+          start_address: string | null
+          start_city: string | null
+          start_state: string | null
+          end_location: string | null
+          end_address: string | null
+          end_city: string | null
+          end_state: string | null
+          total_miles: number | null
           carrier_id: string | null
           driver_name: string | null
           status: string
@@ -79,6 +88,15 @@ export type Database = {
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_state?: string | null
+          start_location?: string | null
+          start_address?: string | null
+          start_city?: string | null
+          start_state?: string | null
+          end_location?: string | null
+          end_address?: string | null
+          end_city?: string | null
+          end_state?: string | null
+          total_miles?: number | null
           carrier_id?: string | null
           driver_name?: string | null
           status?: string
@@ -97,6 +115,15 @@ export type Database = {
           pickup_address?: string | null
           pickup_city?: string | null
           pickup_state?: string | null
+          start_location?: string | null
+          start_address?: string | null
+          start_city?: string | null
+          start_state?: string | null
+          end_location?: string | null
+          end_address?: string | null
+          end_city?: string | null
+          end_state?: string | null
+          total_miles?: number | null
           carrier_id?: string | null
           driver_name?: string | null
           status?: string
@@ -124,6 +151,7 @@ export type Database = {
           freight_run_id: string
           order_id: string | null
           stop_order: number
+          stop_type: string
           customer_name: string | null
           delivery_address: string | null
           delivery_city: string | null
@@ -142,6 +170,7 @@ export type Database = {
           freight_run_id: string
           order_id?: string | null
           stop_order?: number
+          stop_type?: string
           customer_name?: string | null
           delivery_address?: string | null
           delivery_city?: string | null
@@ -160,6 +189,7 @@ export type Database = {
           freight_run_id?: string
           order_id?: string | null
           stop_order?: number
+          stop_type?: string
           customer_name?: string | null
           delivery_address?: string | null
           delivery_city?: string | null
