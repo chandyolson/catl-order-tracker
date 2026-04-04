@@ -344,6 +344,30 @@ export default function OverviewTab({
 
             {options.length > 0 && <div><span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Options</span><div className="flex flex-wrap gap-1 mt-1">{options.map((opt: any, i: number) => { const label = formatSavedOptionPill(opt); if (!label) return null; return <span key={i} className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium" style={!opt.is_included ? { backgroundColor: "rgba(243,209,42,0.15)", color: "#8B7A0A" } : { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>{label}</span>; })}</div></div>}
 
+            {/* Freight, Discount, Dates */}
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Freight</span>
+                <p className="text-[13px] font-medium mt-0.5" style={{ color: order.freight_estimate ? "#0E2646" : "#B4B2A9" }}>
+                  {order.freight_estimate ? `$${Number(order.freight_estimate).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Discount</span>
+                <p className="text-[13px] font-medium mt-0.5" style={{ color: order.discount_amount && parseFloat(order.discount_amount) > 0 ? "#0E2646" : "#B4B2A9" }}>
+                  {order.discount_amount && parseFloat(order.discount_amount) > 0
+                    ? `${order.discount_type === "%" ? `${order.discount_amount}%` : `$${Number(order.discount_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}`}`
+                    : "None"}
+                </p>
+              </div>
+              <div>
+                <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Est. Completion</span>
+                <p className="text-[13px] font-medium mt-0.5" style={{ color: order.est_completion_date ? "#0E2646" : "#B4B2A9" }}>
+                  {order.est_completion_date ? new Date(order.est_completion_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                </p>
+              </div>
+            </div>
+
             <div>
               <div className="flex items-center justify-between"><span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Notes</span>{!editingNotes && <button onClick={() => { setNotes(order.notes || ""); setEditingNotes(true); }} className="p-1" style={{ color: "#717182" }}><Edit2 size={12} /></button>}</div>
               {editingNotes ? (<div className="mt-1"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full border border-border rounded-lg px-3 py-2 text-[13px] bg-card outline-none resize-none" /><div className="flex gap-2 mt-1"><button onClick={() => saveNotesMutation.mutate()} className="p-1" style={{ color: "#27AE60" }}><Check size={16} /></button><button onClick={() => setEditingNotes(false)} className="p-1"><X size={16} /></button></div></div>) : (<p className="text-[13px] text-muted-foreground mt-0.5 whitespace-pre-wrap">{order.notes || "No notes"}</p>)}
