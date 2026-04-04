@@ -207,7 +207,7 @@ function InventoryCard({ order, tab, navigate }: { order: any; tab: TabKey; navi
   const eta = order.est_completion_date;
 
   return (
-    <div className="rounded-xl overflow-hidden shadow-sm" style={{ border: "1px solid #E5E5E0" }}>
+    <div className="rounded-xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.99] transition-transform" style={{ border: "1px solid #E5E5E0" }} onClick={() => navigate(`/orders/${order.id}`)}>
       {/* Navy header */}
       <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
