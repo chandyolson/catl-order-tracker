@@ -39,8 +39,8 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("order_document_slots")
-        .select("id, order_id, slot_type, is_filled, document_id, line_items, total_amount, comparison_status, comparison_notes, comparison_results, compared_against_slot, order_documents:document_id(id, file_url, file_name, title)")
-        .eq("order_id", orderId);
+        .select("id, order_id, slot_type, is_filled, document_id, line_items, total_amount, comparison_status, comparison_notes, compared_against_slot, order_documents:document_id(id, file_url, file_name, title)")
+        .eq("order_id", orderId) as any;
       if (error) throw error;
       return data || [];
     },
