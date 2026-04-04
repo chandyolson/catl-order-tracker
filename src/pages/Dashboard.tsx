@@ -166,6 +166,11 @@ export default function Dashboard() {
   const [openTaskCount, setOpenTaskCount] = useState(0);
   const [readyCount, setReadyCount] = useState(0);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskAssign, setNewTaskAssign] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("normal");
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [savingNewTask, setSavingNewTask] = useState(false);
   const TEAM = ["Tim", "Caleb", "Chandy", "Jen"];
   const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -283,6 +288,28 @@ export default function Dashboard() {
   const deleteTask = async (id: string) => {
     await supabase.from("tasks").delete().eq("id", id);
     toast.success("Task deleted");
+    fetchAll();
+  };
+
+  const createNewTask = async () => {
+    if (!newTaskTitle.trim()) return;
+    setSavingNewTask(true);
+    const { error } = await supabase.from("tasks").insert({
+      title: newTaskTitle.trim(),
+      priority: newTaskPriority,
+      assigned_to: newTaskAssign || null,
+      status: "open",
+      source_type: "manual",
+      task_type: "manual_task",
+      created_by: "tim",
+    } as any);
+    setSavingNewTask(false);
+    if (error) { toast.error("Failed to create task"); return; }
+    toast.success("Task created");
+    setNewTaskTitle("");
+    setNewTaskAssign("");
+    setNewTaskPriority("normal");
+    setShowNewTask(false);
     fetchAll();
   };
 
@@ -519,7 +546,49 @@ export default function Dashboard() {
             <CheckSquare size={12} style={{ color: "#55BAAA" }} />
             <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Tasks</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
+            <button onClick={() => setShowNewTask(!showNewTask)} className="ml-auto w-6 h-6 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
+              style={{ backgroundColor: showNewTask ? "#D4183D" : "#F3D12A", color: showNewTask ? "#fff" : "#0E2646" }}>
+              {showNewTask ? <span className="text-sm leading-none">&times;</span> : <span className="text-sm leading-none">+</span>}
+            </button>
           </div>
+          {/* Inline quick-add */}
+          {showNewTask && (
+            <div className="px-4 py-3 space-y-2" style={{ backgroundColor: "#FAFAF7", borderBottom: "0.5px solid #EBEBEB" }}>
+              <form onSubmit={e => { e.preventDefault(); createNewTask(); }} className="flex gap-2 items-center">
+                <input
+                  value={newTaskTitle}
+                  onChange={e => setNewTaskTitle(e.target.value)}
+                  placeholder="What needs doing?"
+                  className="flex-1 min-w-0 text-[13px] rounded-lg px-3 py-2 bg-white outline-none"
+                  style={{ border: "0.5px solid #D4D4D0", color: "#0E2646" }}
+                  autoFocus
+                />
+                <button type="submit" disabled={!newTaskTitle.trim() || savingNewTask}
+                  className="text-[11px] font-bold px-4 py-2 rounded-full active:scale-[0.97] transition-transform disabled:opacity-40"
+                  style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
+                  {savingNewTask ? "…" : "Add"}
+                </button>
+              </form>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
+                {TEAM.map(name => (
+                  <button key={name} onClick={() => setNewTaskAssign(newTaskAssign === name ? "" : name)}
+                    className="text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
+                    style={{ backgroundColor: newTaskAssign === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: newTaskAssign === name ? "#F3D12A" : "#0E2646" }}>
+                    {name}
+                  </button>
+                ))}
+                <span className="text-[10px] font-semibold ml-3" style={{ color: "#717182" }}>Priority:</span>
+                {["urgent", "high", "normal"].map(p => (
+                  <button key={p} onClick={() => setNewTaskPriority(p)}
+                    className={`text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${newTaskPriority === p ? (priorityColors[p] || "") : ""}`}
+                    style={newTaskPriority !== p ? { backgroundColor: "rgba(113,113,130,0.08)", color: "#717182" } : {}}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             {tasks.map(t => {
               const isOverdue = t.due_date && new Date(t.due_date) < today;
