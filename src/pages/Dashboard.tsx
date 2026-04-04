@@ -197,8 +197,9 @@ export default function Dashboard() {
           .not("status", "in", '("closed","rejected")')
           .order("created_at", { ascending: false })
           .limit(15),
-        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status, archived")
-          .eq("processing_status", "complete").or("archived.is.null,archived.eq.false")
+        supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status")
+          .eq("processing_status", "complete")
+          .order("created_at", { ascending: false }).limit(5),
           .order("created_at", { ascending: false }).limit(5),
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
