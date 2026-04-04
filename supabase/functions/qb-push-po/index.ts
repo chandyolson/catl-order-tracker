@@ -128,6 +128,6 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, qb_po_id: poId, qb_po_doc_number: poDoc, line_count: qbLines.length, steps }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message, steps }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: false, error: err.message, steps }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

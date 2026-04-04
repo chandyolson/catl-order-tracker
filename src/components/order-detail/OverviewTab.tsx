@@ -209,7 +209,13 @@ export default function OverviewTab({
     setCreatingPO(true);
     try {
       const { data, error: fnError } = await supabase.functions.invoke("qb-push-po", { body: { order_id: order.id } });
-      if (fnError) throw new Error(fnError.message);
+      if (fnError) {
+        // Try to parse the error response body for details
+        const errMsg = data?.error || fnError.message || "Failed to create QB PO";
+        toast.error(errMsg);
+        if (data?.steps) console.error("QB PO steps:", data.steps);
+        return;
+      }
       if (data?.success) {
         toast.success(data.already_exists ? `QB PO exists: #${data.qb_po_doc_number}` : `QB PO #${data.qb_po_doc_number} created`);
         queryClient.invalidateQueries({ queryKey: ["order", order.id] });
