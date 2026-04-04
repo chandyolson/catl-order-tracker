@@ -430,7 +430,7 @@ export default function Dashboard() {
           </button>
 
           {/* Ready to Deliver */}
-          <button onClick={() => navigate("/equipment?tab=assigned")}
+          <button onClick={() => navigate("/equipment?status=ready")}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #0A3020 60%, #22763A 100%)" }}>
             <div className="flex items-center gap-1.5 mb-2">
@@ -464,7 +464,7 @@ export default function Dashboard() {
           </button>
 
           {/* Open Tasks */}
-          <button onClick={() => navigate("/dashboard")}
+          <button onClick={() => document.getElementById("dashboard-tasks")?.scrollIntoView({ behavior: "smooth" })}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: overdueCount > 0
               ? "linear-gradient(150deg, #0E2646 0%, #3A0E0E 60%, #7A1A1A 100%)"
@@ -523,7 +523,7 @@ export default function Dashboard() {
               const count = statusCounts[stage] || 0;
               const widthPct = Math.max((count / maxPipeCount) * 100, 0);
               return (
-                <button key={stage} onClick={() => navigate(`/orders?status=${stage}`)}
+                <button key={stage} onClick={() => navigate(`/equipment?status=${stage}`)}
                   className="flex items-center gap-3 w-full px-4 py-2 hover:bg-[#F9F9F7] active:scale-[0.99] transition-all text-left">
                   <span className="text-[12px] font-medium w-[85px] flex-shrink-0" style={{ color: "#1A1A1A" }}>{stageLabels[stage]}</span>
                   <div className="flex-1 h-6 rounded-md overflow-hidden flex" style={{ background: "#F5F5F0" }}>
@@ -544,7 +544,7 @@ export default function Dashboard() {
         </div>
 
         {/* Tasks — full width */}
-        <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
+        <div id="dashboard-tasks" className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "0.5px solid #D4D4D0" }}>
           <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <CheckSquare size={12} style={{ color: "#55BAAA" }} />
             <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Tasks</span>
