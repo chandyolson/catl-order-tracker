@@ -1,5 +1,5 @@
 # CATL Resources Livestock Equipment Manager — Project Memory
-> Last updated: 2026-04-04 (freight build + page consolidation)
+> Last updated: 2026-04-04 (freight build + driver share + orange sheet)
 
 ## Project Basics
 - **App**: Tracks livestock equipment from quote → order → build → delivery → freight
@@ -8,7 +8,7 @@
 - **Skill file**: `/mnt/skills/user/catl-equipment-ops/SKILL.md` — READ THIS FIRST every session
 - **GitHub token**: stored in Claude memory (scrub from remote after push)
 - **Git config**: user.email `chandy@catlresources.com`, user.name `Chandy Olson`
-- **Last commit**: `003a724` on `main` branch
+- **Last commit**: `4bf7757` on `main` branch
 
 ## User Preferences
 - NO horizontal or vertical scrollbars. Sections expand to fit content.
@@ -29,60 +29,56 @@
 ## Current State of the App
 
 ### Nav (6 items)
-Dashboard, Equipment, Leads, **Freight (NEW)**, Customers, Settings
+Dashboard, Equipment, Leads, Freight, Customers, Settings
 
-### Pages
+### Pages (17 files)
 - **Dashboard**: Pipeline (segmented by mfg, links to `/equipment?status=`), stat cards, Tasks section (inline quick-add w/ assign + priority + due date), Voice Memos section, Chat assistant (440px)
-- **Equipment** (`/equipment`): Merged Orders+Inventory+Production. Tabs: All/Assigned/InStock/OnOrder/Delivered. Views: Card/List/Board. ETA popover. Search + mfg filter + sort.
-- **Leads** (`/leads`): Replaces Estimates. Temperature auto-calc: Hot (≤7d)/Warm (≤21d)/Cold (>21d)/Won. Pipeline + List toggle.
-- **Freight** (`/freight`, NEW): Freight runs, stops, carriers. Full detail below.
-- **Order Detail**: Overview tab (customer, tasks w/delete, timeline, doc chain w/Browse Drive + manual linking), Financials, Compare, Estimates
-- **Edit Order**: Sectioned layout (Customer & Contract → Order Details → Pricing → Equipment → Custom Items → Receipt). Tabbed receipt card (Summary/Itemized). Cost prominent in teal.
-- **New Order**: Same section layout as EditOrder. Unified page (inventory = no customer).
+- **Equipment** (`/equipment`): Merged Orders+Inventory+Production. Tabs: All/Assigned/InStock/OnOrder/Delivered. Views: Card/List/Board. ETA popover.
+- **Leads** (`/leads`): Replaces Estimates. Temperature auto-calc: Hot/Warm/Cold/Won. Pipeline + List toggle.
+- **Freight** (`/freight`): Freight runs, stops, carriers. See Freight System below.
+- **DriverShare** (`/freight/share/:token`): PUBLIC page, no auth/nav. Mobile-friendly run sheet for truckers.
+- **OrangeSheet** (`/orders/:id/orange-sheet`): Per-order receiving/setup checklist. Printable.
+- **Order Detail**: Overview tab (customer, tasks, timeline, doc chain w/Browse Drive), Financials, Compare, Estimates. Dropdown has "Orange Sheet" option.
+- **Edit Order**: Sectioned layout, tabbed receipt card, cost prominent in teal.
+- **New Order**: Same section layout as EditOrder. Unified page.
 - **Estimate Detail**: Send Estimate button (standalone estimates)
-- **Customers, Settings, CustomerDetail, ConvertEstimate, EquipmentMatch**
+- **Customers, Settings, CustomerDetail, ConvertEstimate, EquipmentMatch, NotFound**
 
-### Freight System (NEW — 2026-04-04)
-**How it works:** Moly/Daniels/MJE finishes equipment → Tim arranges a truck → loads in specific order (last loaded = first delivered) → drops off along the route → some come back to CATL yard for later customer delivery.
+### Routing Structure
+- Public routes (no Layout): `/freight/share/:token`
+- App routes (with Layout/nav): everything else
+- App.tsx uses `AppRoutes` wrapper component for Layout separation
+
+### Freight System (2026-04-04)
+**How it works:** Moly/Daniels/MJE finishes equipment → Tim arranges a truck → loads in specific order (last loaded = first delivered) → drops off along the route → some come back to CATL yard.
 
 **Database tables:**
 - `carriers` — external truckers + CATL vehicles (multiple). Fields: name, type (external_trucker/catl_vehicle), phone, vehicle_description, is_active
 - `freight_runs` — one per truck trip. Fields: name, pickup_location (lorraine_ks/ainsworth_ne/el_dorado_ks/custom), carrier_id, driver_name, status (planning→scheduled→loading→in_transit→completed→cancelled), pickup_date, actual_cost, share_token
-- `freight_run_stops` — each delivery drop. Fields: order_id, stop_order, delivery address/city/state/zip/phone (auto-filled from customer, fully editable/overridable), delivery_instructions, unloading_equipment (forklift/tractor_forks/skid_steer/loader/telehandler/crane/none/other), status (pending→delivered), delivered_at
+- `freight_run_stops` — each delivery drop. Fields: order_id, stop_order, delivery address/city/state/zip/phone (auto-filled from customer, fully editable/overridable), delivery_instructions, unloading_equipment, status (pending→delivered), delivered_at
 
-**Pickup points:**
-- Lorraine, KS — Moly/Silencer chutes
-- Ainsworth, NE — Daniels alleys/panels
-- El Dorado, KS — MJE products
-- Custom — any other location
+**Pickup points:** Lorraine KS (Moly), Ainsworth NE (Daniels), El Dorado KS (MJE), Custom
 
-**UI features:**
-- Runs list with active/completed/all filter
-- Run detail: navy header, pickup point card, ordered stops, expandable delivery info
-- Add stop: shows ready orders, auto-fills customer address, override anything
-- Carriers modal: manage truckers + CATL vehicles
-- Share button (copies link — driver share page still needs building)
-- Edit everything inline (run details, stop delivery info)
-- Mark stops as delivered with timestamp
+**Driver Share page features:**
+- Public URL via share_token, no login needed
+- Tap-to-call phone numbers, addresses link to Google Maps
+- Loading order callout (reverse of delivery order)
+- CATL branding, fixed footer
 
-**Key design decisions:**
-- Delivery address auto-fills from customer but is fully overridable (sometimes equipment goes to a different location with unloading equipment)
-- Multiple CATL vehicles tracked separately with descriptions
-- Driver name recorded per run
-- Loading order = reverse of stop order
+### Orange Sheet (2026-04-04)
+Per-order receiving/setup checklist accessible from Order Detail dropdown menu (⋮ → Orange Sheet).
+- Orange accent header with contract # and customer
+- Equipment specs: base model + all options with checkboxes
+- Custom items / modifications section
+- Open tasks from tasks table (gun holders, extra hose, specific instructions)
+- Blank lines for handwritten notes
+- Pricing summary (cost + customer price)
+- Print button with print-friendly CSS
 
 ### Document Chain (9 slots per order)
-1. CATL Estimate → from QuickBooks
-2. Approved Estimate → from QuickBooks
-3. CATL Purchase Order → from QuickBooks
-4. Mfg Web Order → manual upload
-5. Mfg Sales Order → from Drive / Gmail
-6. Signed Sales Order → manual upload
-7. Mfg Invoice → from Drive / Gmail
-8. QB Bill → from QuickBooks
-9. Customer Invoice → from QuickBooks
+1. CATL Estimate, 2. Approved Estimate, 3. CATL Purchase Order, 4. Mfg Web Order, 5. Mfg Sales Order, 6. Signed Sales Order, 7. Mfg Invoice, 8. QB Bill, 9. Customer Invoice
 
-**Status:** 73 mappings in manufacturer_item_mappings. Compare engine working with qty_split and combo item detection. 13 estimates and 8 invoices filled from QB.
+**Status:** 73 mappings in manufacturer_item_mappings. Compare engine working. 13 estimates and 8 invoices filled from QB.
 
 ### Chat Assistant (v8)
 - Anthropic API credits added
@@ -94,9 +90,9 @@ Key ones: chat-assistant v8, qb-check-sync v8, qb-push-estimate v56, send-estima
 ### Database
 - `orders` — 33 orders
 - `order_document_slots` — 9 per order
-- `carriers` — NEW: truckers + CATL vehicles
-- `freight_runs` — NEW: truck trips
-- `freight_run_stops` — NEW: delivery stops
+- `carriers` — truckers + CATL vehicles
+- `freight_runs` — truck trips
+- `freight_run_stops` — delivery stops
 - `tasks` — has assigned_to, priority columns
 - `voice_memos` — has archived, assigned_to, notes columns
 - `customers` — 2,310 records (88% have addresses, 30% have phone)
@@ -118,33 +114,33 @@ Key ones: chat-assistant v8, qb-check-sync v8, qb-push-estimate v56, send-estima
 7. Timeline entries, doc chain unlink, orders
 
 ### Freight (to build next)
-8. Driver share page (public URL with run sheet)
-9. Route map integration
-10. Drag-to-reorder stops
+8. Route map integration
+9. Drag-to-reorder stops
 
 ## Next Priorities
-1. **Test Freight on Tim's phone** — create a run, add carriers, add stops
-2. **Driver share page** — public URL with mobile-friendly run sheet
-3. **Orange Sheet** — per-order receiving/setup checklist (chute specs, contract #, customer, modifications, setup tasks). Printable work order for crew.
-4. **CATL Assistant rethink** — what should it focus on?
-5. **Document chain batch testing** — verify across multiple orders
-6. **Mass select/bulk edit** on Equipment list view
-7. **Missing deletes** — timeline, doc chain unlink, orders
+1. **Test everything on Tim's phone** — Freight, Driver Share, Orange Sheet, Equipment, Leads
+2. **CATL Assistant rethink** — what should it focus on?
+3. **Document chain batch testing** — verify across multiple orders
+4. **Mass select/bulk edit** on Equipment list view
+5. **Route map** on freight runs
+6. **Missing deletes** — timeline, doc chain unlink, orders
 
 ## Session Log — 2026-04-04
 
 ### Session 1 (Page Consolidation — commits b13c7f5 through 96c4245):
-- Equipment page: merged Orders+Inventory+Production (tabs, card/list/board views)
-- Leads page: replaced Estimates (temperature auto-calc, pipeline+list toggle)
-- Dashboard: absorbs Tasks (inline create) + Voice Memos
-- Nav reduced to 5: Dashboard, Equipment, Leads, Customers, Settings
+- Equipment page: merged Orders+Inventory+Production
+- Leads page: replaced Estimates
+- Dashboard: absorbs Tasks + Voice Memos
 - 8 dead pages removed, all old URLs redirect
 
-### Session 2 (Freight Build — commit 003a724):
-- New tables: carriers, freight_runs, freight_run_stops
+### Session 2 (Freight Build — commits 003a724, 82327b9, 4bf7757):
+- New tables: carriers, freight_runs, freight_run_stops (migration applied)
 - Freight.tsx: runs list, run detail, add stops, carrier management
-- Nav updated to 6: added Freight (Truck icon) between Leads and Customers
-- DB seeded: 2 CATL vehicle placeholders
+- DriverShare.tsx: public run sheet for drivers (no auth)
+- OrangeSheet.tsx: per-order receiving checklist (printable)
+- App.tsx restructured: public routes outside Layout
+- OrderDetail.tsx: Orange Sheet added to dropdown menu
+- Nav: 6 items (Dashboard, Equipment, Leads, Freight, Customers, Settings)
 
 ## Reference
 - Moly SO emails: from `orders@molymfg.com`
