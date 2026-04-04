@@ -247,7 +247,7 @@ export default function Dashboard() {
         actions.push({ label: "New estimate →", route: "/estimates/new" });
       }
       if (lower.includes("order") || lower.includes("inventory")) {
-        actions.push({ label: "View orders →", route: "/orders" });
+        actions.push({ label: "View orders →", route: "/equipment" });
       }
       if (lower.includes("task")) {
         actions.push({ label: "View tasks →", route: "/tasks" });
@@ -383,7 +383,7 @@ export default function Dashboard() {
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {/* Open Estimates */}
-          <button onClick={() => navigate("/estimates")}
+          <button onClick={() => navigate("/leads")}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #0D4A40 60%, #55BAAA 100%)" }}>
             <div className="flex items-center gap-1.5 mb-2">
@@ -400,7 +400,7 @@ export default function Dashboard() {
           </button>
 
           {/* Ready to Deliver */}
-          <button onClick={() => navigate("/orders?status=ready")}
+          <button onClick={() => navigate("/equipment?tab=assigned")}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #0A3020 60%, #22763A 100%)" }}>
             <div className="flex items-center gap-1.5 mb-2">
@@ -414,7 +414,7 @@ export default function Dashboard() {
           </button>
 
           {/* Unsold Inventory */}
-          <button onClick={() => navigate("/orders?filter=inventory")}
+          <button onClick={() => navigate("/equipment?tab=instock")}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #163A5E 60%, #1E5A7A 100%)" }}>
             <div className="flex items-center gap-1.5 mb-2">
@@ -434,7 +434,7 @@ export default function Dashboard() {
           </button>
 
           {/* Open Tasks */}
-          <button onClick={() => navigate("/tasks?status=open")}
+          <button onClick={() => navigate("/dashboard")}
             className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
             style={{ background: overdueCount > 0
               ? "linear-gradient(150deg, #0E2646 0%, #3A0E0E 60%, #7A1A1A 100%)"
@@ -519,10 +519,9 @@ export default function Dashboard() {
             <CheckSquare size={12} style={{ color: "#55BAAA" }} />
             <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Tasks</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{tasks.length}</span>
-            <button onClick={() => navigate("/tasks")} className="ml-auto text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
           </div>
           <div>
-            {tasks.slice(0, 12).map(t => {
+            {tasks.map(t => {
               const isOverdue = t.due_date && new Date(t.due_date) < today;
               const isToday = t.due_date && new Date(t.due_date).toDateString() === today.toDateString();
               const isEditing = editingTaskId === t.id;
@@ -606,21 +605,20 @@ export default function Dashboard() {
             <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Recent Memos</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{recentMemos.length}</span>
             <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
-            <button onClick={() => navigate("/voice-memos")} className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>View all →</button>
           </div>
           {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No recent memos</p>}
           {recentMemos.map(memo => (
             <div key={memo.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
               style={{ borderBottom: "0.5px solid #F5F5F0" }}>
               <Mic size={11} style={{ color: "#55BAAA", flexShrink: 0 }} />
-              <button onClick={() => navigate("/voice-memos")} className="flex-1 text-left min-w-0">
+              <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
                   {memo.ai_summary ? memo.ai_summary.slice(0, 120) + (memo.ai_summary.length > 120 ? "…" : "") : memo.transcript ? memo.transcript.slice(0, 100) + (memo.transcript.length > 100 ? "…" : "") : "Processing…"}
                 </p>
                 <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
                   {formatTime(memo.created_at)}
                 </p>
-              </button>
+              </div>
               <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
             </div>
           ))}

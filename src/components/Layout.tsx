@@ -3,27 +3,21 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ClipboardList,
-  Receipt,
+  TrendingUp,
   Users,
-  Warehouse,
-  FolderOpen,
   Settings,
   Plus,
   Menu,
   X,
-  MessageCircle,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Orders", path: "/orders", icon: ClipboardList },
-  { label: "Estimates", path: "/estimates", icon: Receipt },
+  { label: "Equipment", path: "/equipment", icon: ClipboardList },
+  { label: "Leads", path: "/leads", icon: TrendingUp },
   { label: "Customers", path: "/customers", icon: Users },
-  { label: "Inventory", path: "/inventory", icon: Warehouse },
-  { label: "Documents", path: "/documents", icon: FolderOpen },
-  { label: "AI Assistant", path: "/dashboard?chat=open", icon: MessageCircle },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 

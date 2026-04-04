@@ -238,7 +238,7 @@ export default function ConvertEstimate() {
     <div className="max-w-2xl mx-auto pb-24 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate("/estimates")} className="p-2 -ml-2 rounded-full hover:bg-muted">
+        <button onClick={() => navigate("/leads")} className="p-2 -ml-2 rounded-full hover:bg-muted">
           <ChevronLeft size={20} />
         </button>
         <div>

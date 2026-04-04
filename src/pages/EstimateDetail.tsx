@@ -117,7 +117,7 @@ export default function EstimateDetail() {
       <div className="rounded-xl overflow-hidden mb-5" style={{ backgroundColor: "#0E2646" }}>
         <div className="p-4 pb-3">
           <div className="flex items-start gap-2">
-            <button onClick={() => navigate("/estimates")} className="p-1 shrink-0 mt-0.5" style={{ color: "#55BAAA" }}>
+            <button onClick={() => navigate("/leads")} className="p-1 shrink-0 mt-0.5" style={{ color: "#55BAAA" }}>
               <ChevronLeft size={22} />
             </button>
             <div className="min-w-0 flex-1">

@@ -261,7 +261,7 @@ export default function Index() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-foreground">Recent Orders</h2>
           <button
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate("/equipment")}
             className="text-sm font-semibold text-catl-teal hover:underline"
           >
             View All

@@ -130,7 +130,7 @@ export default function OrderDetail() {
     onSuccess: () => {
       toast.error(`Order ${order?.order_number} deleted`);
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-      navigate("/orders");
+      navigate("/equipment");
     },
     onError: (err: any) => toast.error("Failed to delete: " + err.message),
   });
@@ -236,7 +236,7 @@ export default function OrderDetail() {
         {/* Top section */}
         <div className="p-4 pb-3">
           <div className="flex items-start gap-2">
-            <button onClick={() => navigate("/orders")} className="p-1 shrink-0 mt-0.5" style={{ color: "#55BAAA" }}>
+            <button onClick={() => navigate("/equipment")} className="p-1 shrink-0 mt-0.5" style={{ color: "#55BAAA" }}>
               <ChevronLeft size={22} />
             </button>
             <div className="min-w-0 flex-1">
