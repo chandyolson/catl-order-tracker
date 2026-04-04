@@ -18,6 +18,7 @@ import ConvertEstimate from "./pages/ConvertEstimate";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Settings from "./pages/Settings";
+import Freight from "./pages/Freight";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/leads" element={<Leads />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/customers/:id" element={<CustomerDetail />} />
+            <Route path="/freight" element={<Freight />} />
             <Route path="/settings" element={<Settings />} />
 
             {/* Order detail routes (unchanged) */}

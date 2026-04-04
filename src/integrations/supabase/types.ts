@@ -14,6 +14,179 @@ export type Database = {
   }
   public: {
     Tables: {
+      carriers: {
+        Row: {
+          id: string
+          name: string
+          type: string
+          phone: string | null
+          vehicle_description: string | null
+          notes: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type?: string
+          phone?: string | null
+          vehicle_description?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: string
+          phone?: string | null
+          vehicle_description?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      freight_runs: {
+        Row: {
+          id: string
+          name: string | null
+          pickup_location: string
+          pickup_address: string | null
+          pickup_city: string | null
+          pickup_state: string | null
+          carrier_id: string | null
+          driver_name: string | null
+          status: string
+          pickup_date: string | null
+          estimated_arrival: string | null
+          actual_cost: number | null
+          freight_notes: string | null
+          share_token: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string | null
+          pickup_location?: string
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_state?: string | null
+          carrier_id?: string | null
+          driver_name?: string | null
+          status?: string
+          pickup_date?: string | null
+          estimated_arrival?: string | null
+          actual_cost?: number | null
+          freight_notes?: string | null
+          share_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          pickup_location?: string
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_state?: string | null
+          carrier_id?: string | null
+          driver_name?: string | null
+          status?: string
+          pickup_date?: string | null
+          estimated_arrival?: string | null
+          actual_cost?: number | null
+          freight_notes?: string | null
+          share_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_runs_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      freight_run_stops: {
+        Row: {
+          id: string
+          freight_run_id: string
+          order_id: string | null
+          stop_order: number
+          customer_name: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_state: string | null
+          delivery_zip: string | null
+          delivery_phone: string | null
+          delivery_instructions: string | null
+          unloading_equipment: string | null
+          status: string
+          delivered_at: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          freight_run_id: string
+          order_id?: string | null
+          stop_order?: number
+          customer_name?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          delivery_phone?: string | null
+          delivery_instructions?: string | null
+          unloading_equipment?: string | null
+          status?: string
+          delivered_at?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          freight_run_id?: string
+          order_id?: string | null
+          stop_order?: number
+          customer_name?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          delivery_phone?: string | null
+          delivery_instructions?: string | null
+          unloading_equipment?: string | null
+          status?: string
+          delivered_at?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_run_stops_freight_run_id_fkey"
+            columns: ["freight_run_id"]
+            isOneToOne: false
+            referencedRelation: "freight_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_run_stops_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       app_settings: {
         Row: {
           description: string | null

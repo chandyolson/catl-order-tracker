@@ -9,6 +9,7 @@ import {
   Plus,
   Menu,
   X,
+  Truck,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -17,6 +18,7 @@ const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Equipment", path: "/equipment", icon: ClipboardList },
   { label: "Leads", path: "/leads", icon: TrendingUp },
+  { label: "Freight", path: "/freight", icon: Truck },
   { label: "Customers", path: "/customers", icon: Users },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
