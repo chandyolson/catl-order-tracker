@@ -67,6 +67,8 @@ export default function InventoryPage() {
         (o.build_shorthand || "").toLowerCase().includes(s) ||
         (o.order_number || "").toLowerCase().includes(s) ||
         (o.serial_number || "").toLowerCase().includes(s) ||
+        (o.contract_name || "").toLowerCase().includes(s) ||
+        (o.moly_contract_number || "").toLowerCase().includes(s) ||
         ((o.customers as any)?.name || "").toLowerCase().includes(s)
       );
     }
@@ -208,12 +210,17 @@ function InventoryCard({ order, tab, navigate }: { order: any; tab: TabKey; navi
     <div className="rounded-xl overflow-hidden shadow-sm" style={{ border: "1px solid #E5E5E0" }}>
       {/* Navy header */}
       <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
-        <div className="flex items-center gap-3">
-          <span className="text-white font-bold text-sm">{order.order_number}</span>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {order.moly_contract_number && (
+            <span className="font-bold text-sm" style={{ color: "#F3D12A" }}>{order.moly_contract_number}</span>
+          )}
+          {order.contract_name && (
+            <span className="text-[12px] truncate" style={{ color: "rgba(245,245,240,0.7)" }}>{order.contract_name.replace(/^Contract \d+ [–-] /, "")}</span>
+          )}
           <StatusBadge status={order.status} />
         </div>
         {price != null && (
-          <span className="font-bold text-sm" style={{ color: "#F3D12A" }}>
+          <span className="font-bold text-sm flex-shrink-0 ml-2" style={{ color: "#F3D12A" }}>
             ${Number(price).toLocaleString()}
           </span>
         )}
