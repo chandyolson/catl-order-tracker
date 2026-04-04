@@ -295,7 +295,7 @@ export default function OverviewTab({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* LEFT: Order Details */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0" }}>
+          <div className="px-4 py-2.5 flex items-center" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0", minHeight: 44 }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Order Details</h3>
           </div>
           <div className="p-4 space-y-3">
@@ -377,7 +377,7 @@ export default function OverviewTab({
 
         {/* RIGHT: Task List */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0" }}>
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0", minHeight: 44 }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Tasks ({completedTasks.length}/{orderTasks.length})</h3>
             <button onClick={() => setShowAddTask(!showAddTask)} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-[0.95] transition-transform" style={{ backgroundColor: "#55BAAA", color: "#fff" }}><Plus size={12} /> Add task</button>
           </div>
@@ -475,7 +475,7 @@ export default function OverviewTab({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* LEFT: Timeline */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0" }}>
+          <div className="px-4 py-2.5 flex items-center" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0", minHeight: 44 }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Timeline</h3>
           </div>
           <div className="p-3">
@@ -506,7 +506,7 @@ export default function OverviewTab({
 
         {/* RIGHT: Document Chain */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0" }}>
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0", minHeight: 44 }}>
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Document Chain</h3>
             <div className="flex items-center gap-2">
               {(order.qb_estimate_id || order.qb_po_id || order.qb_bill_id || order.qb_invoice_id) && (
@@ -716,7 +716,7 @@ export default function OverviewTab({
       {/* ━━━ 4. VOICE MEMOS (linked to this order) ━━━━━━━━ */}
       {orderMemos.length > 0 && (
         <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0" }}>
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: "#0E2646", borderRadius: "11px 11px 0 0", minHeight: 44 }}>
             <Mic size={12} style={{ color: "#F3D12A" }} />
             <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Voice Memos</h3>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(216,90,48,0.1)", color: "#D85A30" }}>{orderMemos.length}</span>
