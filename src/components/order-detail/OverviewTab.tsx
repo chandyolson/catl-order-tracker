@@ -177,6 +177,7 @@ export default function OverviewTab({
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }); setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskPriority("normal"); setShowAddTask(false); toast.success("Task added"); },
+    onError: (err: any) => toast.error(err.message || "Failed to add task"),
   });
 
   const toggleTaskMutation = useMutation({
