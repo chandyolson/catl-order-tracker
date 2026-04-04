@@ -622,11 +622,10 @@ export default function OverviewTab({
                         <X size={12} style={{ color: "#D4183D" }} />
                       </button>
                     )}
-                    {slot && !isVoided && order.google_drive_folder_url && (
+                    {order.google_drive_folder_url && (
                       <button onClick={async () => {
                         if (browseSlot === slotType) { setBrowseSlot(null); return; }
                         setBrowseSlot(slotType);
-                        setLinkingSlot(null);
                         if (browseFiles.length === 0) {
                           setBrowseLoading(true);
                           try {
@@ -638,10 +637,10 @@ export default function OverviewTab({
                           finally { setBrowseLoading(false); }
                         }
                       }} className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors active:scale-[0.95] flex items-center gap-1" style={{ backgroundColor: browseSlot === slotType ? "#0E2646" : "rgba(14,38,70,0.08)", color: browseSlot === slotType ? "#F3D12A" : "#0E2646" }}>
-                        <FolderOpen size={10} />{isFilled ? "" : "Browse"}
+                        <FolderOpen size={10} />Browse
                       </button>
                     )}
-                    {!isFilled && !isVoided && !order.google_drive_folder_url && <span className="text-[10px] text-muted-foreground">No Drive folder</span>}
+                    {!isFilled && !order.google_drive_folder_url && <span className="text-[10px] text-muted-foreground">No Drive folder</span>}
                   </div>
                   {/* Browse Drive file picker */}
                   {browseSlot === slotType && (
