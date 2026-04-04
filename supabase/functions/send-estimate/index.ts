@@ -89,7 +89,7 @@ ${order.tax_amount && order.tax_amount > 0 ? `<tr><td style="color:#717182;font-
     await supabase.from("order_timeline").insert({ order_id: order.id, event_type: "estimate_sent", title: "Estimate emailed to customer", description: `Sent to ${recipient_email}`, created_by: "system" });
 
     return new Response(JSON.stringify({ success: true, message_id: messageId, sent_to: recipient_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (err) {
+  } catch (err: unknown) {
     try {
       const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const body = await req.clone().json().catch(() => ({}));
