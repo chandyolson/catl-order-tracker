@@ -250,13 +250,14 @@ export default function Dashboard() {
       const lower = assistantMsg.toLowerCase();
       const actions: ActionButton[] = [];
       if (lower.includes("estimate") || lower.includes("quote") || lower.includes("draft")) {
-        actions.push({ label: "New estimate →", route: "/estimates/new" });
+        actions.push({ label: "New estimate →", route: "/orders/new?type=estimate" });
       }
       if (lower.includes("order") || lower.includes("inventory")) {
         actions.push({ label: "View orders →", route: "/equipment" });
       }
       if (lower.includes("task")) {
-        actions.push({ label: "View tasks →", route: "/tasks" });
+        // Tasks are on this page — scroll to them
+        setTimeout(() => document.getElementById("dashboard-tasks")?.scrollIntoView({ behavior: "smooth" }), 100);
       }
       const newMsg: ChatMsg = { role: "assistant", content: assistantMsg, actions };
       setChatHistory(isGreeting ? [newMsg] : prev => [...prev, newMsg]);
