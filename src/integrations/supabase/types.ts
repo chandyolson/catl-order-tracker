@@ -14,212 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      carriers: {
-        Row: {
-          id: string
-          name: string
-          type: string
-          phone: string | null
-          email: string | null
-          vehicle_description: string | null
-          notes: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          type?: string
-          phone?: string | null
-          email?: string | null
-          vehicle_description?: string | null
-          notes?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          type?: string
-          phone?: string | null
-          email?: string | null
-          vehicle_description?: string | null
-          notes?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      freight_runs: {
-        Row: {
-          id: string
-          name: string | null
-          pickup_location: string
-          pickup_address: string | null
-          pickup_city: string | null
-          pickup_state: string | null
-          start_location: string | null
-          start_address: string | null
-          start_city: string | null
-          start_state: string | null
-          end_location: string | null
-          end_address: string | null
-          end_city: string | null
-          end_state: string | null
-          total_miles: number | null
-          carrier_id: string | null
-          driver_name: string | null
-          status: string
-          pickup_date: string | null
-          estimated_arrival: string | null
-          actual_cost: number | null
-          freight_notes: string | null
-          share_token: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name?: string | null
-          pickup_location?: string
-          pickup_address?: string | null
-          pickup_city?: string | null
-          pickup_state?: string | null
-          start_location?: string | null
-          start_address?: string | null
-          start_city?: string | null
-          start_state?: string | null
-          end_location?: string | null
-          end_address?: string | null
-          end_city?: string | null
-          end_state?: string | null
-          total_miles?: number | null
-          carrier_id?: string | null
-          driver_name?: string | null
-          status?: string
-          pickup_date?: string | null
-          estimated_arrival?: string | null
-          actual_cost?: number | null
-          freight_notes?: string | null
-          share_token?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string | null
-          pickup_location?: string
-          pickup_address?: string | null
-          pickup_city?: string | null
-          pickup_state?: string | null
-          start_location?: string | null
-          start_address?: string | null
-          start_city?: string | null
-          start_state?: string | null
-          end_location?: string | null
-          end_address?: string | null
-          end_city?: string | null
-          end_state?: string | null
-          total_miles?: number | null
-          carrier_id?: string | null
-          driver_name?: string | null
-          status?: string
-          pickup_date?: string | null
-          estimated_arrival?: string | null
-          actual_cost?: number | null
-          freight_notes?: string | null
-          share_token?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "freight_runs_carrier_id_fkey"
-            columns: ["carrier_id"]
-            isOneToOne: false
-            referencedRelation: "carriers"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      freight_run_stops: {
-        Row: {
-          id: string
-          freight_run_id: string
-          order_id: string | null
-          stop_order: number
-          stop_type: string
-          customer_name: string | null
-          delivery_address: string | null
-          delivery_city: string | null
-          delivery_state: string | null
-          delivery_zip: string | null
-          delivery_phone: string | null
-          delivery_instructions: string | null
-          unloading_equipment: string | null
-          status: string
-          delivered_at: string | null
-          notes: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          freight_run_id: string
-          order_id?: string | null
-          stop_order?: number
-          stop_type?: string
-          customer_name?: string | null
-          delivery_address?: string | null
-          delivery_city?: string | null
-          delivery_state?: string | null
-          delivery_zip?: string | null
-          delivery_phone?: string | null
-          delivery_instructions?: string | null
-          unloading_equipment?: string | null
-          status?: string
-          delivered_at?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          freight_run_id?: string
-          order_id?: string | null
-          stop_order?: number
-          stop_type?: string
-          customer_name?: string | null
-          delivery_address?: string | null
-          delivery_city?: string | null
-          delivery_state?: string | null
-          delivery_zip?: string | null
-          delivery_phone?: string | null
-          delivery_instructions?: string | null
-          unloading_equipment?: string | null
-          status?: string
-          delivered_at?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "freight_run_stops_freight_run_id_fkey"
-            columns: ["freight_run_id"]
-            isOneToOne: false
-            referencedRelation: "freight_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "freight_run_stops_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       app_settings: {
         Row: {
           description: string | null
@@ -416,6 +210,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      carriers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          type: string
+          updated_at: string
+          vehicle_description: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          type?: string
+          updated_at?: string
+          vehicle_description?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          type?: string
+          updated_at?: string
+          vehicle_description?: string | null
+        }
+        Relationships: []
       }
       change_orders: {
         Row: {
@@ -982,6 +815,253 @@ export type Database = {
           },
         ]
       }
+      freight_run_stops: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          delivered_at: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_instructions: string | null
+          delivery_phone: string | null
+          delivery_state: string | null
+          delivery_zip: string | null
+          freight_run_id: string
+          id: string
+          notes: string | null
+          order_id: string | null
+          status: string
+          stop_order: number
+          stop_type: string
+          unloading_equipment: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_instructions?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          freight_run_id: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          status?: string
+          stop_order?: number
+          stop_type?: string
+          unloading_equipment?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_instructions?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          freight_run_id?: string
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          status?: string
+          stop_order?: number
+          stop_type?: string
+          unloading_equipment?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_run_stops_freight_run_id_fkey"
+            columns: ["freight_run_id"]
+            isOneToOne: false
+            referencedRelation: "freight_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_run_stops_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      freight_runs: {
+        Row: {
+          actual_cost: number | null
+          carrier_id: string | null
+          created_at: string
+          driver_name: string | null
+          driver_phone: string | null
+          end_address: string | null
+          end_city: string | null
+          end_location: string | null
+          end_state: string | null
+          estimated_arrival: string | null
+          freight_notes: string | null
+          id: string
+          name: string | null
+          pickup_address: string | null
+          pickup_city: string | null
+          pickup_date: string | null
+          pickup_location: string
+          pickup_state: string | null
+          share_token: string | null
+          start_address: string | null
+          start_city: string | null
+          start_location: string | null
+          start_state: string | null
+          status: string
+          total_miles: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_cost?: number | null
+          carrier_id?: string | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          end_address?: string | null
+          end_city?: string | null
+          end_location?: string | null
+          end_state?: string | null
+          estimated_arrival?: string | null
+          freight_notes?: string | null
+          id?: string
+          name?: string | null
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_date?: string | null
+          pickup_location?: string
+          pickup_state?: string | null
+          share_token?: string | null
+          start_address?: string | null
+          start_city?: string | null
+          start_location?: string | null
+          start_state?: string | null
+          status?: string
+          total_miles?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_cost?: number | null
+          carrier_id?: string | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          end_address?: string | null
+          end_city?: string | null
+          end_location?: string | null
+          end_state?: string | null
+          estimated_arrival?: string | null
+          freight_notes?: string | null
+          id?: string
+          name?: string | null
+          pickup_address?: string | null
+          pickup_city?: string | null
+          pickup_date?: string | null
+          pickup_location?: string
+          pickup_state?: string | null
+          share_token?: string | null
+          start_address?: string | null
+          start_city?: string | null
+          start_location?: string | null
+          start_state?: string | null
+          status?: string
+          total_miles?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_runs_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_inbox: {
+        Row: {
+          ai_category: string | null
+          ai_summary: string | null
+          attachment_names: string[] | null
+          body_preview: string | null
+          created_at: string | null
+          from_email: string | null
+          from_name: string | null
+          gmail_message_id: string
+          gmail_thread_id: string | null
+          has_attachment: boolean | null
+          id: string
+          is_equipment_related: boolean | null
+          labels: string[] | null
+          matched_contract_number: string | null
+          matched_order_id: string | null
+          processed: boolean | null
+          received_at: string | null
+          snippet: string | null
+          subject: string | null
+          to_email: string | null
+        }
+        Insert: {
+          ai_category?: string | null
+          ai_summary?: string | null
+          attachment_names?: string[] | null
+          body_preview?: string | null
+          created_at?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id: string
+          gmail_thread_id?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          is_equipment_related?: boolean | null
+          labels?: string[] | null
+          matched_contract_number?: string | null
+          matched_order_id?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          ai_category?: string | null
+          ai_summary?: string | null
+          attachment_names?: string[] | null
+          body_preview?: string | null
+          created_at?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id?: string
+          gmail_thread_id?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          is_equipment_related?: boolean | null
+          labels?: string[] | null
+          matched_contract_number?: string | null
+          matched_order_id?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_inbox_matched_order_id_fkey"
+            columns: ["matched_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       google_tokens: {
         Row: {
           access_token: string
@@ -1014,6 +1094,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      manufacturer_item_mappings: {
+        Row: {
+          combo_group: string | null
+          confidence: number | null
+          confirmed_by: string | null
+          created_at: string | null
+          id: string
+          manufacturer_id: string
+          mfg_item_code: string | null
+          mfg_item_name: string
+          our_item_id: string | null
+          our_item_name: string
+          our_item_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          combo_group?: string | null
+          confidence?: number | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          id?: string
+          manufacturer_id: string
+          mfg_item_code?: string | null
+          mfg_item_name: string
+          our_item_id?: string | null
+          our_item_name: string
+          our_item_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          combo_group?: string | null
+          confidence?: number | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          id?: string
+          manufacturer_id?: string
+          mfg_item_code?: string | null
+          mfg_item_name?: string
+          our_item_id?: string | null
+          our_item_name?: string
+          our_item_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manufacturer_item_mappings_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       manufacturers: {
         Row: {
@@ -1274,7 +1407,9 @@ export type Database = {
         Row: {
           base_model: string | null
           chute_length: string | null
+          compared_against_slot: string | null
           comparison_notes: string | null
+          comparison_results: Json | null
           comparison_status: string | null
           created_at: string
           discount_amount: number | null
@@ -1301,7 +1436,9 @@ export type Database = {
         Insert: {
           base_model?: string | null
           chute_length?: string | null
+          compared_against_slot?: string | null
           comparison_notes?: string | null
+          comparison_results?: Json | null
           comparison_status?: string | null
           created_at?: string
           discount_amount?: number | null
@@ -1328,7 +1465,9 @@ export type Database = {
         Update: {
           base_model?: string | null
           chute_length?: string | null
+          compared_against_slot?: string | null
           comparison_notes?: string | null
+          comparison_results?: Json | null
           comparison_status?: string | null
           created_at?: string
           discount_amount?: number | null
@@ -1744,12 +1883,16 @@ export type Database = {
           completed_date: string | null
           created_at: string | null
           document_type: string
+          due_date: string | null
           file_url: string | null
           id: string
+          is_manual: boolean | null
           notes: string | null
           order_id: string | null
           side: string
+          sort_order: number | null
           status: string
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1757,12 +1900,16 @@ export type Database = {
           completed_date?: string | null
           created_at?: string | null
           document_type: string
+          due_date?: string | null
           file_url?: string | null
           id?: string
+          is_manual?: boolean | null
           notes?: string | null
           order_id?: string | null
           side: string
+          sort_order?: number | null
           status?: string
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1770,12 +1917,16 @@ export type Database = {
           completed_date?: string | null
           created_at?: string | null
           document_type?: string
+          due_date?: string | null
           file_url?: string | null
           id?: string
+          is_manual?: boolean | null
           notes?: string | null
           order_id?: string | null
           side?: string
+          sort_order?: number | null
           status?: string
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1865,6 +2016,9 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          attachment_name: string | null
+          attachment_type: string | null
+          attachment_url: string | null
           completed_at: string | null
           created_at: string | null
           created_by: string | null
@@ -1883,6 +2037,9 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1901,6 +2058,9 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           completed_at?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1964,6 +2124,8 @@ export type Database = {
       voice_memos: {
         Row: {
           ai_summary: string | null
+          archived: boolean | null
+          assigned_to: string | null
           audio_file_name: string | null
           audio_file_size_bytes: number | null
           audio_storage_path: string | null
@@ -1977,6 +2139,7 @@ export type Database = {
           equipment_mentioned: Json | null
           id: string
           memo_type: string | null
+          notes: string | null
           order_id: string | null
           processing_error: string | null
           processing_status: string | null
@@ -1988,6 +2151,8 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          archived?: boolean | null
+          assigned_to?: string | null
           audio_file_name?: string | null
           audio_file_size_bytes?: number | null
           audio_storage_path?: string | null
@@ -2001,6 +2166,7 @@ export type Database = {
           equipment_mentioned?: Json | null
           id?: string
           memo_type?: string | null
+          notes?: string | null
           order_id?: string | null
           processing_error?: string | null
           processing_status?: string | null
@@ -2012,6 +2178,8 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          archived?: boolean | null
+          assigned_to?: string | null
           audio_file_name?: string | null
           audio_file_size_bytes?: number | null
           audio_storage_path?: string | null
@@ -2025,6 +2193,7 @@ export type Database = {
           equipment_mentioned?: Json | null
           id?: string
           memo_type?: string | null
+          notes?: string | null
           order_id?: string | null
           processing_error?: string | null
           processing_status?: string | null
@@ -2086,6 +2255,10 @@ export type Database = {
       }
     }
     Functions: {
+      compare_document_slots: {
+        Args: { p_left_slot: string; p_order_id: string; p_right_slot: string }
+        Returns: Json
+      }
       generate_estimate_number: { Args: never; Returns: string }
       list_customers_with_stats: {
         Args: {
