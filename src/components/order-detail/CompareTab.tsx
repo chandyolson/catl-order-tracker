@@ -75,7 +75,7 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
 
   const compareMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("compare_document_slots", {
+      const { data, error } = await (supabase.rpc as any)("compare_document_slots", {
         p_order_id: orderId, p_left_slot: leftSlot, p_right_slot: rightSlot,
       });
       if (error) throw error;
