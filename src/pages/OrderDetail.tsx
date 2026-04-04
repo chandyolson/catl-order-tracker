@@ -27,6 +27,58 @@ function fmtCurrency(n: number | null | undefined) {
   return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+  estimate: { label: "Estimate", bg: "#F1EFE8", text: "#444441" },
+  purchase_order: { label: "Purchase order", bg: "#E6F1FB", text: "#0C447C" },
+  order_pending: { label: "Order pending", bg: "#EEEDFE", text: "#3C3489" },
+  building: { label: "Building", bg: "#FAEEDA", text: "#633806" },
+  ready: { label: "Ready", bg: "#E1F5EE", text: "#085041" },
+  delivered: { label: "Delivered", bg: "#EAF3DE", text: "#27500A" },
+  closed: { label: "Closed", bg: "#F1EFE8", text: "#717182" },
+};
+
+function StatusDropdown({ orderId, currentStatus, onChanged }: { orderId: string; currentStatus: string; onChanged: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const cfg = STATUS_CONFIG[currentStatus] || { label: currentStatus, bg: "#F1EFE8", text: "#444441" };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === currentStatus) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
+      if (error) throw error;
+      await supabase.from("order_timeline").insert({
+        order_id: orderId, event_type: "status_change",
+        title: `Status → ${STATUS_CONFIG[newStatus]?.label || newStatus}`,
+        description: `Changed from ${cfg.label}`,
+      });
+      toast.success(`Status → ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+      onChanged();
+    } catch (err: any) { toast.error(err.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer active:scale-[0.95] transition-transform"
+          style={{ backgroundColor: cfg.bg, color: cfg.text, opacity: saving ? 0.5 : 1 }}>
+          {cfg.label}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[160px]">
+        {Object.entries(STATUS_CONFIG).map(([key, val]) => (
+          <DropdownMenuItem key={key} onClick={() => handleStatusChange(key)} className="cursor-pointer">
+            <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: val.text }} />
+            <span style={{ fontWeight: key === currentStatus ? 700 : 400 }}>{val.label}</span>
+            {key === currentStatus && <span className="ml-auto text-[10px]">✓</span>}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function fmtDate(d: string | null | undefined, includeYear = false) {
   if (!d) return "—";
   try {
@@ -280,7 +332,7 @@ export default function OrderDetail() {
                     #{(order as any).moly_contract_number}
                   </span>
                 )}
-                <StatusBadge status={order.status} />
+                <StatusDropdown orderId={order.id} currentStatus={order.status} onChanged={() => queryClient.invalidateQueries({ queryKey: ["order", id] })} />
               </div>
 
               {/* Row 2: Manufacturer + Base Model + Extended (the blue build box) */}
