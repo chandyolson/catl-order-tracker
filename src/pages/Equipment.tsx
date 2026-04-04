@@ -165,8 +165,8 @@ export default function Equipment() {
     } else if (etaFilter === "this_month") {
       const end = addMonths(new Date(), 1).toISOString().split("T")[0];
       items = items.filter(o => o.est_completion_date && o.est_completion_date >= todayStr && o.est_completion_date <= end);
-    } else if (etaFilter === "overdue") {
-      items = items.filter(o => o.est_completion_date && o.est_completion_date < todayStr && o.status !== "delivered");
+    } else if (etaFilter === "ready") {
+      items = items.filter(o => o.status === "ready");
     } else if (etaFilter === "no_eta") {
       items = items.filter(o => !o.est_completion_date);
     }
@@ -217,10 +217,10 @@ export default function Equipment() {
   const kpis = useMemo(() => {
     const all = (ordersQuery.data || []) as any[];
     const todayStr = new Date().toISOString().split("T")[0];
-    const overdue = all.filter(o => o.est_completion_date && o.est_completion_date < todayStr && o.status !== "delivered" && !o.delivered_date).length;
+    const ready = all.filter(o => o.status === "ready").length;
     const weekEnd = addDays(new Date(), 7).toISOString().split("T")[0];
     const dueWeek = all.filter(o => o.est_completion_date && o.est_completion_date >= todayStr && o.est_completion_date <= weekEnd && o.status !== "delivered").length;
-    return { overdue, dueWeek };
+    return { ready, dueWeek };
   }, [ordersQuery.data]);
 
   const hasActiveFilters = statusFilter !== "all" || mfgFilter !== "all" || etaFilter !== "all" || debouncedSearch.trim();
@@ -235,7 +235,7 @@ export default function Equipment() {
             <h1 className="text-2xl font-bold" style={{ color: "#0E2646" }}>Equipment</h1>
             <p className="text-sm mt-0.5" style={{ color: "#717182" }}>
               {filtered.length} of {counts.all} orders
-              {kpis.overdue > 0 && <span style={{ color: "#D4183D" }}> · {kpis.overdue} overdue</span>}
+              {kpis.ready > 0 && <span style={{ color: "#55BAAA" }}> · {kpis.ready} ready</span>}
               {kpis.dueWeek > 0 && <span style={{ color: "#55BAAA" }}> · {kpis.dueWeek} due this week</span>}
             </p>
           </div>
@@ -276,9 +276,9 @@ export default function Equipment() {
           <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#27AE60" }}>
             {counts.delivered} Delivered
           </span>
-          {kpis.overdue > 0 && (
-            <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#D4183D" }}>
-              {kpis.overdue} Overdue
+          {kpis.ready > 0 && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#55BAAA" }}>
+              {kpis.ready} Ready for Pickup
             </span>
           )}
         </div>
@@ -324,7 +324,7 @@ export default function Equipment() {
             <option value="all">All ETAs</option>
             <option value="this_week">Due this week</option>
             <option value="this_month">Due this month</option>
-            <option value="overdue">Overdue</option>
+            <option value="ready">Ready for Pickup</option>
             <option value="no_eta">No ETA</option>
           </select>
           <select value={sortIdx} onChange={e => setSortIdx(Number(e.target.value))}

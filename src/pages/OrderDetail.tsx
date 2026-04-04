@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle, ExternalLink, ClipboardList,
+  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle, ExternalLink, ClipboardList, Copy,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -133,6 +133,38 @@ export default function OrderDetail() {
       navigate("/equipment");
     },
     onError: (err: any) => toast.error("Failed to delete: " + err.message),
+  });
+
+  const duplicateOrderMutation = useMutation({
+    mutationFn: async () => {
+      if (!order) throw new Error("No order to duplicate");
+      const { data: newOrder, error } = await supabase.from("orders").insert({
+        manufacturer_id: order.manufacturer_id,
+        base_model_id: order.base_model_id,
+        base_model: order.base_model,
+        build_shorthand: order.build_shorthand,
+        selected_options: order.selected_options,
+        custom_line_items: order.custom_line_items,
+        subtotal: order.subtotal,
+        subtotal_cost: order.subtotal_cost,
+        cost_price: order.cost_price,
+        customer_price: order.customer_price,
+        discount_amount: order.discount_amount,
+        discount_type: order.discount_type,
+        freight_estimate: order.freight_estimate,
+        from_inventory: true,
+        status: "order_pending",
+        contract_name: order.contract_name ? `${order.contract_name} (copy)` : null,
+      }).select("id").single();
+      if (error) throw error;
+      return newOrder;
+    },
+    onSuccess: (newOrder) => {
+      queryClient.invalidateQueries({ queryKey: ["equipment_orders"] });
+      toast.success("Order duplicated — edit the new one to set contract details");
+      navigate(`/orders/${newOrder.id}/edit`);
+    },
+    onError: (err: any) => toast.error("Failed to duplicate: " + err.message),
   });
 
   const convertToOrderMutation = useMutation({
@@ -335,6 +367,13 @@ export default function OrderDetail() {
                   >
                     <ClipboardList size={14} className="mr-2" style={{ color: "#F59E0B" }} />
                     Orange Sheet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { if (confirm("Duplicate this order's specs into a new order?")) duplicateOrderMutation.mutate(); }}
+                    className="cursor-pointer"
+                  >
+                    <Copy size={14} className="mr-2" style={{ color: "#55BAAA" }} />
+                    Duplicate Specs
                   </DropdownMenuItem>
                   {manufacturer?.ordering_portal_url && (
                     <DropdownMenuItem
