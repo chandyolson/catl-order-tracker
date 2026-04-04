@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, ChevronDown, Send, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, Send, Trash2, ExternalLink, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -60,9 +60,12 @@ export default function EstimatesTab({ orderId, estimates, order, queryClient }:
         )}
       </div>
 
+      {/* QB Estimate from Document Chain */}
+      <QBEstimateCard orderId={orderId} />
+
       {estimates.length === 0 ? (
         <div className="text-center py-6">
-          <p className="text-sm text-muted-foreground">No estimates yet.</p>
+          <p className="text-sm text-muted-foreground">No app-created estimates yet.</p>
           {customer && (
             <p className="text-xs text-muted-foreground mt-1">Create an estimate to quote {customer.name || "this customer"} on this equipment with add-ons.</p>
           )}
@@ -84,6 +87,60 @@ export default function EstimatesTab({ orderId, estimates, order, queryClient }:
           customer={customer}
         />
       )}
+    </div>
+  );
+}
+
+function QBEstimateCard({ orderId }: { orderId: string }) {
+  const slotsQuery = useQuery({
+    queryKey: ["estimate_slots", orderId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_document_slots")
+        .select("id, slot_type, is_filled, document_id, total_amount, order_documents:document_id(id, file_url, file_name, title)")
+        .eq("order_id", orderId)
+        .in("slot_type", ["approved_estimate", "catl_estimate", "catl_customer_invoice"]);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const slots = slotsQuery.data || [];
+  const filledSlots = slots.filter((s: any) => s.is_filled && s.order_documents?.file_url);
+
+  if (filledSlots.length === 0) return null;
+
+  const labels: Record<string, string> = {
+    catl_estimate: "CATL Estimate",
+    approved_estimate: "QB Estimate",
+    catl_customer_invoice: "Customer Invoice",
+  };
+
+  return (
+    <div className="mb-4 space-y-2">
+      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#717182" }}>From QuickBooks</p>
+      {filledSlots.map((slot: any) => {
+        const doc = slot.order_documents as any;
+        return (
+          <div key={slot.id} className="flex items-center justify-between px-3.5 py-3 rounded-xl border-2" style={{ borderColor: "#27AE60", backgroundColor: "rgba(39,174,96,0.04)" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(39,174,96,0.1)" }}>
+                <FileText size={16} style={{ color: "#27AE60" }} />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>{labels[slot.slot_type] || slot.slot_type}</p>
+                <p className="text-[11px] text-muted-foreground">{doc?.file_name || "PDF document"}</p>
+                {slot.total_amount && <p className="text-[12px] font-medium" style={{ color: "#27AE60" }}>${Number(slot.total_amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>}
+              </div>
+            </div>
+            <a href={doc?.file_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold active:scale-[0.95]"
+              style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
+              <ExternalLink size={12} /> View PDF
+            </a>
+          </div>
+        );
+      })}
     </div>
   );
 }
