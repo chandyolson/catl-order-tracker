@@ -82,6 +82,8 @@ export default function OverviewTab({
   const [browseFiles, setBrowseFiles] = useState<{ id: string; name: string; url: string; size: string; mime_type?: string; subfolder?: string | null }[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseSlot, setBrowseSlot] = useState<string | null>(null);
+  const [convertingBill, setConvertingBill] = useState(false);
+  const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCustSearch(custSearch), 300);
@@ -224,9 +226,41 @@ export default function OverviewTab({
     finally { setCreatingPO(false); }
   }
 
+  async function handleConvertPOToBill() {
+    setConvertingBill(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("qb-convert-po-to-bill", { body: { order_id: order.id } });
+      if (error) { toast.error(data?.error || error.message || "Failed to create bill"); return; }
+      if (data?.success) {
+        toast.success(data.already_exists ? `QB Bill already exists: #${data.qb_bill_doc_number}` : `QB Bill #${data.qb_bill_doc_number} created from PO`);
+        queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+        slotsQuery.refetch();
+      } else toast.error(data?.error || "Failed to create QB Bill");
+    } catch (err: any) { toast.error(err.message || "Failed to create QB Bill"); }
+    finally { setConvertingBill(false); }
+  }
+
+  async function handleConvertEstimateToInvoice() {
+    setConvertingInvoice(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("qb-convert-estimate-to-invoice", { body: { order_id: order.id } });
+      if (error) { toast.error(data?.error || error.message || "Failed to create invoice"); return; }
+      if (data?.success) {
+        toast.success(data.already_exists ? `QB Invoice already exists: #${data.qb_invoice_doc_number}` : `QB Invoice #${data.qb_invoice_doc_number} created from Estimate`);
+        queryClient.invalidateQueries({ queryKey: ["order", order.id] });
+        slotsQuery.refetch();
+      } else toast.error(data?.error || "Failed to create QB Invoice");
+    } catch (err: any) { toast.error(err.message || "Failed to create QB Invoice"); }
+    finally { setConvertingInvoice(false); }
+  }
+
   const isEstimate = order.source_type === "estimate" && order.status === "estimate";
   const isPortalDone = portalOrdered || paperwork.some((p) => p.document_type === "vendor_po_submitted" && p.status === "complete");
   const isQBPODone = !!order.qb_po_id;
+  const canConvertToBill = !!order.qb_po_id && !order.qb_bill_id;
+  const isQBBillDone = !!order.qb_bill_id;
+  const canConvertToInvoice = !!order.qb_estimate_id && !order.qb_invoice_id && !!order.customer_id;
+  const isQBInvoiceDone = !!order.qb_invoice_id;
   const options = Array.isArray(order.selected_options) ? (order.selected_options as any[]) : [];
   const orderTasks = orderTasksQuery.data || [];
   const pendingTasks = orderTasks.filter((t: any) => t.status === "open");
@@ -683,6 +717,35 @@ export default function OverviewTab({
                 );
               })}
             </div>
+            {/* QB Conversion Actions */}
+            {(canConvertToBill || canConvertToInvoice || isQBBillDone || isQBInvoiceDone) && (
+              <div className="pt-2 mt-1 flex flex-wrap gap-2" style={{ borderTop: "1px solid #EBEBEB" }}>
+                {canConvertToBill && (
+                  <button onClick={handleConvertPOToBill} disabled={convertingBill}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-3 py-1.5 transition-colors active:scale-[0.95] disabled:opacity-50"
+                    style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
+                    <ArrowRightCircle size={12} /> {convertingBill ? "Creating..." : "PO → Bill"}
+                  </button>
+                )}
+                {isQBBillDone && (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#27AE60", color: "#fff" }}>
+                    <Check size={12} /> Bill #{order.qb_bill_doc_number}
+                  </span>
+                )}
+                {canConvertToInvoice && (
+                  <button onClick={handleConvertEstimateToInvoice} disabled={convertingInvoice}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-3 py-1.5 transition-colors active:scale-[0.95] disabled:opacity-50"
+                    style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
+                    <ArrowRightCircle size={12} /> {convertingInvoice ? "Creating..." : "Estimate → Invoice"}
+                  </button>
+                )}
+                {isQBInvoiceDone && (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold rounded-full px-3 py-1.5" style={{ backgroundColor: "#27AE60", color: "#fff" }}>
+                    <Check size={12} /> Invoice #{order.qb_invoice_doc_number}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
