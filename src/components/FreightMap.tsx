@@ -75,13 +75,10 @@ export default function FreightMap({ points, totalMiles, onMilesCalculated, onSa
       const map = new google.maps.Map(mapRef.current, {
         center: { lat: 42.5, lng: -100 },
         zoom: 6,
+        mapId: "DEMO_MAP_ID",
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-        ],
       });
 
       mapInstance.current = map;

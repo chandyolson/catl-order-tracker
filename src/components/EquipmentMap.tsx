@@ -81,8 +81,7 @@ export default function EquipmentMap() {
     loader.load().then(() => {
       if (!mapRef.current) return;
       mapInstance.current = new google.maps.Map(mapRef.current, {
-        center: CATL_HQ, zoom: 5, mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
-        styles: [{ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] }],
+        center: CATL_HQ, zoom: 5, mapId: "DEMO_MAP_ID", mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
       });
       setMapLoaded(true);
     }).catch(err => { console.error("Maps load error:", err); setError("Failed to load Google Maps"); });
