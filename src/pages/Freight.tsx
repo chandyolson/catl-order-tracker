@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import FreightMap from "@/components/FreightMap";
 
 type RunStatus = "planning"|"scheduled"|"loading"|"in_transit"|"completed"|"cancelled";
 type StopType = "pickup"|"delivery"|"waypoint";
@@ -51,11 +52,41 @@ function CarSel({value,onChange,carriers}:{value:string;onChange:(v:string)=>voi
   return <select value={value} onChange={e=>onChange(e.target.value)} className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}><option value="">Select...</option>{cv.length>0&&<optgroup label="CATL Vehicles">{cv.map(c=><option key={c.id} value={c.id}>{c.name}{c.vehicle_description?` — ${c.vehicle_description}`:""}</option>)}</optgroup>}{et.length>0&&<optgroup label="Truckers">{et.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>}</select>;
 }
 
+function buildMapPoints(run: FreightRun, stops: RouteStop[], items: ManifestItem[]) {
+  const pts: { label: string; subtitle?: string; city: string; state: string; address?: string; type: "start"|"end"|"pickup"|"delivery"|"waypoint"|"catl" }[] = [];
+  // Start
+  if (run.start_city && run.start_state) {
+    const isC = run.start_location === "catl_stonge_sd";
+    pts.push({ label: isC ? "CATL HQ" : (LOC[run.start_location||""]?.short || run.start_city), subtitle: "Start", city: run.start_city, state: run.start_state, type: "start" });
+  }
+  // Route stops in order
+  stops.forEach(s => {
+    if (s.delivery_city && s.delivery_state) {
+      pts.push({ label: s.customer_name || s.delivery_city, subtitle: s.stop_type === "pickup" ? "Pickup" : s.stop_type === "waypoint" ? "Waypoint" : "Delivery", city: s.delivery_city, state: s.delivery_state, address: s.delivery_address || undefined, type: s.stop_type as any });
+    }
+  });
+  // If no route stops but we have manifest items with delivery addresses, use those
+  if (stops.length === 0 && items.length > 0) {
+    items.forEach(it => {
+      if (it.delivery_city && it.delivery_state && it.destination_type === "customer") {
+        pts.push({ label: it.orders?.customers?.name || it.customer_name || it.delivery_city, subtitle: it.orders?.moly_contract_number || undefined, city: it.delivery_city, state: it.delivery_state, address: it.delivery_address || undefined, type: "delivery" });
+      }
+    });
+  }
+  // End
+  if (run.end_city && run.end_state) {
+    const isC = run.end_location === "catl_stonge_sd";
+    pts.push({ label: isC ? "CATL HQ" : (LOC[run.end_location||""]?.short || run.end_city), subtitle: "End", city: run.end_city, state: run.end_state, type: "end" });
+  }
+  // Deduplicate consecutive same-city entries
+  return pts.filter((p, i) => i === 0 || !(p.city === pts[i-1].city && p.state === pts[i-1].state && p.type === pts[i-1].type));
+}
+
 export default function Freight() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [activeRunId, setActiveRunId] = useState<string|null>(null);
-  const [activeTab, setActiveTab] = useState<"manifest"|"route">("manifest");
+  const [activeTab, setActiveTab] = useState<"manifest"|"route"|"map">("manifest");
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddStop, setShowAddStop] = useState(false);
   const [showNewRun, setShowNewRun] = useState(false);
@@ -138,11 +169,19 @@ export default function Freight() {
           <div className="flex gap-2 mb-3">
             <button onClick={()=>setActiveTab("manifest")} className="flex-1 text-center text-[13px] font-medium py-2.5 rounded-xl" style={activeTab==="manifest"?{backgroundColor:"#0E2646",color:"#F5F5F0"}:{backgroundColor:"#fff",color:"#717182",border:"0.5px solid #D4D4D0"}}>Manifest ({items.length})</button>
             <button onClick={()=>setActiveTab("route")} className="flex-1 text-center text-[13px] font-medium py-2.5 rounded-xl" style={activeTab==="route"?{backgroundColor:"#0E2646",color:"#F5F5F0"}:{backgroundColor:"#fff",color:"#717182",border:"0.5px solid #D4D4D0"}}>Route ({stops.length} stops)</button>
+            <button onClick={()=>setActiveTab("map")} className="flex-1 text-center text-[13px] font-medium py-2.5 rounded-xl" style={activeTab==="map"?{backgroundColor:"#0E2646",color:"#F5F5F0"}:{backgroundColor:"#fff",color:"#717182",border:"0.5px solid #D4D4D0"}}>Map</button>
           </div>
         </div>
         <div className="px-4 pb-24">
           {activeTab==="manifest"?<ManifestTab items={items} onAddClick={()=>setShowAddItem(true)} onRemove={id=>{if(confirm("Remove from truck?"))removeItem.mutate(id);}} onUpdate={d=>updateItem.mutate(d)} onMarkDelivered={id=>updateItem.mutate({id,status:"delivered",delivered_at:new Date().toISOString()})} onReorder={reorderItems} navigate={navigate} stops={stops} activeRun={activeRun}/>
-          :<RouteTab stops={stops} activeRun={activeRun} onAddClick={()=>setShowAddStop(true)} onRemove={id=>{if(confirm("Remove stop?"))removeStop.mutate(id);}} onUpdate={d=>updateStop.mutate(d)} onMarkDone={id=>updateStop.mutate({id,status:"delivered",delivered_at:new Date().toISOString()})} onReorder={reorderStops} navigate={navigate}/>}
+          :activeTab==="route"?<RouteTab stops={stops} activeRun={activeRun} onAddClick={()=>setShowAddStop(true)} onRemove={id=>{if(confirm("Remove stop?"))removeStop.mutate(id);}} onUpdate={d=>updateStop.mutate(d)} onMarkDone={id=>updateStop.mutate({id,status:"delivered",delivered_at:new Date().toISOString()})} onReorder={reorderStops} navigate={navigate}/>
+          :<FreightMap
+            points={buildMapPoints(activeRun, stops, items)}
+            totalMiles={activeRun.total_miles}
+            onMilesCalculated={(total, legs) => { updateRun.mutate({ id: activeRun.id, total_miles: total }); }}
+            onSaveMiles={(miles) => { updateRun.mutate({ id: activeRun.id, total_miles: miles }); }}
+            height={320}
+          />}
         </div>
         {showAddItem&&<AddItemModal runId={activeRun.id} readyOrders={readyOrders} cnt={items.length} onAdd={d=>{addItem.mutate(d);setShowAddItem(false);}} onClose={()=>setShowAddItem(false)}/>}
         {showAddStop&&<AddRouteStopModal runId={activeRun.id} cnt={stops.length} onAdd={d=>{addStop.mutate(d);setShowAddStop(false);}} onClose={()=>setShowAddStop(false)}/>}
