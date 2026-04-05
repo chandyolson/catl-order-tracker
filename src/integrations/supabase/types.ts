@@ -1644,11 +1644,13 @@ export type Database = {
           customer_id: string | null
           customer_location: string | null
           customer_price: number | null
+          customer_status: string | null
           delivered_date: string | null
           delivery_instructions: string | null
           discount_amount: number | null
           discount_type: string | null
           equip_location: string | null
+          equipment_status: string | null
           equipment_type: string | null
           est_completion_date: string | null
           estimate_date: string | null
@@ -1716,11 +1718,13 @@ export type Database = {
           customer_id?: string | null
           customer_location?: string | null
           customer_price?: number | null
+          customer_status?: string | null
           delivered_date?: string | null
           delivery_instructions?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           equip_location?: string | null
+          equipment_status?: string | null
           equipment_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null
@@ -1788,11 +1792,13 @@ export type Database = {
           customer_id?: string | null
           customer_location?: string | null
           customer_price?: number | null
+          customer_status?: string | null
           delivered_date?: string | null
           delivery_instructions?: string | null
           discount_amount?: number | null
           discount_type?: string | null
           equip_location?: string | null
+          equipment_status?: string | null
           equipment_type?: string | null
           est_completion_date?: string | null
           estimate_date?: string | null

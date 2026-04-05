@@ -1,1809 +1,376 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronDown, Plus, Minus, Trash2 } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatOptionPillLabel } from "@/lib/optionDisplay";
+import EquipmentConfigurator, { ConfiguratorHandle } from "@/components/equipment/EquipmentConfigurator";
+import { ConfiguratorState, ConfiguratorInitialValues, CustomLineItem } from "@/components/equipment/shared";
 
-const STATUS_OPTIONS = ["estimate", "purchase_order", "order_pending", "building", "ready", "delivered", "closed"];
-const STATUS_LABELS: Record<string, string> = {
-  estimate: "Estimate",
-  purchase_order: "Purchase order",
-  order_pending: "Order pending",
-  building: "Building",
-  ready: "Ready",
-  delivered: "Delivered",
-  closed: "Closed",
+/* ─── Two-track status definitions ───────────────────────── */
+
+const EQUIPMENT_STATUSES = ["ordered", "building", "ready", "in_transit", "at_catl", "delivered"];
+const EQUIPMENT_LABELS: Record<string, string> = {
+  ordered: "Ordered", building: "Building", ready: "Ready",
+  in_transit: "In Transit", at_catl: "At CATL", delivered: "Delivered",
 };
 
-// Group order is driven by sort_order from the database, not hardcoded.
-
-type FullOption = {
-  id: string; name: string; display_name: string | null; short_code: string;
-  option_group: string | null; retail_price: number; cost_price: number;
-  selection_type: string | null; allows_quantity: boolean | null; max_per_side: number | null;
-  requires_extended: boolean | null; requires_options: string[] | null;
-  conflicts_with: string[] | null; model_restriction: string[] | null;
-  is_upgrade_of: string | null; is_included: boolean | null; sort_order: number | null;
+const CUSTOMER_STATUSES = ["estimate", "sold", "awaiting_delivery", "delivered", "paid", "closed"];
+const CUSTOMER_LABELS: Record<string, string> = {
+  estimate: "Estimate", sold: "Sold", awaiting_delivery: "Awaiting",
+  delivered: "Delivered", paid: "Paid", closed: "Closed",
 };
 
-type OptionSelection = { optionId: string; left: number; right: number; selected: boolean; quantity: number; };
-
-function FormRow({ label, error, children, narrow }: { label: string; error?: string; children: React.ReactNode; narrow?: boolean }) {
+function StatusPipeline({ statuses, labels, current, onChange, color }: {
+  statuses: string[]; labels: Record<string, string>; current: string;
+  onChange: (s: string) => void; color: string;
+}) {
+  const idx = statuses.indexOf(current);
   return (
-    <div className="overflow-hidden">
-      <div className="flex items-start gap-2">
-        <label className="text-[13px] font-semibold text-foreground flex-shrink-0 pt-2.5 break-words" style={{ width: 120, minWidth: 0 }}>{label}</label>
-        <div className={cn("flex-1 min-w-0", narrow ? "md:max-w-[200px]" : "md:max-w-[360px]")}>{children}</div>
-      </div>
-      {error && <p className="text-[11px] mt-1 ml-[128px]" style={{ color: "#D4183D" }}>{error}</p>}
+    <div className="flex gap-1 overflow-x-auto">
+      {statuses.map((s, i) => {
+        const isActive = i <= idx;
+        const isCurrent = s === current;
+        return (
+          <button key={s} type="button" onClick={() => onChange(s)}
+            className={cn("px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-all",
+              isCurrent ? "ring-2 ring-offset-1" : "")}
+            style={{
+              background: isActive ? color : "rgba(245,245,240,0.08)",
+              color: isActive ? "#0E2646" : "rgba(245,245,240,0.4)",
+              ringColor: isCurrent ? color : undefined,
+            }}>
+            {labels[s] || s}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function CurrencyInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden focus-within:ring-2 focus-within:ring-catl-gold/25 focus-within:border-catl-gold" style={{ maxWidth: 140 }}>
-      <span className="pl-3 text-muted-foreground text-sm font-medium">$</span>
-      <input type="text" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))} placeholder={placeholder} className="flex-1 px-2 py-2.5 bg-transparent outline-none text-foreground min-w-0 text-[16px]" />
-    </div>
-  );
-}
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="-mx-4 mt-6 mb-3 px-4 py-2" style={{ background: "#F5F5F0" }}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>{title}</h3>
-        {subtitle && <span className="text-[11px]" style={{ color: "#717182" }}>{subtitle}</span>}
-      </div>
-    </div>
-  );
-}
-
-function fmtCurrency(n: number) { return n.toLocaleString("en-US", { maximumFractionDigits: 0 }); }
-
-function SidePill({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
-        active ? "border-catl-teal/30 text-catl-teal" : disabled ? "border-border text-muted-foreground/40 line-through cursor-not-allowed" : "border-border text-muted-foreground hover:border-catl-teal/30"
-      )}
-      style={active ? { background: "rgba(85,186,170,0.12)" } : undefined}
-    >{label}</button>
-  );
-}
-
-function QtyStepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex items-center gap-1">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="flex items-center justify-center border rounded-md transition-colors" style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value <= min ? "#D4D4D0" : "#1A1A1A" }}><Minus size={14} /></button>
-      <span className="text-center text-sm font-semibold" style={{ width: 28, color: "#1A1A1A" }}>{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="flex items-center justify-center border rounded-md transition-colors" style={{ width: 28, height: 28, borderColor: "#D4D4D0", color: value >= max ? "#D4D4D0" : "#1A1A1A" }}><Plus size={14} /></button>
-    </div>
-  );
-}
+/* ─── Main Component ─────────────────────────────────────── */
 
 export default function EditOrder() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const forEstimate = searchParams.get("forEstimate") === "true";
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const configuratorRef = useRef<ConfiguratorHandle>(null);
 
-  const [initialized, setInitialized] = useState(false);
-  const [optionsInitialized, setOptionsInitialized] = useState(false);
-  const [manufacturerId, setManufacturerId] = useState("");
-  const [baseModelId, setBaseModelId] = useState("");
-  const [quickBuildId, setQuickBuildId] = useState("");
-  const [selections, setSelections] = useState<Map<string, OptionSelection>>(new Map());
-  const [pickOneSelections, setPickOneSelections] = useState<Map<string, string>>(new Map());
-  const [buildShorthand, setBuildShorthand] = useState("");
-  const [buildShorthandManual, setBuildShorthandManual] = useState(true);
-  const [discountType, setDiscountType] = useState<"$" | "%">("$");
-  const [discountAmount, setDiscountAmount] = useState("");
-  const [freightEstimate, setFreightEstimate] = useState("");
-  const [customLineItems, setCustomLineItems] = useState<{ name: string; retail: string; cost: string }[]>([]);
-  const [catl_number, setCatlNumber] = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
-  const [status, setStatus] = useState("estimate");
-  const [estimateDate, setEstimateDate] = useState<Date>(new Date());
-  const [estCompletionDate, setEstCompletionDate] = useState<Date | undefined>();
+  /* ── Page-level state ──────────────────────────────────── */
+  const [molyContractNumber, setMolyContractNumber] = useState("");
+  const [contractName, setContractName] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: "", email: "", phone: "", city: "", state: "", type: "" });
-  const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [fromInventory, setFromInventory] = useState(false);
-  const [inventoryLocation, setInventoryLocation] = useState("");
-  const [contractName, setContractName] = useState("");
-  const [molyContractNumber, setMolyContractNumber] = useState("");
+  const [customerToggle, setCustomerToggle] = useState(false);
   const [notes, setNotes] = useState("");
-  const [newEstimateNumber, setNewEstimateNumber] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [taxState, setTaxState] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<number>(0);
-  const [pivotSide, setPivotSide] = useState<"Left" | "Right" | "">("");
-  const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
-  const [dualChecked, setDualChecked] = useState(false);
-  const [pivotChecked, setPivotChecked] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-  const [showEstimateDialog, setShowEstimateDialog] = useState(false);
-  const [showChangeOrderDialog, setShowChangeOrderDialog] = useState(false);
-  const [receiptTab, setReceiptTab] = useState<"summary" | "itemized">("summary");
-  const [estimateAction, setEstimateAction] = useState<"update" | "new">(forEstimate ? "new" : "update");
-  const [estimateLabel, setEstimateLabel] = useState("");
-  const [coSource, setCoSource] = useState<"customer" | "moly" | "internal">("customer");
-  const [coRequestedBy, setCoRequestedBy] = useState("");
-  const [coDescription, setCoDescription] = useState("");
-  const [coRequiresApproval, setCoRequiresApproval] = useState(false);
+  const [equipmentStatus, setEquipmentStatus] = useState("ordered");
+  const [customerStatus, setCustomerStatus] = useState("");
+  const [showMolyPortal, setShowMolyPortal] = useState(false);
+  const [portalUrl, setPortalUrl] = useState("");
+  const [initialValues, setInitialValues] = useState<ConfiguratorInitialValues | undefined>();
+  const [pageReady, setPageReady] = useState(false);
 
-  const [originalStatus, setOriginalStatus] = useState("");
-  const [originalPrice, setOriginalPrice] = useState("");
-  const [originalCost, setOriginalCost] = useState("");
-  const [originalOptionsJson, setOriginalOptionsJson] = useState("");
-  const [originalBaseModelId, setOriginalBaseModelId] = useState("");
-  const [originalSelectedOptions, setOriginalSelectedOptions] = useState("");
-  const [originalOrder, setOriginalOrder] = useState<any>(null);
-
-  /* ─── Queries ──────────────────────────────────────────────── */
-
+  /* ── Load existing order ───────────────────────────────── */
   const orderQuery = useQuery({
-    queryKey: ["order-edit", id],
+    queryKey: ["order_edit", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*, customers(name, phone, email)").eq("id", id!).single();
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, manufacturers:manufacturer_id(id, name, short_name, ordering_portal_url)")
+        .eq("id", id!)
+        .single();
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
 
-  const existingEstimatesQuery = useQuery({
-    queryKey: ["estimates-count", id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("estimates").select("id").eq("order_id", id!);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
-  const existingEstimateCount = existingEstimatesQuery.data?.length || 0;
-  const isFirstEstimate = forEstimate && existingEstimateCount === 0;
-
-  // Auto-fill estimate number when creating a new version
+  /* ── Populate page state from loaded order ─────────────── */
   useEffect(() => {
-    if (forEstimate && !newEstimateNumber) {
-      supabase.rpc("generate_estimate_number").then(({ data, error }) => {
-        if (!error && data) setNewEstimateNumber(data);
-      });
-    }
-  }, [forEstimate]);
+    if (!orderQuery.data || pageReady) return;
+    const o = orderQuery.data;
+    setMolyContractNumber(o.moly_contract_number || "");
+    setContractName(o.contract_name || "");
+    setCustomerId(o.customer_id || "");
+    setCustomerToggle(!!o.customer_id);
+    setNotes(o.notes || o.build_description || "");
+    setEquipmentStatus(o.equipment_status || "ordered");
+    setCustomerStatus(o.customer_status || "");
 
-  const manufacturersQuery = useQuery({
-    queryKey: ["manufacturers"],
-    queryFn: async () => { const { data, error } = await supabase.from("manufacturers").select("*").order("name"); if (error) throw error; return data; },
-  });
+    // Manufacturer portal
+    const mfr = o.manufacturers as any;
+    const isMoly = mfr?.name?.toLowerCase().includes("moly") || mfr?.short_name?.toLowerCase().includes("moly");
+    setShowMolyPortal(!!isMoly);
+    setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
 
-  const baseModelsQuery = useQuery({
-    queryKey: ["base_models", manufacturerId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("base_models").select("*").eq("manufacturer_id", manufacturerId).eq("is_active", true).order("sort_order").order("name");
-      if (error) throw error; return data;
-    },
-    enabled: !!manufacturerId,
-  });
+    // Build custom line items from saved options
+    const savedCustom = ((o.selected_options || []) as any[]).filter((opt: any) => opt.is_custom);
+    const customItems: CustomLineItem[] = savedCustom.map((c: any) => ({
+      name: c.name || c.display_name || "",
+      retail: String(c.retail_price_each || c.total_retail || ""),
+      cost: String(c.cost_price_each || c.total_cost || ""),
+    }));
 
-  const quickBuildsQuery = useQuery({
-    queryKey: ["quick_builds", manufacturerId],
-    queryFn: async () => {
-      if (!baseModelsQuery.data) return [];
-      const ids = baseModelsQuery.data.map((m) => m.id);
-      if (!ids.length) return [];
-      const { data, error } = await supabase.from("quick_builds").select("*").or(`base_model_id.in.(${ids.join(",")}),base_model_id.is.null`).eq("is_active", true).order("sort_order");
-      if (error) throw error; return data;
-    },
-    enabled: !!baseModelsQuery.data && baseModelsQuery.data.length > 0,
-  });
+    // Set initial values for configurator
+    setInitialValues({
+      manufacturerId: o.manufacturer_id || "",
+      baseModelId: o.base_model_id || "",
+      buildShorthand: o.build_shorthand || "",
+      selectedOptions: (o.selected_options || []) as any[],
+      customLineItems: customItems,
+      discountType: (o.discount_type as "$" | "%") || "$",
+      discountAmount: o.discount_amount ? String(o.discount_amount) : "",
+      freightEstimate: o.freight_estimate ? String(o.freight_estimate) : "",
+      taxState: o.tax_state || "",
+      taxRate: o.tax_rate || 0,
+    });
 
-  const optionsQuery = useQuery({
-    queryKey: ["model_options_full", manufacturerId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("model_options")
-        .select("id, name, display_name, short_code, option_group, retail_price, cost_price, selection_type, allows_quantity, max_per_side, requires_extended, requires_options, conflicts_with, model_restriction, is_upgrade_of, is_included, sort_order")
-        .eq("manufacturer_id", manufacturerId).eq("is_active", true).order("sort_order", { ascending: true }).order("display_name", { ascending: true });
-      if (error) throw error; return data as FullOption[];
-    },
-    enabled: !!manufacturerId,
-  });
+    setPageReady(true);
+  }, [orderQuery.data, pageReady]);
 
-  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedCustomerSearch(customerSearch), 300);
-    return () => clearTimeout(timer);
-  }, [customerSearch]);
+  /* ── Customer search ───────────────────────────────────── */
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => { const t = setTimeout(() => setDebouncedSearch(customerSearch), 300); return () => clearTimeout(t); }, [customerSearch]);
 
   const customerSearchQuery = useQuery({
-    queryKey: ["customer-search", debouncedCustomerSearch],
+    queryKey: ["customer-search", debouncedSearch],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
+      const { data, error } = await supabase.from("customers")
         .select("id, name, email, phone, company, address_city, address_state, customer_type")
-        .ilike("name", `%${debouncedCustomerSearch}%`)
-        .order("name")
-        .limit(30);
+        .ilike("name", `%${debouncedSearch}%`).order("name").limit(30);
       if (error) throw error;
       return data ?? [];
     },
-    enabled: debouncedCustomerSearch.length >= 2,
+    enabled: debouncedSearch.length >= 2,
   });
 
   const selectedCustomerQuery = useQuery({
     queryKey: ["customer", customerId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
+      const { data, error } = await supabase.from("customers")
         .select("id, name, email, phone, address_city, address_state, customer_type")
-        .eq("id", customerId)
-        .single();
+        .eq("id", customerId).single();
       if (error) throw error;
       return data;
     },
     enabled: !!customerId,
   });
-
-  /* ─── Pre-fill from order ──────────────────────────────────── */
-
-  useEffect(() => {
-    if (!orderQuery.data || initialized) return;
-    const o = orderQuery.data;
-    setManufacturerId(o.manufacturer_id || "");
-    setBaseModelId(o.base_model_id || "");
-    setBuildShorthand(o.build_shorthand || "");
-    setDiscountType(((o as any).discount_type as "$" | "%") || "$");
-    setDiscountAmount((o as any).discount_amount ? String((o as any).discount_amount) : "");
-    setFreightEstimate(o.freight_estimate ? String(o.freight_estimate) : "");
-    // Load custom line items from selected_options
-    const savedOptions = Array.isArray(o.selected_options) ? o.selected_options : [];
-    const customs = savedOptions.filter((opt: any) => opt.is_custom || (!opt.option_id && opt.display_name));
-    setCustomLineItems(customs.map((c: any) => ({ name: c.display_name || c.name || "", retail: String(c.retail_price_each || 0), cost: String(c.cost_price_each || 0) })));
-    setCatlNumber(o.catl_number || "");
-    setSerialNumber(o.serial_number || "");
-    setContractName((o as any).contract_name || "");
-    setMolyContractNumber((o as any).moly_contract_number || "");
-    setStatus(o.status || "estimate");
-    setEstimateDate(o.estimate_date ? new Date(o.estimate_date + "T00:00:00") : new Date());
-    setEstCompletionDate(o.est_completion_date ? new Date(o.est_completion_date + "T00:00:00") : undefined);
-    setCustomerId(o.customer_id || "");
-    const cust = o.customers as any;
-    setCustomerSearch(cust?.name || "");
-    setFromInventory(o.from_inventory || false);
-    setInventoryLocation(o.inventory_location || "");
-    setNotes(o.notes || "");
-    setTaxState(o.tax_state || "");
-    setTaxRate(o.tax_rate || 0);
-    setOriginalStatus(o.status || "");
-    setOriginalPrice(o.customer_price ? String(o.customer_price) : "");
-    setOriginalCost(o.our_cost ? String(o.our_cost) : "");
-    setOriginalOptionsJson(JSON.stringify(o.selected_options || []));
-    setOriginalBaseModelId(o.base_model_id || "");
-    setOriginalSelectedOptions(JSON.stringify(o.selected_options || []));
-    setOriginalOrder(o);
-    setInitialized(true);
-  }, [orderQuery.data, initialized]);
-
-  // Pre-fill selections from saved selected_options
-  useEffect(() => {
-    if (!initialized || optionsInitialized || !optionsQuery.data || !orderQuery.data) return;
-    const savedOpts = (orderQuery.data.selected_options || []) as any[];
-    if (savedOpts.length === 0) { setOptionsInitialized(true); return; }
-    const newSel = new Map<string, OptionSelection>();
-    const newPick = new Map<string, string>();
-    for (const saved of savedOpts) {
-      const opt = optionsQuery.data.find((o: any) => o.id === saved.option_id);
-      if (!opt) continue;
-      if (opt.short_code === "DC") { setDualChecked(true); continue; }
-      if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
-        setPivotChecked(true);
-        setPivotType(saved.pivot_type === "front_to_back" ? "front_to_back" : "side_to_side");
-        // Try to get side from saved.side, or parse from description ("left side to side", "right front to back")
-        let side = saved.side || "";
-        if (!side && saved.description) {
-          const desc = (saved.description || "").toLowerCase();
-          if (desc.includes("left")) side = "left";
-          else if (desc.includes("right")) side = "right";
-        }
-        setPivotSide(side as any);
-        continue;
-      }
-      if (opt.selection_type === "pick_one") {
-        newPick.set(opt.option_group || "Misc", opt.id);
-      } else if (opt.selection_type === "side") {
-        const left = saved.left_qty ?? saved.left ?? 0;
-        const right = saved.right_qty ?? saved.right ?? 0;
-        const qty = saved.quantity || left + right || 1;
-        newSel.set(opt.id, { optionId: opt.id, left, right, selected: true, quantity: qty });
-      } else if (opt.allows_quantity) {
-        newSel.set(opt.id, { optionId: opt.id, left: 0, right: 0, selected: true, quantity: saved.quantity || 1 });
-      } else {
-        newSel.set(opt.id, { optionId: opt.id, left: 0, right: 0, selected: true, quantity: 1 });
-      }
-    }
-    setSelections(newSel);
-    setPickOneSelections(newPick);
-    setOptionsInitialized(true);
-  }, [initialized, optionsInitialized, optionsQuery.data, orderQuery.data]);
-
-  /* ─── Derived state ────────────────────────────────────────── */
-
-  const selectedManufacturer = manufacturersQuery.data?.find((m) => m.id === manufacturerId);
-  const selectedBaseModel = baseModelsQuery.data?.find((m) => m.id === baseModelId);
-  const selectedQuickBuild = quickBuildsQuery.data?.find((q) => q.id === quickBuildId);
-
-  const extendedChuteOption = useMemo(() =>
-    optionsQuery.data?.find((o) => o.short_code.toLowerCase() === "ext" || o.name.toLowerCase().includes("extended chute")),
-    [optionsQuery.data]
-  );
-  const isExtendedSelected = extendedChuteOption ? (selections.get(extendedChuteOption.id)?.selected ?? false) : false;
-
-  const isExtendedVariant = (opt: FullOption) => /\(ext(ended)?\)/i.test(opt.name) || opt.requires_extended;
-  const isCarrierOption = (opt: FullOption) => (opt.option_group || "").toLowerCase() === "carrier" || opt.name.toLowerCase().includes("carrier");
-  const isScalesOption = (opt: FullOption) => (opt.option_group || "").toLowerCase() === "scales" || opt.name.toLowerCase().includes("scales");
-  const isStandardCarrierOrScales = (opt: FullOption) => (isCarrierOption(opt) || isScalesOption(opt)) && !isExtendedVariant(opt);
-  const isExtendedCarrierOrScales = (opt: FullOption) => (isCarrierOption(opt) || isScalesOption(opt)) && isExtendedVariant(opt);
-  const isQuantityOnlyOption = (opt: FullOption) => opt.allows_quantity && opt.selection_type !== "side";
-
-  const visibleOptions = useMemo(() => {
-    if (!optionsQuery.data) return [];
-    return optionsQuery.data.filter((opt) => {
-      if (opt.model_restriction && opt.model_restriction.length > 0 && selectedBaseModel) {
-        if (!opt.model_restriction.includes(selectedBaseModel.short_name)) return false;
-      }
-      if (isExtendedSelected) { if (isStandardCarrierOrScales(opt)) return false; }
-      else { if (isExtendedCarrierOrScales(opt)) return false; }
-      if (opt.requires_extended && !isExtendedSelected && !isCarrierOption(opt) && !isScalesOption(opt)) return false;
-      if (opt.requires_options && opt.requires_options.length > 0) {
-        const anySelected = opt.requires_options.some((reqCode) => {
-          const matchOpt = optionsQuery.data?.find((o) => o.short_code === reqCode || o.id === reqCode);
-          if (!matchOpt) return false;
-          const sel = selections.get(matchOpt.id);
-          if (sel && (sel.selected || sel.left > 0 || sel.right > 0)) return true;
-          for (const [, selId] of pickOneSelections) { if (selId === matchOpt.id) return true; }
-          if (matchOpt.short_code === "PC" && pivotChecked && pivotType === "side_to_side") return true;
-          if (matchOpt.short_code === "PC-FB" && pivotChecked && pivotType === "front_to_back") return true;
-          if (matchOpt.short_code === "DC" && dualChecked) return true;
-          return false;
-        });
-        if (!anySelected) return false;
-      }
-      return true;
-    });
-  }, [optionsQuery.data, selectedBaseModel, isExtendedSelected, selections, pickOneSelections, pivotChecked, pivotType, dualChecked]);
-
-  const groupedOptions = useMemo(() => {
-    const groups = new Map<string, FullOption[]>();
-    for (const opt of visibleOptions) { const g = opt.option_group || "Misc"; if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(opt); }
-    return Array.from(groups.entries());
-  }, [visibleOptions]);
-
-  const selectedOptionsList = useMemo(() => {
-    const result: { option: FullOption; quantity: number; left: number; right: number; pivotType?: string; pivotSide?: string }[] = [];
-    for (const [group, optId] of pickOneSelections) {
-      if (group.toLowerCase() === "controls") continue;
-      const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (opt && opt.is_included !== true) result.push({ option: opt, quantity: 1, left: 0, right: 0 });
-    }
-    if (dualChecked) { const dcOpt = optionsQuery.data?.find((o) => o.short_code === "DC"); if (dcOpt) result.push({ option: dcOpt, quantity: 1, left: 0, right: 0 }); }
-    if (pivotChecked) {
-      const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
-      const pcOpt = optionsQuery.data?.find((o) => o.short_code === pcCode);
-      if (pcOpt) result.push({ option: pcOpt, quantity: 1, left: 0, right: 0, pivotType: pivotType || undefined, pivotSide: pivotSide || undefined });
-    }
-    for (const [optId, sel] of selections) {
-      const opt = optionsQuery.data?.find((o) => o.id === optId);
-      if (!opt || opt.selection_type === "pick_one") continue;
-      let qty = (sel.selected && sel.left === 0 && sel.right === 0) ? (sel.quantity || 1) : sel.left + sel.right;
-      if (qty > 0) result.push({ option: opt, quantity: qty, left: sel.left, right: sel.right });
-    }
-    return result;
-  }, [selections, pickOneSelections, optionsQuery.data, pivotSide, pivotType, dualChecked, pivotChecked]);
-
-  const getSideConflicts = useCallback((optId: string, side: "left" | "right"): string | null => {
-    if (isExtendedSelected) return null;
-    const opt = optionsQuery.data?.find((o) => o.id === optId);
-    if (!opt) return null;
-    const isWTD = opt.short_code === "WD" || opt.name.toLowerCase().includes("walk-through");
-    const isSideExit = opt.short_code === "SE" || opt.short_code === "SSH" || opt.short_code === "HE" ||
-      opt.name.toLowerCase().includes("side exit") || opt.name.toLowerCase().includes("slam shut") || opt.name.toLowerCase().includes("hydraulic exit");
-    if (isWTD) {
-      const exits = optionsQuery.data?.filter((o) => o.short_code === "SE" || o.short_code === "SSH" || o.short_code === "HE" || o.name.toLowerCase().includes("side exit") || o.name.toLowerCase().includes("slam shut") || o.name.toLowerCase().includes("hydraulic exit")) || [];
-      for (const ex of exits) { const exSel = selections.get(ex.id); if (exSel && (side === "left" ? exSel.left : exSel.right) > 0) return `${side === "left" ? "Left" : "Right"} blocked — ${ex.display_name || ex.name} on ${side} (non-extended)`; }
-    }
-    if (isSideExit) {
-      const wtds = optionsQuery.data?.filter((o) => o.short_code === "WD" || o.name.toLowerCase().includes("walk-through")) || [];
-      for (const w of wtds) { const wSel = selections.get(w.id); if (wSel && (side === "left" ? wSel.left : wSel.right) > 0) return `${side === "left" ? "Left" : "Right"} blocked — walk-through door on ${side} (non-extended)`; }
-    }
-    return null;
-  }, [isExtendedSelected, optionsQuery.data, selections]);
-
-  useEffect(() => {
-    if (!extendedChuteOption) return;
-    const opts = optionsQuery.data || [];
-    let changed = false, removedStd = false, removedExt = false;
-    const newSel = new Map(selections); const newPick = new Map(pickOneSelections);
-    for (const opt of opts) {
-      if (isExtendedSelected) {
-        if (isStandardCarrierOrScales(opt)) {
-          if (newSel.has(opt.id)) { newSel.delete(opt.id); changed = true; removedStd = true; }
-          for (const [g, selId] of newPick) { if (selId === opt.id) { newPick.delete(g); changed = true; removedStd = true; } }
-        }
-      } else {
-        if (isExtendedCarrierOrScales(opt) || opt.requires_extended) {
-          if (newSel.has(opt.id)) { newSel.delete(opt.id); changed = true; if (isCarrierOption(opt) || isScalesOption(opt)) removedExt = true; }
-          for (const [g, selId] of newPick) { if (selId === opt.id) { newPick.delete(g); changed = true; if (isCarrierOption(opt) || isScalesOption(opt)) removedExt = true; } }
-        }
-      }
-    }
-    if (changed) {
-      setSelections(newSel); setPickOneSelections(newPick);
-      if (removedStd) toast.info("Standard carrier removed — select an extended carrier");
-      else if (removedExt) toast.info("Extended carrier removed");
-    }
-  }, [isExtendedSelected]);
-
-  /* ─── Pricing ──────────────────────────────────────────────── */
-
-  const customRetailTotal = customLineItems.reduce((s, c) => s + (parseFloat(c.retail) || 0), 0);
-  const customCostTotal = customLineItems.reduce((s, c) => s + (parseFloat(c.cost) || 0), 0);
-
-  const calcRetail = useMemo(() => {
-    let total = selectedBaseModel?.retail_price || 0;
-    for (const { option, quantity } of selectedOptionsList) total += option.retail_price * quantity;
-    return total + customRetailTotal;
-  }, [selectedBaseModel, selectedOptionsList, customRetailTotal]);
-
-  const calcCost = useMemo(() => {
-    let total = selectedBaseModel?.cost_price || 0;
-    for (const { option, quantity } of selectedOptionsList) total += option.cost_price * quantity;
-    return total + customCostTotal;
-  }, [selectedBaseModel, selectedOptionsList, customCostTotal]);
-
-  const discountValue = useMemo(() => {
-    const amt = parseFloat(discountAmount) || 0;
-    if (amt <= 0) return 0;
-    return discountType === "%" ? Math.round(calcRetail * amt / 100 * 100) / 100 : amt;
-  }, [discountAmount, discountType, calcRetail]);
-
-  const customerPrice = calcRetail - discountValue;
-  const ourCost = calcCost;
-  const taxAmount = taxRate > 0 ? Math.round(customerPrice * taxRate) / 100 : 0;
-  const totalWithTax = customerPrice + taxAmount;
-
-  const margin = useMemo(() => {
-    if (customerPrice <= 0 || ourCost <= 0) return null;
-    const amount = customerPrice - ourCost;
-    return { amount, percent: (amount / customerPrice) * 100 };
-  }, [customerPrice, ourCost]);
-
-  const marginColor = margin ? margin.percent >= 15 ? "#55BAAA" : margin.percent >= 10 ? "#F3D12A" : "#E87461" : undefined;
-
-  /* ─── Handlers ─────────────────────────────────────────────── */
-
-  function handleManufacturerChange(mid: string) {
-    setManufacturerId(mid); setBaseModelId(""); setQuickBuildId("");
-    setSelections(new Map()); setPickOneSelections(new Map());
-    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false);
-    setBuildShorthandManual(false);
-  }
-
-  function handleBaseModelChange(mid: string) {
-    setBaseModelId(mid); setSelections(new Map()); setPickOneSelections(new Map());
-    setPivotSide(""); setPivotType(""); setDualChecked(false); setPivotChecked(false); setQuickBuildId("");
-    setBuildShorthandManual(false);
-  }
-
-  function handleQuickBuildChange(qid: string) {
-    setQuickBuildId(qid);
-    if (!qid) { setSelections(new Map()); setPickOneSelections(new Map()); return; }
-    const qb = quickBuildsQuery.data?.find((q) => q.id === qid);
-    if (!qb) return;
-
-    if (qb.base_model_id) setBaseModelId(qb.base_model_id);
-
-    const defaults = (qb.default_selections || {}) as Record<string, { left?: number; right?: number; quantity?: number }>;
-    const allOpts = optionsQuery.data || [];
-    const newSel = new Map<string, OptionSelection>();
-    const newPickOne = new Map<string, string>();
-
-    for (const optId of qb.included_option_ids || []) {
-      const opt = allOpts.find((o) => o.id === optId);
-      const override = defaults[optId];
-
-      if (opt?.selection_type === "pick_one") {
-        newPickOne.set(opt.option_group || "", optId);
-      } else {
-        if (override) {
-          newSel.set(optId, {
-            optionId: optId,
-            left: override.left ?? 0,
-            right: override.right ?? 0,
-            selected: true,
-            quantity: override.quantity ?? (((override.left ?? 0) + (override.right ?? 0)) || 1),
-          });
-        } else {
-          newSel.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 });
-        }
-      }
-    }
-
-    setSelections(newSel);
-    setPickOneSelections(newPickOne);
-    setBuildShorthandManual(false);
-  }
-
-  function toggleSimpleOption(optId: string) {
-    setSelections((prev) => { const next = new Map(prev); if (next.get(optId)?.selected) next.delete(optId); else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 }); return next; });
-  }
-
-  function toggleQuantityOption(optId: string) {
-    setSelections((prev) => { const next = new Map(prev); if (next.get(optId)?.selected) next.delete(optId); else next.set(optId, { optionId: optId, left: 0, right: 0, selected: true, quantity: 1 }); return next; });
-  }
-
-  function setQuantityOptionQty(optId: string, qty: number) {
-    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId); if (e) next.set(optId, { ...e, quantity: qty }); return next; });
-  }
-
-  function toggleSideOption(optId: string) {
-    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId); if (e && (e.left > 0 || e.right > 0)) next.delete(optId); else if (!e) next.set(optId, { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }); else next.delete(optId); return next; });
-  }
-
-  function toggleSide(optId: string, side: "left" | "right") {
-    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }; const cur = side === "left" ? e.left : e.right; next.set(optId, { ...e, [side]: cur > 0 ? 0 : 1 }); return next; });
-  }
-
-  function setSideQty(optId: string, side: "left" | "right", qty: number) {
-    setSelections((prev) => { const next = new Map(prev); const e = next.get(optId) || { optionId: optId, left: 0, right: 0, selected: false, quantity: 0 }; next.set(optId, { ...e, [side]: qty }); return next; });
-  }
-
-  function selectPickOne(group: string, optId: string | null) {
-    setPickOneSelections((prev) => { const next = new Map(prev); if (optId) next.set(group, optId); else next.delete(group); return next; });
-    setBuildShorthandManual(false);
-  }
-
-  /* ─── Customer ─────────────────────────────────────────────── */
-
-  const filteredCustomers = customerSearchQuery.data || [];
-
   const selectedCustomer = customerId ? selectedCustomerQuery.data ?? null : null;
 
+  const handleConfigChange = useCallback((state: ConfiguratorState) => {
+    // Could track live state changes if needed
+  }, []);
 
-  const addCustomerMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.from("customers").insert({
-        name: newCustomer.name, email: newCustomer.email || null, phone: newCustomer.phone || null,
-        address_city: newCustomer.city || null, address_state: newCustomer.state || null, customer_type: newCustomer.type || null,
-      }).select().single();
-      if (error) throw error; return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["customer-search"] });
-      setCustomerId(data.id); setCustomerSearch(data.name);
-      setShowNewCustomerForm(false); setCustomerPopoverOpen(false);
-      setNewCustomer({ name: "", email: "", phone: "", city: "", state: "", type: "" });
-    },
-  });
+  /* ── Save ──────────────────────────────────────────────── */
+  async function handleSave() {
+    const state = configuratorRef.current?.getState();
+    if (!state) return;
+    if (!state.manufacturerId) { toast.error("Select a manufacturer"); return; }
+    if (!state.baseModelId) { toast.error("Select a base model"); return; }
 
-  /* ─── Validation ───────────────────────────────────────────── */
-
-  function validate() {
-    const e: Record<string, string> = {};
-    if (!manufacturerId) e.manufacturer = "Required";
-    if (!baseModelId) e.baseModel = "Required";
-    // Pivot validation: warn but don't block saves on existing orders
-    // The pivot side info may be in the description field from older saves
-    setErrors(e);
-    if (Object.keys(e).length > 0) {
-      toast.error("Fix the errors above: " + Object.values(e).join(", "));
-    }
-    return Object.keys(e).length === 0;
-  }
-
-  function hasConfigChanged(): boolean {
-    const normalize = (opts: any[]) => JSON.stringify(
-      (opts || []).filter((o: any) => o.option_id).map((o: any) => ({
-        option_id: o.option_id,
-        quantity: o.quantity || 1,
-      })).sort((a: any, b: any) => (a.option_id || "").localeCompare(b.option_id || ""))
-    );
-    const currentNorm = normalize(selectedOptionsList.map((s) => ({ option_id: s.option.id, quantity: s.quantity })));
-    const originalOpts = (() => { try { return JSON.parse(originalSelectedOptions); } catch { return []; } })();
-    const originalNorm = normalize(originalOpts);
-    return baseModelId !== originalBaseModelId || currentNorm !== originalNorm;
-  }
-
-  /* ─── Submit (UPDATE) ──────────────────────────────────────── */
-
-  async function handleSubmit() {
-    if (!validate()) return;
-
-    if (forEstimate || status === "estimate") {
-      // Estimate path — show estimate dialog
-      setShowEstimateDialog(true);
-    } else {
-      // Everything else — save directly. No forced change order dialog.
-      // The specs on imported orders weren't verified, so "config changed"
-      // is expected and shouldn't require a change order log.
-      await doSave();
-    }
-  }
-
-  async function doSave(options?: {
-    createEstimateVersion?: boolean;
-    estimateLabel?: string;
-    changeOrder?: {
-      source: string;
-      requestedBy: string;
-      description: string;
-      requiresApproval: boolean;
-    };
-  }) {
     setSubmitting(true);
     try {
-      const selectedOptionsJson = selectedOptionsList.map((s) => {
-        const qty = s.quantity;
+      const selectedBaseModel = (await supabase.from("base_models").select("*").eq("id", state.baseModelId).single()).data;
+
+      const selectedOptionsJson = state.selectedOptionsList.map((s) => {
         const isPivot = s.pivotType != null;
-        const pivotDisplayName = s.pivotType === "side_to_side" ? "Pivot · Side-to-Side" : s.pivotType === "front_to_back" ? "Pivot · Front-to-Back" : undefined;
-        const sideLabel = s.pivotType === "side_to_side" ? "Dominant side" : s.pivotType === "front_to_back" ? "Mounted on" : undefined;
         return {
           option_id: s.option.id,
-          display_name: pivotDisplayName || s.option.display_name || s.option.name,
+          display_name: isPivot ? (s.pivotType === "side_to_side" ? "Pivot · Side-to-Side" : "Pivot · Front-to-Back") : (s.option.display_name || s.option.name),
           name: s.option.name, short_code: s.option.short_code,
           cost_price_each: s.option.cost_price, retail_price_each: s.option.retail_price,
-          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide, side_label: sideLabel } : { left_qty: s.left, right_qty: s.right }),
-          quantity: qty,
-          total_cost: s.option.cost_price * qty,
-          total_retail: s.option.retail_price * qty,
+          ...(isPivot ? { pivot_type: s.pivotType, side: s.pivotSide, side_label: s.pivotType === "side_to_side" ? "Dominant side" : "Mounted on" } : { left_qty: s.left, right_qty: s.right }),
+          quantity: s.quantity, total_cost: s.option.cost_price * s.quantity, total_retail: s.option.retail_price * s.quantity,
         };
       });
-
-      // Add custom line items
-      const customOptionsJson = customLineItems.filter(c => c.name.trim()).map(c => ({
-        option_id: null, is_custom: true,
-        display_name: c.name.trim(), name: c.name.trim(), short_code: "",
+      const customOptionsJson = state.customLineItems.filter(c => c.name.trim()).map(c => ({
+        option_id: null, is_custom: true, display_name: c.name.trim(), name: c.name.trim(), short_code: "",
         cost_price_each: parseFloat(c.cost) || 0, retail_price_each: parseFloat(c.retail) || 0,
-        left_qty: 0, right_qty: 0, quantity: 1,
-        total_cost: parseFloat(c.cost) || 0, total_retail: parseFloat(c.retail) || 0,
+        left_qty: 0, right_qty: 0, quantity: 1, total_cost: parseFloat(c.cost) || 0, total_retail: parseFloat(c.retail) || 0,
       }));
       const allOptionsJson = [...selectedOptionsJson, ...customOptionsJson];
 
-      // --- Save the order record (always) ---
-      console.log("[EditOrder] Saving status:", status, "for order:", id);
       const { error: updateError } = await supabase.from("orders").update({
-        manufacturer_id: manufacturerId, base_model_id: baseModelId,
-        base_model: selectedBaseModel?.name || null, build_shorthand: buildShorthand,
-        contract_name: contractName || null, moly_contract_number: molyContractNumber || null,
-        build_description: notes || null, subtotal: calcRetail,
-        customer_price: customerPrice, our_cost: ourCost,
-        discount_type: discountType, discount_amount: parseFloat(discountAmount) || 0,
-        freight_estimate: freightEstimate ? parseFloat(freightEstimate) : null,
-        catl_number: catl_number || null, serial_number: serialNumber || null, status,
-        estimate_date: format(estimateDate, "yyyy-MM-dd"),
-        est_completion_date: estCompletionDate ? format(estCompletionDate, "yyyy-MM-dd") : null,
-        from_inventory: fromInventory,
-        inventory_location: fromInventory ? inventoryLocation || null : null,
+        customer_id: customerId || null,
+        manufacturer_id: state.manufacturerId,
+        base_model_id: state.baseModelId,
+        base_model: selectedBaseModel?.name || null,
+        contract_name: contractName || null,
+        moly_contract_number: molyContractNumber || null,
+        build_shorthand: state.buildShorthand,
+        build_description: notes || null,
+        subtotal: state.calcRetail,
+        customer_price: state.customerPrice,
+        our_cost: state.ourCost,
+        discount_type: state.discountType,
+        discount_amount: parseFloat(state.discountAmount) || 0,
+        freight_estimate: state.freightEstimate ? parseFloat(state.freightEstimate) : null,
+        equipment_status: equipmentStatus,
+        customer_status: customerId ? customerStatus || "sold" : null,
+        from_inventory: !customerId,
         selected_options: allOptionsJson,
         notes: notes || null,
-        customer_id: customerId || null,
-        tax_state: taxState || null,
-        tax_rate: taxRate || 0,
-        tax_amount: taxAmount || 0,
-        total_with_tax: taxRate > 0 ? totalWithTax : null,
+        tax_state: state.taxState || null,
+        tax_rate: state.taxRate || 0,
+        tax_amount: state.taxAmount || 0,
+        total_with_tax: state.taxRate > 0 ? state.totalWithTax : null,
       }).eq("id", id!);
+
       if (updateError) throw updateError;
-
-      // --- Path 2: Create estimate version ---
-      if (options?.createEstimateVersion) {
-        const { data: existingEstimates } = await supabase
-          .from("estimates")
-          .select("version_number")
-          .eq("order_id", id!)
-          .order("version_number", { ascending: false })
-          .limit(1);
-        const nextVersion = (existingEstimates?.[0]?.version_number || 0) + 1;
-
-        // Use the estimate number from the form field (auto-filled or manually overridden)
-        const finalEstNum = newEstimateNumber || null;
-
-        await supabase.from("estimates").update({ is_current: false }).eq("order_id", id!);
-
-        const lineItems = [
-          { type: "base_model", name: selectedBaseModel?.name, retail_price: selectedBaseModel?.retail_price, cost_price: (selectedBaseModel as any)?.cost_price },
-          ...selectedOptionsJson.map((o: any) => ({ type: "option", ...o })),
-          ...customOptionsJson.map((o: any) => ({ type: "custom", ...o })),
-        ];
-
-        await supabase.from("estimates").insert({
-          order_id: id,
-          estimate_number: finalEstNum,
-          version_number: nextVersion,
-          label: options.estimateLabel || null,
-          build_shorthand: buildShorthand,
-          total_price: customerPrice,
-          is_current: true,
-          line_items: lineItems,
-          customer_id: orderQuery.data?.customer_id || null,
-          base_model_id: baseModelId || null,
-          status: 'open',
-          tax_state: taxState || null,
-          tax_rate: taxRate || 0,
-          tax_amount: taxAmount || 0,
-          total_with_tax: taxRate > 0 ? totalWithTax : null,
-        } as any);
-
-        await supabase.from("order_timeline").insert({
-          order_id: id,
-          event_type: "estimate_revised",
-          title: `Estimate v${nextVersion} created — ${finalEstNum || ""}`,
-          description: options.estimateLabel ? `"${options.estimateLabel}"` : null,
-        });
-      }
-
-      // --- Path 3: Create change order ---
-      if (options?.changeOrder) {
-        const { data: existingCOs } = await supabase
-          .from("change_orders")
-          .select("change_number")
-          .eq("order_id", id!)
-          .order("change_number", { ascending: false })
-          .limit(1);
-        const nextNum = (existingCOs?.[0]?.change_number || 0) + 1;
-
-        const previousConfig = {
-          base_model_id: originalBaseModelId,
-          build_shorthand: orderQuery.data?.build_shorthand,
-          selected_options: JSON.parse(originalSelectedOptions || "[]"),
-          customer_price: parseFloat(originalPrice),
-          our_cost: parseFloat(originalCost),
-        };
-
-        const newConfig = {
-          base_model_id: baseModelId,
-          build_shorthand: buildShorthand,
-          selected_options: allOptionsJson,
-          customer_price: customerPrice,
-          our_cost: ourCost,
-        };
-
-        const priceImpact = customerPrice - parseFloat(originalPrice);
-
-        const oldOpts = previousConfig.selected_options || [];
-        const newOpts = allOptionsJson || [];
-        const changesSummary: any[] = [];
-
-        for (const newOpt of newOpts) {
-          const oldOpt = oldOpts.find((o: any) => o.option_id === newOpt.option_id);
-          if (!oldOpt) {
-            changesSummary.push({ type: "added", option: newOpt.display_name || newOpt.name, price: newOpt.total_retail });
-          }
-        }
-        for (const oldOpt of oldOpts) {
-          const newOpt = newOpts.find((o: any) => o.option_id === oldOpt.option_id);
-          if (!newOpt) {
-            changesSummary.push({ type: "removed", option: oldOpt.display_name || oldOpt.name, price: -(oldOpt.total_retail || 0) });
-          }
-        }
-        for (const newOpt of newOpts) {
-          const oldOpt = oldOpts.find((o: any) => o.option_id === newOpt.option_id);
-          if (oldOpt && JSON.stringify(oldOpt) !== JSON.stringify(newOpt)) {
-            changesSummary.push({ type: "changed", option: newOpt.display_name || newOpt.name, detail: "Configuration changed" });
-          }
-        }
-        if (baseModelId !== originalBaseModelId) {
-          changesSummary.push({ type: "changed", field: "base_model", from: orderQuery.data?.base_model, to: selectedBaseModel?.name });
-        }
-
-        await supabase.from("change_orders").insert({
-          order_id: id,
-          change_number: nextNum,
-          requested_by: options.changeOrder.requestedBy || "internal",
-          requested_via: null,
-          description: options.changeOrder.description,
-          price_impact: priceImpact,
-          new_total: customerPrice,
-          applied_internal: true,
-        } as any);
-
-        await supabase.from("order_timeline").insert({
-          order_id: id,
-          event_type: "change_order",
-          title: `Change order #${nextNum}`,
-          description: options.changeOrder.description,
-        });
-      }
-
-      // --- Timeline entries for admin changes (all paths) ---
-      const timelineInserts: any[] = [];
-      if (status !== originalStatus) {
-        timelineInserts.push({ order_id: id, event_type: "status_change", title: `Status: ${status.replace(/_/g, " ")}`, description: `Changed from ${originalStatus.replace(/_/g, " ")}` });
-      }
-      if (timelineInserts.length > 0) await supabase.from("order_timeline").insert(timelineInserts);
-
-      queryClient.invalidateQueries({ queryKey: ["order", id] });
-      queryClient.invalidateQueries({ queryKey: ["order-edit", id] });
-      queryClient.invalidateQueries({ queryKey: ["estimates", id] });
-      queryClient.invalidateQueries({ queryKey: ["change_orders", id] });
-      queryClient.invalidateQueries({ queryKey: ["order_timeline", id] });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      toast.success("Order updated");
-      navigate(`/orders/${id}`);
+      toast.success("Saved");
     } catch (err: any) {
-      toast.error(err.message || "Failed to update order");
-    } finally {
-      setSubmitting(false);
-      setShowEstimateDialog(false);
-      setShowChangeOrderDialog(false);
-    }
+      toast.error(err.message || "Failed to save");
+    } finally { setSubmitting(false); }
   }
 
-  /* ─── Computed display values ──────────────────────────────── */
-
-  const optionCount = selectedOptionsList.length;
-  const optionRetailTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.retail_price * quantity, 0);
-  const optionCostTotal = selectedOptionsList.reduce((s, { option, quantity }) => s + option.cost_price * quantity, 0);
-
-  const isOverheadScalesSelected = useMemo(() => {
-    const opts = optionsQuery.data || [];
-    return opts.filter((o) => (o.option_group || "").toLowerCase() === "scales" && o.name.toLowerCase().includes("overhead")).some((o) => pickOneSelections.get("scales") === o.id || pickOneSelections.get("Scales") === o.id);
-  }, [optionsQuery.data, pickOneSelections]);
-
-  const pivotOnScalesOption = useMemo(() =>
-    optionsQuery.data?.find((o) => o.name.toLowerCase().includes("pivot on overhead") || o.name.toLowerCase().includes("pivot overhead")),
-    [optionsQuery.data]
-  );
-
-  const isPivotSelected = pivotChecked;
-
-  const summaryPills = useMemo(() => {
-    const pills: { label: string; variant: "base" | "standard" | "addon"; optionId?: string }[] = [];
-    if (selectedBaseModel) pills.push({ label: selectedBaseModel.short_name, variant: "base" });
-    const qbIds = new Set(selectedQuickBuild?.included_option_ids || []);
-    for (const item of selectedOptionsList) {
-      const { option, left, right, quantity, pivotType: pt, pivotSide: ps } = item;
-      const dn = option.display_name || option.name;
-      let label: string;
-      if (pt) { label = [dn, pt === "side_to_side" ? "Side-to-Side" : "Front-to-Back", ps].filter(Boolean).join(" · "); }
-      else if (left > 0 || right > 0) { label = formatOptionPillLabel(dn, left, right); }
-      else if (quantity > 1) { label = `${dn} ×${quantity}`; }
-      else { label = dn; }
-      pills.push({ label, variant: qbIds.has(option.id) ? "standard" : "addon", optionId: option.id });
-    }
-    return pills;
-  }, [selectedBaseModel, selectedQuickBuild, selectedOptionsList]);
-
-  /* ─── Render helpers ───────────────────────────────────────── */
-
-  function renderPickOneGroup(group: string, options: FullOption[]) {
-    if (group.toLowerCase() === "controls") return renderControlsGroup(options);
-    const selectedId = pickOneSelections.get(group) || null;
-    const hasIncluded = options.some((o) => o.is_included);
-    return (
-      <div className="space-y-1">
-        {!hasIncluded && (
-          <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="radio" name={`pickone-edit-${group}`} checked={selectedId === null} onChange={() => selectPickOne(group, null)} className="w-[18px] h-[18px] accent-catl-teal" />
-            <span className="text-[13px]" style={{ color: "#1A1A1A" }}>None</span>
-          </label>
-        )}
-        {options.map((opt) => (
-          <label key={opt.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="radio" name={`pickone-edit-${group}`} checked={selectedId === opt.id} onChange={() => selectPickOne(group, opt.id)} className="w-[18px] h-[18px] accent-catl-teal" />
-            <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}{opt.is_included ? " — included" : ""}</span>
-            {!opt.is_included && <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>}
-          </label>
-        ))}
-      </div>
-    );
+  /* ─── Loading state ────────────────────────────────────── */
+  if (orderQuery.isLoading) {
+    return <div className="p-6 text-center text-muted-foreground" style={{ background: "#F5F5F0", minHeight: "100vh" }}>Loading order...</div>;
+  }
+  if (!orderQuery.data) {
+    return <div className="p-6 text-center text-muted-foreground" style={{ background: "#F5F5F0", minHeight: "100vh" }}>Order not found</div>;
   }
 
-  function renderControlsGroup(options: FullOption[]) {
-    const dcOpt = options.find((o) => o.short_code === "DC" || o.name.toLowerCase().includes("dual"));
-    const pcOpt = options.find((o) => o.short_code === "PC");
-    const pcFbOpt = options.find((o) => o.short_code === "PC-FB");
-    return (
-      <div className="space-y-2">
-        {dcOpt && (
-          <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-            <input type="checkbox" checked={dualChecked} onChange={() => setDualChecked(!dualChecked)} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Dual Controls</span>
-              <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Stationary controls on both sides.</p>
-            </div>
-            <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(dcOpt.retail_price)}</span>
-          </label>
-        )}
-        {(pcOpt || pcFbOpt) && (
-          <div>
-            <label className="flex items-start gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={pivotChecked} onChange={() => {
-                if (pivotChecked) { setPivotChecked(false); setPivotType(""); setPivotSide(""); if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; }); }
-                else setPivotChecked(true);
-              }} className="w-[18px] h-[18px] accent-catl-teal rounded mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <span className="text-[13px] font-medium" style={{ color: "#1A1A1A" }}>Pivot Controls</span>
-                <p className="text-[11px] mt-0.5" style={{ color: "#717182" }}>Upgrades one side from stationary to pivot.</p>
-              </div>
-              <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: "#717182" }}>${fmtCurrency(pcOpt?.retail_price || pcFbOpt?.retail_price || 0)}</span>
-            </label>
-            {pivotChecked && (
-              <div className="ml-[26px] mt-2 mb-2 p-3 rounded-lg border space-y-3" style={{ borderColor: "#D4D4D0" }}>
-                <div>
-                  <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Pivot type (pick one):</p>
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-2 py-1 cursor-pointer">
-                      <input type="radio" name="pivot-type-edit" checked={pivotType === "side_to_side"} onChange={() => setPivotType("side_to_side")} className="w-[16px] h-[16px] accent-catl-teal" />
-                      <span className="text-[13px]" style={{ color: "#1A1A1A" }}>Side-to-side</span>
-                    </label>
-                    <label className="flex items-center gap-2 py-1 cursor-pointer">
-                      <input type="radio" name="pivot-type-edit" checked={pivotType === "front_to_back"} onChange={() => setPivotType("front_to_back")} className="w-[16px] h-[16px] accent-catl-teal" />
-                      <span className="text-[13px]" style={{ color: "#1A1A1A" }}>Front-to-back</span>
-                    </label>
-                  </div>
-                  {errors.pivotType && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotType}</p>}
-                </div>
-                {pivotType && (
-                  <div>
-                    <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>{pivotType === "side_to_side" ? "Dominant side:" : "Mounted on:"}</p>
-                    <div className="flex items-center gap-2">
-                      <SidePill label="Left" active={pivotSide === "Left"} onClick={() => setPivotSide("Left")} />
-                      <SidePill label="Right" active={pivotSide === "Right"} onClick={() => setPivotSide("Right")} />
-                    </div>
-                    {errors.pivotSide && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.pivotSide}</p>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && (
-          <div className="border-t border-border pt-2">
-            <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-              <input type="checkbox" checked={selections.get(pivotOnScalesOption.id)?.selected ?? false} onChange={() => toggleSimpleOption(pivotOnScalesOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded" />
-              <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{pivotOnScalesOption.display_name || pivotOnScalesOption.name}</span>
-              <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(pivotOnScalesOption.retail_price)}</span>
-            </label>
-          </div>
-        )}
-        {!dualChecked && !pivotChecked && <p className="text-[11px] px-2" style={{ color: "#717182" }}>Standard controls (included). One side, fixed position, no additional cost.</p>}
-      </div>
-    );
-  }
-
-  function renderSideOption(opt: FullOption) {
-    const sel = selections.get(opt.id);
-    const isChecked = sel != null;
-    const hasAnySide = sel && (sel.left > 0 || sel.right > 0);
-    const maxSide = opt.max_per_side || 1;
-    const leftConflict = getSideConflicts(opt.id, "left");
-    const rightConflict = getSideConflicts(opt.id, "right");
-    const totalQty = (sel?.left || 0) + (sel?.right || 0);
-    const totalPrice = totalQty * opt.retail_price;
-    return (
-      <div key={opt.id} className="mb-1 overflow-hidden">
-        <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-          <input type="checkbox" checked={isChecked} onChange={() => toggleSideOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{(opt.display_name || opt.name).replace(/\s*\(per sidegate\)/i, "")}</span>
-          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
-        </label>
-        {isChecked && (
-          <div className="ml-[26px] mt-1 mb-2 space-y-2 overflow-hidden">
-            <div className="flex items-center gap-2 flex-wrap">
-              <SidePill label="Left" active={(sel?.left || 0) > 0} disabled={!!leftConflict} onClick={() => { if (!leftConflict) toggleSide(opt.id, "left"); }} />
-              <SidePill label="Right" active={(sel?.right || 0) > 0} disabled={!!rightConflict} onClick={() => { if (!rightConflict) toggleSide(opt.id, "right"); }} />
-            </div>
-            {maxSide > 1 && (sel?.left || 0) > 0 && (
-              <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Left:</span><QtyStepper value={sel?.left || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "left", v)} /></div>
-            )}
-            {maxSide > 1 && (sel?.right || 0) > 0 && (
-              <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 40 }}>Right:</span><QtyStepper value={sel?.right || 1} min={1} max={maxSide} onChange={(v) => setSideQty(opt.id, "right", v)} /></div>
-            )}
-            {!hasAnySide && <p className="text-[11px]" style={{ color: "#D4183D" }}>Select a side</p>}
-            {leftConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{leftConflict}</p>}
-            {rightConflict && <p className="text-[11px]" style={{ color: "#D4183D" }}>{rightConflict}</p>}
-            {totalQty > 0 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>{totalQty > 1 ? `${totalQty} × $${fmtCurrency(opt.retail_price)} = $${fmtCurrency(totalPrice)}` : `$${fmtCurrency(totalPrice)}`}</p>}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderQuantityOption(opt: FullOption) {
-    const sel = selections.get(opt.id);
-    const isChecked = sel?.selected ?? false;
-    const qty = sel?.quantity || 1;
-    const maxQty = opt.max_per_side || 4;
-    return (
-      <div key={opt.id} className="mb-1 overflow-hidden">
-        <label className="flex items-center gap-2.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted/50 min-h-[32px]">
-          <input type="checkbox" checked={isChecked} onChange={() => toggleQuantityOption(opt.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-          <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
-          <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)} ea</span>
-        </label>
-        {isChecked && (
-          <div className="ml-[26px] mt-1 mb-2 space-y-1">
-            <div className="flex items-center gap-2"><span className="text-[11px] font-semibold" style={{ color: "#717182", width: 28 }}>Qty:</span><QtyStepper value={qty} min={1} max={maxQty} onChange={(v) => setQuantityOptionQty(opt.id, v)} /></div>
-            {qty > 1 && <p className="text-[11px] font-medium" style={{ color: "#55BAAA" }}>{qty} × ${fmtCurrency(opt.retail_price)} = ${fmtCurrency(qty * opt.retail_price)}</p>}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function renderSimpleOption(opt: FullOption) {
-    const isChecked = selections.get(opt.id)?.selected ?? false;
-    const conflictCodes: Record<string, string[]> = { "HR": ["DH"], "DH": ["HR"], "SCB": ["HDCB"], "HDCB": ["SCB"] };
-    const conflicting = conflictCodes[opt.short_code];
-    const isDisabled = conflicting?.some((code) => {
-      const conflictOpt = optionsQuery.data?.find((o) => o.short_code === code);
-      return conflictOpt && selections.get(conflictOpt.id)?.selected;
-    }) ?? false;
-    const priceDisplay = opt.retail_price === 0
-      ? <span className="text-xs flex-shrink-0 italic" style={{ color: "#717182" }}>TBD</span>
-      : <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(opt.retail_price)}</span>;
-    return (
-      <label key={opt.id} className={cn("flex items-center gap-2.5 py-1.5 px-2 rounded-md min-h-[32px]", isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-muted/50")}>
-        <input type="checkbox" checked={isChecked} onChange={() => { if (!isDisabled) toggleSimpleOption(opt.id); }} disabled={isDisabled} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-        <span className="text-[13px] flex-1 break-words min-w-0" style={{ color: "#1A1A1A" }}>{opt.display_name || opt.name}</span>
-        {priceDisplay}
-      </label>
-    );
-  }
-
-  function getGroupSummary(group: string, options: FullOption[]): { text: string; total: number } {
-    const parts: string[] = [];
-    let total = 0;
-    if (group.toLowerCase() === "controls") {
-      if (dualChecked) {
-        const dc = options.find(o => o.short_code === "DC");
-        if (dc) { parts.push("Dual Controls"); total += dc.retail_price; }
-      }
-      if (pivotChecked) {
-        const pcCode = pivotType === "front_to_back" ? "PC-FB" : "PC";
-        const pc = options.find(o => o.short_code === pcCode) || options.find(o => o.short_code === "PC");
-        if (pc) {
-          const label = pivotType === "front_to_back" ? "Pivot F/B" : pivotType === "side_to_side" ? "Pivot S/S" : "Pivot";
-          parts.push(label + (pivotSide ? ` ${pivotSide[0]}` : ""));
-          total += pc.retail_price;
-        }
-      }
-      if (isPivotSelected && isOverheadScalesSelected && pivotOnScalesOption && selections.get(pivotOnScalesOption.id)?.selected) {
-        parts.push(pivotOnScalesOption.display_name || pivotOnScalesOption.name);
-        total += pivotOnScalesOption.retail_price;
-      }
-      return { text: parts.length > 0 ? parts.join(", ") : "none", total };
-    }
-    for (const opt of options) {
-      if (opt.selection_type === "pick_one") {
-        const selId = pickOneSelections.get(group);
-        if (selId === opt.id) {
-          if (opt.is_included) { parts.push((opt.display_name || opt.name) + " (incl)"); }
-          else { parts.push(opt.display_name || opt.name); total += opt.retail_price; }
-        }
-        continue;
-      }
-      const sel = selections.get(opt.id);
-      if (!sel) continue;
-      const dn = opt.display_name || opt.name;
-      if (opt.selection_type === "side") {
-        if (sel.left > 0 || sel.right > 0) {
-          const qty = sel.left + sel.right;
-          let sideStr = "";
-          if (sel.left > 0 && sel.right > 0) sideStr = " L+R";
-          else if (sel.left > 0) sideStr = " L";
-          else sideStr = " R";
-          parts.push(dn + sideStr);
-          total += opt.retail_price * qty;
-        }
-      } else if (sel.selected) {
-        const qty = sel.quantity || 1;
-        parts.push(qty > 1 ? `${dn} ×${qty}` : dn);
-        total += opt.retail_price * qty;
-      }
-    }
-    return { text: parts.length > 0 ? parts.join(", ") : "none", total };
-  }
-
-  function renderScalesContent(options: FullOption[]) {
-    const platforms = options.filter((o) => o.selection_type === "pick_one");
-    const indicators = options.filter((o) => o.selection_type !== "pick_one");
-    return (
-      <>
-        {platforms.length > 0 && (
-          <div className="mb-2">
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Platform (pick one):</p>
-            {renderPickOneGroup("Scales", platforms)}
-          </div>
-        )}
-        {indicators.length > 0 && (
-          <div className={platforms.length > 0 ? "pt-2 border-t" : ""} style={platforms.length > 0 ? { borderColor: "#D4D4D0" } : undefined}>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Indicators (select any):</p>
-            <div className="space-y-0.5">{indicators.map((opt) => renderSimpleOption(opt))}</div>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  function renderGroupCard(group: string, options: FullOption[]) {
-    const { text: summaryText, total: groupTotal } = getGroupSummary(group, options);
-    const hasSelections = summaryText !== "none";
-    const isOpen = openGroups.has(group);
-    const isPick = options.every((o) => o.selection_type === "pick_one");
-    const groupLabel = group.replace(/[-_]/g, " ");
-    return (
-      <Collapsible key={group} open={isOpen} onOpenChange={(open) => {
-        setOpenGroups(prev => { const next = new Set(prev); if (open) next.add(group); else next.delete(group); return next; });
-      }}>
-        <CollapsibleTrigger asChild>
-          <button type="button" className="w-full flex items-center justify-between py-2.5 border-b border-border text-left">
-            <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "#0E2646", minWidth: 80 }}>{groupLabel}</span>
-            <span className="flex-1 text-[12px] truncate mx-3" style={{ color: hasSelections ? "#55BAAA" : "#717182" }}>{summaryText}</span>
-            <span className="text-[12px] font-medium mr-2" style={{ color: hasSelections ? "#0E2646" : "#717182" }}>
-              {groupTotal > 0 ? `$${fmtCurrency(groupTotal)}` : "—"}
-            </span>
-            <ChevronDown size={14} className={cn("transition-transform", isOpen && "rotate-180")} style={{ color: "#717182" }} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="py-2">
-            {group.toLowerCase() === "scales" ? renderScalesContent(options) : isPick ? renderPickOneGroup(group, options) : (
-              <div className="space-y-0.5">
-                {options.map((opt) => {
-                  if (opt.selection_type === "side") return renderSideOption(opt);
-                  if (opt.selection_type === "pick_one") return renderSimpleOption(opt);
-                  if (isQuantityOnlyOption(opt)) return renderQuantityOption(opt);
-                  return renderSimpleOption(opt);
-                })}
-              </div>
-            )}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    );
-  }
-
-  function handlePillClick(pill: { optionId?: string }) {
-    if (!pill.optionId) return;
-    const opt = optionsQuery.data?.find((o) => o.id === pill.optionId);
-    if (!opt) return;
-    if (opt.short_code === "DC") { setDualChecked(false); return; }
-    if (opt.short_code === "PC" || opt.short_code === "PC-FB") {
-      setPivotChecked(false); setPivotType(""); setPivotSide("");
-      if (pivotOnScalesOption) setSelections(prev => { const n = new Map(prev); n.delete(pivotOnScalesOption.id); return n; });
-      return;
-    }
-    if (opt.selection_type === "pick_one") {
-      for (const [group, selId] of pickOneSelections) { if (selId === pill.optionId) { selectPickOne(group, null); return; } }
-    }
-    setSelections(prev => { const n = new Map(prev); n.delete(pill.optionId!); return n; });
-  }
-
-  const showCompletionDate = ["purchase_order", "order_pending", "building", "ready", "delivered", "closed"].includes(status);
-  const isDirectOrder = orderQuery.data?.source_type === "direct_order";
-
-  /* ─── Loading / Not found ──────────────────────────────────── */
-
-  if (orderQuery.isLoading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading order…</div>;
-  if (!orderQuery.data) return <div className="flex items-center justify-center h-64 text-muted-foreground">Order not found</div>;
-
-  /* ─── RENDER ───────────────────────────────────────────────── */
-
+  /* ─── RENDER ───────────────────────────────────────────── */
   return (
     <div className="mx-auto pb-40 overflow-x-hidden max-w-full" style={{ background: "#F5F5F0" }}>
-      {/* ── NAVY HEADER: Status Pipeline + Contract ────────── */}
+      {/* Navy header with two-track pipeline */}
       <div className="sticky top-0 z-10 md:max-w-[680px] md:mx-auto" style={{ background: "#0E2646", borderRadius: "0 0 12px 12px", padding: "12px 16px" }}>
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate(`/orders/${id}`)} className="p-0.5" style={{ color: "#55BAAA" }}><ChevronLeft size={20} /></button>
-            <span className="text-[15px] font-medium" style={{ color: "#F5F5F0" }}>Edit order</span>
+            <button onClick={() => navigate(-1)} className="p-0.5" style={{ color: "#55BAAA" }}><ChevronLeft size={20} /></button>
+            <span className="text-[15px] font-medium" style={{ color: "#F5F5F0" }}>
+              Edit: {molyContractNumber || contractName || "Order"}
+            </span>
           </div>
-          <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>{molyContractNumber ? `Contract ${molyContractNumber}` : contractName || orderQuery.data.order_number}</span>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {STATUS_OPTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => setStatus(s)}
-              className="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors"
-              style={status === s
-                ? { background: "#55BAAA", color: "#0E2646" }
-                : { border: "1px solid rgba(245,245,240,0.2)", color: "rgba(245,245,240,0.4)", background: "transparent" }
-              }>
-              {STATUS_LABELS[s] || s}
-            </button>
-          ))}
+
+        {/* Equipment status pipeline */}
+        <div className="mb-1.5">
+          <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.6)" }}>Equipment</p>
+          <StatusPipeline
+            statuses={EQUIPMENT_STATUSES}
+            labels={EQUIPMENT_LABELS}
+            current={equipmentStatus}
+            onChange={setEquipmentStatus}
+            color="#55BAAA"
+          />
         </div>
-        {/* Compact price summary on mobile */}
-        <div className="flex items-baseline justify-between mt-2.5 pt-2" style={{ borderTop: "1px solid rgba(245,245,240,0.1)" }}>
-          <div className="flex items-baseline gap-3">
-            <div><p className="text-[9px] uppercase" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</p><p className="text-[16px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</p></div>
-            <div><p className="text-[9px] uppercase" style={{ color: "rgba(243,209,42,0.6)" }}>Customer</p><p className="text-[16px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</p></div>
+
+        {/* Customer status pipeline (only when customer assigned) */}
+        {customerToggle && (
+          <div>
+            <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(243,209,42,0.6)" }}>Customer</p>
+            <StatusPipeline
+              statuses={CUSTOMER_STATUSES}
+              labels={CUSTOMER_LABELS}
+              current={customerStatus || "estimate"}
+              onChange={setCustomerStatus}
+              color="#F3D12A"
+            />
           </div>
-          <div className="text-right"><p className="text-[9px] uppercase" style={{ color: "rgba(240,240,240,0.3)" }}>Margin</p><p className="text-[13px] font-medium" style={{ color: marginColor || "rgba(240,240,240,0.25)" }}>{margin ? `${margin.percent.toFixed(1)}%` : "—"}</p></div>
-        </div>
+        )}
       </div>
 
-      {/* Imported Specs Reference */}
-      {orderQuery.data?.selected_options && (orderQuery.data.selected_options as any[]).length > 0 && (
-        <div className="mx-4 mt-3 mb-2 md:max-w-[680px] md:mx-auto">
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(85,186,170,0.3)", backgroundColor: "rgba(85,186,170,0.04)" }}>
-            <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(85,186,170,0.15)" }}>
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#55BAAA" }}>Saved specs</span>
-              <span className="text-[10px] ml-auto" style={{ color: "#717182" }}>
-                Cost: ${fmtCurrency((orderQuery.data.selected_options as any[]).reduce((s: number, o: any) => s + (o.cost_price_each || 0) * (o.quantity || 1), 0))}
-                {' · '}Retail: ${fmtCurrency((orderQuery.data.selected_options as any[]).reduce((s: number, o: any) => s + (o.retail_price_each || 0) * (o.quantity || 1), 0))}
-              </span>
-            </div>
-            <div className="px-3 py-2 flex flex-wrap gap-1.5">
-              {(orderQuery.data.selected_options as any[]).map((opt: any, i: number) => {
-                const isBase = opt.is_base_model;
-                const label = opt.display_name || opt.name || "Unknown";
-                const qty = opt.quantity || 1;
-                const noId = !opt.option_id;
-                return (
-                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
-                    style={{
-                      backgroundColor: isBase ? "rgba(14,38,70,0.1)" : noId ? "rgba(243,209,42,0.2)" : "rgba(85,186,170,0.12)",
-                      color: isBase ? "#0E2646" : noId ? "#854F0B" : "#2A8A7C",
-                      border: noId ? "1px dashed rgba(243,209,42,0.5)" : "none",
-                    }}>
-                    {label}{qty > 1 ? ` ×${qty}` : ""}
-                    {noId && <span title="Not in catalog">⚠</span>}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+      <div className="md:max-w-[680px] md:mx-auto px-4 mt-4 space-y-3">
+        {/* Contract # */}
+        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Contract #</p>
+          <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="Moly contract number"
+            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+          <input value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="Contract name"
+            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25 mt-2" />
         </div>
-      )}
 
-      {/* ── SECTION 1: CUSTOMER & CONTRACT ───────────────── */}
-      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
-        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Customer & contract</p>
-        <div className="space-y-3">
-          {/* Customer search */}
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Customer <span className="font-normal">(optional)</span></p>
-            <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] text-left focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                  {selectedCustomer ? selectedCustomer.name : <span className="text-muted-foreground">Search customers...</span>}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput placeholder="Type 2+ letters to search..." value={customerSearch} onValueChange={(val) => { setCustomerSearch(val); setCustomerId(""); }} />
-                  <CommandList>
-                    {debouncedCustomerSearch.length < 2 ? (
-                      <div className="px-3 py-3 text-sm text-muted-foreground">Type 2+ letters to search...</div>
-                    ) : customerSearchQuery.isLoading ? (
-                      <div className="px-3 py-3 text-sm text-muted-foreground">Searching...</div>
-                    ) : (
-                      <>
-                        <CommandEmpty>No customers found</CommandEmpty>
-                        <CommandGroup>
-                          {filteredCustomers.map((c: any) => (
-                            <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); }}>
-                              <span className="font-medium">{c.name}</span>
-                              {c.address_city && <span className="text-muted-foreground ml-2 text-xs">{c.address_city}, {c.address_state}</span>}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </>
-                    )}
-                    <div className="border-t border-border">
-                      <button type="button" onClick={() => { setShowNewCustomerForm(true); setCustomerPopoverOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm font-semibold flex items-center gap-1" style={{ color: "#55BAAA" }}>
-                        <Plus size={14} /> Add New Customer
-                      </button>
-                    </div>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {selectedCustomer && (
-              <button type="button" onClick={() => { setCustomerId(""); setCustomerSearch(""); }} className="text-xs text-muted-foreground mt-1 hover:text-foreground">Clear</button>
-            )}
-          </div>
-
-          {showNewCustomerForm && (
-            <div className="border rounded-lg p-3 space-y-2 overflow-hidden" style={{ borderColor: "rgba(85,186,170,0.3)", background: "rgba(85,186,170,0.05)" }}>
-              <input placeholder="Name *" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Email" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                <input placeholder="Phone" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="City" value={newCustomer.city} onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-                <input placeholder="State" value={newCustomer.state} onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })} className="border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none min-w-0 text-[16px]" />
-              </div>
-              <select value={newCustomer.type} onChange={(e) => setNewCustomer({ ...newCustomer, type: e.target.value })} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]">
-                <option value="">Type (optional)</option>
-                <option value="rancher">Rancher</option>
-                <option value="feedlot">Feedlot</option>
-                <option value="dealer">Dealer</option>
-                <option value="other">Other</option>
-              </select>
-              <div className="flex gap-2">
-                <button onClick={() => addCustomerMutation.mutate()} disabled={!newCustomer.name || addCustomerMutation.isPending} className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ background: "#55BAAA" }}>{addCustomerMutation.isPending ? "Saving..." : "Save Customer"}</button>
-                <button onClick={() => setShowNewCustomerForm(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
+        {/* Customer toggle */}
+        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Contract name</p>
-              <input type="text" value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="e.g. Smith Ranch Chute" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+              <p className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>Assign customer</p>
+              <p className="text-[11px]" style={{ color: "#717182" }}>{customerToggle ? "Customer order" : "Inventory — no customer yet"}</p>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Tax state</p>
-              <select value={taxState} onChange={(e) => { const st = e.target.value; setTaxState(st); if (st === "SD") setTaxRate(4.2); else if (st === "ND") setTaxRate(3.0); else { setTaxState(""); setTaxRate(0); } }} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                <option value="">No tax</option>
-                <option value="SD">SD (4.2%)</option>
-                <option value="ND">ND (3.0%)</option>
-              </select>
-              {taxRate > 0 && <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>+${taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
-            </div>
+            <Switch checked={customerToggle} onCheckedChange={(v) => {
+              setCustomerToggle(v);
+              if (!v) { setCustomerId(""); setCustomerSearch(""); setCustomerStatus(""); }
+              else if (!customerStatus) { setCustomerStatus("sold"); }
+            }} />
           </div>
-        </div>
-      </div>
-
-      {/* ── SECTION 2: ORDER DETAILS ────────────────────── */}
-      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
-        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Order details</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Mfg contract #</p>
-            <input type="text" value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="e.g. 44270" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>CATL #</p>
-            <input value={catl_number} onChange={(e) => setCatlNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Serial #</p>
-            <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="—" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Est. date</p>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px] focus:border-catl-gold", !estimateDate && "text-muted-foreground")}>
-                  {estimateDate ? format(estimateDate, "M/d/yy") : "—"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={estimateDate} onSelect={(d) => d && setEstimateDate(d)} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-          </div>
-          {showCompletionDate && (
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Completion / ETA</p>
-              <Popover>
+          {customerToggle && (
+            <div className="mt-3">
+              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <button className={cn("w-full text-left border border-border rounded-lg px-3 py-2.5 bg-card text-[16px]", !estCompletionDate && "text-muted-foreground")}>
-                    {estCompletionDate ? format(estCompletionDate, "M/d/yy") : "—"}
+                  <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 text-left text-[16px] bg-card"
+                    style={{ color: selectedCustomer ? "#0E2646" : "#717182" }}>
+                    {selectedCustomer ? selectedCustomer.name : "Search customers..."}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={estCompletionDate} onSelect={setEstCompletionDate} className="p-3 pointer-events-auto" />
+                <PopoverContent className="w-[340px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Type a name..." value={customerSearch} onValueChange={setCustomerSearch} />
+                    <CommandList>
+                      <CommandEmpty>No customers found</CommandEmpty>
+                      <CommandGroup>
+                        {(customerSearchQuery.data || []).map((c) => (
+                          <CommandItem key={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); if (!contractName && c.name) setContractName(c.name); }}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium truncate">{c.name}</p>
+                              <p className="text-[11px] text-muted-foreground">{[c.address_city, c.address_state].filter(Boolean).join(", ")}</p>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
                 </PopoverContent>
               </Popover>
+              {selectedCustomer && (
+                <div className="mt-2 px-1 text-[11px]" style={{ color: "#717182" }}>
+                  {[selectedCustomer.address_city, selectedCustomer.address_state].filter(Boolean).join(", ")}
+                  {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
+                </div>
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Equipment Configurator */}
+        {pageReady && initialValues && (
+          <EquipmentConfigurator
+            ref={configuratorRef}
+            initialValues={initialValues}
+            onChange={handleConfigChange}
+          />
+        )}
+
+        {/* Notes */}
+        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Notes</p>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes about this order..." rows={3}
+            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] resize-none focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        </div>
+
+        {/* Buttons */}
+        <div className="mt-4 space-y-2">
+          <button onClick={handleSave} disabled={submitting}
+            className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
+            style={{ background: "#55BAAA", color: "#0E2646" }}>
+            {submitting ? "Saving..." : "Save"}
+          </button>
+          {showMolyPortal && (
+            <a href={portalUrl} target="_blank" rel="noopener noreferrer"
+              className="w-full rounded-full py-3 text-[14px] font-medium flex items-center justify-center gap-2 border transition-colors"
+              style={{ borderColor: "#0E2646", color: "#0E2646" }}>
+              Enter on Moly portal <ExternalLink size={14} />
+            </a>
           )}
         </div>
       </div>
-
-      {/* ── SECTION 3: PRICING ──────────────────────────── */}
-      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
-        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Pricing</p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Discount</p>
-            <div className="flex items-center gap-1">
-              <select value={discountType} onChange={(e) => setDiscountType(e.target.value as "$" | "%")} className="border border-border rounded px-1.5 py-2.5 bg-card text-sm outline-none text-[16px]" style={{ width: 48 }}>
-                <option value="$">$</option>
-                <option value="%">%</option>
-              </select>
-              <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0" className="flex-1 border border-border rounded px-2 py-2.5 bg-card text-sm outline-none text-right text-[16px]" />
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Freight</p>
-            <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
-          </div>
-        </div>
-        <div>
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Notes</p>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional..." className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none resize-none text-[16px]" />
-        </div>
-      </div>
-
-      {/* ── SECTION 4: EQUIPMENT ─────────────────────────── */}
-      <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
-        <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Equipment</p>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Manufacturer</p>
-              <select value={manufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                <option value="">Select manufacturer</option>
-                {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              {errors.manufacturer && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.manufacturer}</p>}
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Base model</p>
-              <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)} disabled={!manufacturerId} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                <option value="">Select base model</option>
-                {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${m.retail_price.toLocaleString()}</option>)}
-              </select>
-              {errors.baseModel && <p className="text-[11px] mt-1" style={{ color: "#D4183D" }}>{errors.baseModel}</p>}
-            </div>
-          </div>
-
-          {extendedChuteOption && (
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border" style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}>
-              <input type="checkbox" checked={isExtendedSelected} onChange={() => toggleSimpleOption(extendedChuteOption.id)} className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-              <span className="text-[13px] font-semibold flex-1" style={{ color: "#0E2646" }}>Extended length</span>
-              <span className="text-xs flex-shrink-0" style={{ color: "#717182" }}>${fmtCurrency(extendedChuteOption.retail_price)}</span>
-            </div>
-          )}
-
-          {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
-            <div>
-              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Quick build</p>
-              <select value={quickBuildId} onChange={(e) => handleQuickBuildChange(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-                <option value="">None — custom build</option>
-                {quickBuildsQuery.data.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Build shorthand</p>
-            <input value={buildShorthand} onChange={(e) => { setBuildShorthand(e.target.value); setBuildShorthandManual(true); }} placeholder="Auto-generated" className="w-full border border-border rounded-lg px-3 py-2.5 bg-card outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" style={{ fontWeight: buildShorthand ? 500 : 400, color: buildShorthand ? "#55BAAA" : undefined }} />
-          </div>
-
-          {/* Options — collapsible groups */}
-          {groupedOptions.length > 0 && (
-            <div>
-              {groupedOptions.map(([group, opts]) => {
-                const filtered = opts.filter((o) => o.id !== extendedChuteOption?.id);
-                if (filtered.length === 0) return null;
-                return renderGroupCard(group, filtered);
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── SECTION 5: CUSTOM LINE ITEMS ────────────────── */}
-      {selectedBaseModel && (
-        <div className="bg-white border rounded-xl p-4 md:max-w-[680px] md:mx-auto mx-4 mt-3" style={{ borderColor: "#D4D4D0" }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Custom line items</p>
-            <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform"
-              style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
-              + Add item
-            </button>
-          </div>
-          {customLineItems.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, miscellaneous, or any custom-priced item.</p>
-          )}
-          {customLineItems.map((item, idx) => (
-            <div key={idx} className="flex gap-2 items-end mb-2">
-              <div className="flex-1">
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}
-                <input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
-                  placeholder="e.g. Additional Spool Valves"
-                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-              </div>
-              <div style={{ width: 90 }}>
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}
-                <CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" />
-              </div>
-              <div style={{ width: 90 }}>
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}
-                <CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" />
-              </div>
-              <button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))}
-                className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5">
-                <Trash2 size={14} style={{ color: "#D4183D" }} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── RECEIPT CARD (tabbed: Summary / Itemized) ────── */}
-      {selectedBaseModel && (
-        <div className="md:max-w-[680px] md:mx-auto mx-4 mt-3 rounded-xl overflow-hidden" style={{ backgroundColor: "#0E2646" }}>
-          {/* Tabs */}
-          <div className="flex" style={{ borderBottom: "1px solid rgba(245,245,240,0.1)" }}>
-            <button type="button" onClick={() => setReceiptTab("summary")} className="flex-1 py-2.5 text-center text-[12px] font-medium" style={{ color: receiptTab === "summary" ? "#55BAAA" : "rgba(245,245,240,0.4)", borderBottom: receiptTab === "summary" ? "2px solid #55BAAA" : "2px solid transparent" }}>Summary</button>
-            <button type="button" onClick={() => setReceiptTab("itemized")} className="flex-1 py-2.5 text-center text-[12px] font-medium" style={{ color: receiptTab === "itemized" ? "#55BAAA" : "rgba(245,245,240,0.4)", borderBottom: receiptTab === "itemized" ? "2px solid #55BAAA" : "2px solid transparent" }}>Itemized</button>
-          </div>
-
-          <div className="p-4">
-            {/* Big cost/customer cards */}
-            <div className="flex gap-2.5 mb-3">
-              <div className="flex-1 rounded-lg p-3" style={{ background: "rgba(85,186,170,0.12)" }}>
-                <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "rgba(85,186,170,0.7)" }}>Our cost</p>
-                <p className="text-[20px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "rgba(85,186,170,0.5)" }}>Base + {optionCount} opt{optionCount !== 1 ? "s" : ""}{customLineItems.filter(c => c.name.trim()).length > 0 ? ` + ${customLineItems.filter(c => c.name.trim()).length} custom` : ""}</p>
-              </div>
-              <div className="flex-1 rounded-lg p-3" style={{ background: "rgba(243,209,42,0.08)" }}>
-                <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "rgba(243,209,42,0.7)" }}>Customer total</p>
-                <p className="text-[20px] font-medium" style={{ color: "#F3D12A" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0))}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "rgba(243,209,42,0.5)" }}>{taxRate > 0 ? `Incl. tax` : ""}{freightEstimate && parseFloat(freightEstimate) > 0 ? (taxRate > 0 ? " + freight" : "Incl. freight") : ""}</p>
-              </div>
-            </div>
-
-            {receiptTab === "summary" ? (
-              <>
-                {/* Summary view */}
-                <div className="flex justify-between mb-1">
-                  <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Base model</span>
-                  <div className="flex gap-4">
-                    <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
-                    <span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
-                  </div>
-                </div>
-                {optionCount > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Options ({optionCount})</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(optionCostTotal)}</span>
-                      <span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(optionRetailTotal)}</span>
-                    </div>
-                  </div>
-                )}
-                {customLineItems.filter(c => c.name.trim() && (parseFloat(c.retail) > 0 || parseFloat(c.cost) > 0)).length > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Custom items</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(customCostTotal)}</span>
-                      <span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(customRetailTotal)}</span>
-                    </div>
-                  </div>
-                )}
-                {discountValue > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Discount</span>
-                    <div className="flex gap-4">
-                      <span className="text-[12px]" style={{ color: "#55BAAA" }}>—</span>
-                      <span className="text-[12px]" style={{ color: "#F3D12A" }}>-${fmtCurrency(discountValue)}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
-                {taxRate > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState} {taxRate}%)</span>
-                    <span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(taxAmount)}</span>
-                  </div>
-                )}
-                {freightEstimate && parseFloat(freightEstimate) > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span>
-                    <span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
-                  </div>
-                )}
-                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
-                <div className="flex justify-between">
-                  <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Margin</span>
-                  <span className="text-[13px] font-medium" style={{ color: marginColor || "#55BAAA" }}>{margin ? `$${fmtCurrency(margin.amount)} (${margin.percent.toFixed(1)}%)` : "—"}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Itemized view */}
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Item</span>
-                  <div className="flex">
-                    <span className="text-[9px] uppercase tracking-wider w-[70px] text-right" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span>
-                    <span className="text-[9px] uppercase tracking-wider w-[70px] text-right" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span>
-                  </div>
-                </div>
-                <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
-                <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Base model</p>
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{selectedBaseModel.name}</span>
-                  <div className="flex flex-shrink-0">
-                    <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
-                    <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
-                  </div>
-                </div>
-                {selectedOptionsList.length > 0 && (
-                  <>
-                    <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
-                    <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Options</p>
-                    {selectedOptionsList.map(({ option, quantity }, i) => (
-                      <div key={i} className="flex justify-between mb-1">
-                        <span className="text-[12px] flex-1 min-w-0 truncate mr-2" style={{ color: "#F5F5F0" }}>{option.display_name || option.name}{quantity > 1 ? ` ×${quantity}` : ""}</span>
-                        <div className="flex flex-shrink-0">
-                          <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span>
-                          <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {customLineItems.filter(c => c.name.trim()).length > 0 && (
-                  <>
-                    <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
-                    <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Custom items</p>
-                    {customLineItems.filter(c => c.name.trim()).map((c, i) => (
-                      <div key={i} className="flex justify-between mb-1">
-                        <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{c.name}</span>
-                        <div className="flex flex-shrink-0">
-                          <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span>
-                          <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-                <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
-                <div className="flex justify-between mb-1">
-                  <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Subtotal</span>
-                  <div className="flex flex-shrink-0">
-                    <span className="text-[12px] w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
-                    <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(calcRetail)}</span>
-                  </div>
-                </div>
-                {parseFloat(discountAmount) > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Discount {discountType === "%" ? `(${discountAmount}%)` : ""}</span>
-                    <div className="flex flex-shrink-0">
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "#D4183D" }}>−${fmtCurrency(discountType === "%" ? calcRetail * (parseFloat(discountAmount) / 100) : parseFloat(discountAmount))}</span>
-                    </div>
-                  </div>
-                )}
-                {freightEstimate && parseFloat(freightEstimate) > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span>
-                    <div className="flex flex-shrink-0">
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
-                    </div>
-                  </div>
-                )}
-                {taxRate > 0 && (
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState || ""} {taxRate}%)</span>
-                    <div className="flex flex-shrink-0">
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.3)" }}>—</span>
-                      <span className="text-[12px] w-[70px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(taxAmount)}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="my-1" style={{ height: 1, background: "rgba(245,245,240,0.15)" }} />
-                <div className="flex justify-between">
-                  <span className="text-[12px] font-medium" style={{ color: "rgba(245,245,240,0.7)" }}>Total</span>
-                  <div className="flex flex-shrink-0">
-                    <span className="text-[13px] font-medium w-[70px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
-                    <span className="text-[13px] font-medium w-[70px] text-right" style={{ color: "#F5F5F0" }}>${fmtCurrency(customerPrice + (freightEstimate ? parseFloat(freightEstimate) : 0) + taxAmount)}</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Save Button */}
-      <div className="px-4 mt-4 md:max-w-[680px] md:mx-auto">
-        <button onClick={handleSubmit} disabled={submitting} className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50" style={{ background: "#55BAAA", color: "#0E2646" }}>
-          {submitting ? "Saving..." : "Save changes"}
-        </button>
-      </div>
-
-      {/* Estimate Dialog */}
-      <Dialog open={showEstimateDialog} onOpenChange={setShowEstimateDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{isFirstEstimate ? "Create estimate" : "Save estimate changes"}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {isFirstEstimate
-              ? "Create an estimate for the customer based on this equipment configuration."
-              : "You changed the equipment or options. How do you want to save?"}
-          </p>
-          {!isFirstEstimate && (
-            <div className="space-y-2">
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("update")}>
-                <input type="radio" checked={estimateAction === "update"} onChange={() => setEstimateAction("update")} className="mt-0.5" />
-                <div><p className="text-sm font-medium text-foreground">Update current estimate</p><p className="text-xs text-muted-foreground">Overwrite the existing version with the new config</p></div>
-              </label>
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted/50" onClick={() => setEstimateAction("new")}>
-                <input type="radio" checked={estimateAction === "new"} onChange={() => setEstimateAction("new")} className="mt-0.5" />
-                <div><p className="text-sm font-medium text-foreground">Save as new estimate version</p><p className="text-xs text-muted-foreground">Keep the old version and create a new one</p></div>
-              </label>
-            </div>
-          )}
-          <div>
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#F3D12A" }}>Estimate No.</p>
-            <input type="text" value={newEstimateNumber} onChange={(e) => setNewEstimateNumber(e.target.value)} placeholder="Auto-generated" className="w-full border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:ring-2 focus:ring-catl-gold/25" style={{ borderColor: "#F3D12A", fontWeight: 600 }} />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">Name this estimate</p>
-            <input value={estimateLabel} onChange={(e) => setEstimateLabel(e.target.value)} placeholder={isFirstEstimate ? 'e.g. "Base + gun holders"' : estimateAction === "update" ? 'e.g. "Updated quote"' : 'e.g. "With extended chute"'} className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-sm outline-none text-[16px]" />
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <button onClick={() => { if (isFirstEstimate || estimateAction === "new") { doSave({ createEstimateVersion: true, estimateLabel: estimateLabel || undefined }); } else { doSave({ createEstimateVersion: false, estimateLabel: estimateLabel || undefined }); } }} disabled={submitting} className="flex-1 rounded-full py-2.5 text-sm font-medium disabled:opacity-50" style={{ background: "#F3D12A", color: "#0E2646" }}>
-              {submitting ? "Saving..." : isFirstEstimate ? "Create estimate" : estimateAction === "new" ? "Create new version" : "Update estimate"}
-            </button>
-            <button onClick={() => setShowEstimateDialog(false)} className="px-4 text-sm text-muted-foreground">Cancel</button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Change Order Dialog */}
-      <Dialog open={showChangeOrderDialog} onOpenChange={setShowChangeOrderDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Log change order</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground mb-3">This order is already with MOLY. Equipment or option changes require a change order.</p>
-          <div className="mb-3">
-            <p className="text-[11px] font-semibold mb-1.5" style={{ color: "#717182" }}>Who initiated this?</p>
-            <div className="flex gap-2">
-              {(["customer", "moly", "internal"] as const).map((src) => (
-                <button key={src} onClick={() => setCoSource(src)} className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{ background: coSource === src ? (src === "customer" ? "#E1F5EE" : src === "moly" ? "#FAEEDA" : "hsl(var(--muted))") : "transparent", color: coSource === src ? (src === "customer" ? "#085041" : src === "moly" ? "#633806" : "hsl(var(--foreground))") : "hsl(var(--muted-foreground))", border: `1px solid ${coSource === src ? (src === "customer" ? "rgba(85,186,170,0.3)" : src === "moly" ? "rgba(243,209,42,0.3)" : "hsl(var(--border))") : "hsl(var(--border))"}` }}>
-                  {src === "customer" ? "Customer" : src === "moly" ? "MOLY" : "Internal"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="mb-3">
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Requested by</p>
-            <input value={coRequestedBy} onChange={(e) => setCoRequestedBy(e.target.value)} placeholder="Name of person" className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none text-[16px]" />
-          </div>
-          <div className="mb-3">
-            <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>What changed?</p>
-            <textarea value={coDescription} onChange={(e) => setCoDescription(e.target.value)} placeholder="Describe the change..." rows={3} className="w-full border border-border rounded-lg px-3 py-2 bg-card text-sm outline-none resize-none text-[16px]" />
-          </div>
-          <label className="flex items-center gap-2 mb-4 cursor-pointer">
-            <input type="checkbox" checked={coRequiresApproval} onChange={(e) => setCoRequiresApproval(e.target.checked)} />
-            <span className="text-sm">Requires customer approval before applying</span>
-          </label>
-          <div className="rounded-lg p-3 mb-4" style={{ background: "rgba(14,38,70,0.04)", border: "1px solid rgba(14,38,70,0.1)" }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: "#717182" }}>Price impact</p>
-            <p className="text-sm font-medium" style={{ color: customerPrice - parseFloat(originalPrice) >= 0 ? "#27AE60" : "#D4183D" }}>
-              {customerPrice - parseFloat(originalPrice) >= 0 ? "+" : ""}${(customerPrice - parseFloat(originalPrice)).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">New total: ${customerPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })} (was ${parseFloat(originalPrice).toLocaleString("en-US", { maximumFractionDigits: 0 })})</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => { doSave({ changeOrder: { source: coSource, requestedBy: coRequestedBy, description: coDescription, requiresApproval: coRequiresApproval } }); }} disabled={submitting || !coDescription.trim()} className="flex-1 rounded-full py-2.5 text-sm font-medium disabled:opacity-50" style={{ background: "#F3D12A", color: "#0E2646" }}>
-              {submitting ? "Saving..." : "Save change order"}
-            </button>
-            <button onClick={() => setShowChangeOrderDialog(false)} className="px-4 text-sm text-muted-foreground">Cancel</button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
