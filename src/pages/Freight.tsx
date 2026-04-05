@@ -14,7 +14,7 @@ interface FreightStop { id:string; freight_run_id:string; order_id:string|null; 
 interface ReadyOrder { id:string; moly_contract_number:string|null; contract_name:string|null; base_model:string|null; build_shorthand:string|null; customer_id:string|null; delivery_instructions:string|null; status:string; customers?:{name:string;phone:string|null;address_line1:string|null;address_city:string|null;address_state:string|null;address_zip:string|null;}|null; }
 
 const KL: Record<string,{label:string;short:string;city:string;state:string}> = {
-  catl_wall_sd:{label:"CATL Resources — Wall, SD",short:"CATL Wall SD",city:"Wall",state:"SD"},
+  catl_wall_sd:{label:"CATL Resources — St. Onge, SD",short:"CATL St. Onge SD",city:"St. Onge",state:"SD"},
   lorraine_ks:{label:"Moly Mfg — Lorraine, KS",short:"Moly Lorraine KS",city:"Lorraine",state:"KS"},
   ainsworth_ne:{label:"Daniels — Ainsworth, NE",short:"Daniels Ainsworth NE",city:"Ainsworth",state:"NE"},
   el_dorado_ks:{label:"MJE — El Dorado, KS",short:"MJE El Dorado KS",city:"El Dorado",state:"KS"},
@@ -225,11 +225,11 @@ function AddStopModal({runId,readyOrders,cnt,onAdd,onClose}:{runId:string;readyO
 
           {st==="delivery"&&!sel&&<>
             {/* Quick option: deliver to CATL yard */}
-            <button onClick={()=>onAdd({freight_run_id:runId,stop_order:cnt+1,stop_type:"delivery",customer_name:"CATL Resources — Wall, SD",delivery_city:"Wall",delivery_state:"SD",delivery_instructions:"Deliver to CATL yard"})}
+            <button onClick={()=>onAdd({freight_run_id:runId,stop_order:cnt+1,stop_type:"delivery",customer_name:"CATL Resources — St. Onge, SD",delivery_city:"St. Onge",delivery_state:"SD",delivery_instructions:"Deliver to CATL yard"})}
               className="w-full text-left p-3 rounded-xl mb-3 active:scale-[0.99] transition-transform" style={{backgroundColor:"rgba(14,38,70,0.06)",border:"1.5px solid rgba(14,38,70,0.15)"}}>
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{backgroundColor:"#0E2646",color:"#F3D12A"}}>C</div>
-                <div><p className="text-[13px] font-medium" style={{color:"#0E2646"}}>Deliver to CATL — Wall, SD</p><p className="text-[11px]" style={{color:"#717182"}}>Bring to our yard (will ship to customer later)</p></div>
+                <div><p className="text-[13px] font-medium" style={{color:"#0E2646"}}>Deliver to CATL — St. Onge, SD</p><p className="text-[11px]" style={{color:"#717182"}}>Bring to our yard (will ship to customer later)</p></div>
               </div>
             </button>
 
@@ -265,7 +265,7 @@ function NewRunModal({carriers,onCreate,onClose}:{carriers:Carrier[];onCreate:(d
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{backgroundColor:"#fff"}}>
         <div className="sticky top-0 flex items-center justify-between p-4 border-b" style={{borderColor:"#F0F0EC",backgroundColor:"#fff"}}><h3 className="text-[15px] font-medium" style={{color:"#0E2646"}}>New freight run</h3><button onClick={onClose}><X size={18} style={{color:"#717182"}}/></button></div>
         <div className="p-4 space-y-3">
-          <div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Run name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Wall → Lorraine → NE deliveries → Wall" className="w-full text-[13px] rounded-lg px-3 py-2 mt-0.5" style={{border:"0.5px solid #D4D4D0"}}/></div>
+          <div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Run name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. St. Onge → Lorraine → NE deliveries → St. Onge" className="w-full text-[13px] rounded-lg px-3 py-2 mt-0.5" style={{border:"0.5px solid #D4D4D0"}}/></div>
           <div className="grid grid-cols-2 gap-2">
             <div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Starting from</label><LocSel value={sl} onChange={setSl}/>{sl==="custom"&&<div className="grid grid-cols-2 gap-1 mt-1"><input value={sc.city} onChange={e=>setSc(p=>({...p,city:e.target.value}))} placeholder="City" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/><input value={sc.state} onChange={e=>setSc(p=>({...p,state:e.target.value}))} placeholder="State" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/></div>}</div>
             <div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Ending at</label><LocSel value={el} onChange={setEl}/>{el==="custom"&&<div className="grid grid-cols-2 gap-1 mt-1"><input value={ec.city} onChange={e=>setEc(p=>({...p,city:e.target.value}))} placeholder="City" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/><input value={ec.state} onChange={e=>setEc(p=>({...p,state:e.target.value}))} placeholder="State" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/></div>}</div>

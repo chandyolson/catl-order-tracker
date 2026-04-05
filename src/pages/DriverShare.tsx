@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { useState, useMemo } from "react";
 
 const LOC: Record<string, string> = {
-  catl_wall_sd: "CATL Resources — Wall, SD",
+  catl_wall_sd: "CATL Resources — St. Onge, SD",
   lorraine_ks: "Moly Mfg — Lorraine, KS",
   ainsworth_ne: "Daniels — Ainsworth, NE",
   el_dorado_ks: "MJE — El Dorado, KS",
