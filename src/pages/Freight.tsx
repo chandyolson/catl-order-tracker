@@ -129,7 +129,7 @@ export default function Freight() {
             <button onClick={()=>{const p=prompt("Priority (1=highest, 0=none):",activeRun.priority?.toString()||"0");if(p!==null)updateRun.mutate({id:activeRun.id,priority:parseInt(p)||0});}} className="text-[11px] px-2.5 py-1.5 rounded-lg flex items-center gap-1" style={{background:activeRun.priority>0?"rgba(243,209,42,0.3)":"rgba(245,245,240,0.1)",color:activeRun.priority>0?"#F3D12A":"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>
               {activeRun.priority>0?`#${activeRun.priority}`:"Priority"}
             </button>
-            <select value={activeRun.status} onChange={e=>updateRun.mutate({id:activeRun.id,status:e.target.value})} className="text-[12px] rounded-lg px-2 py-1.5 flex-1" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>{Object.entries(SC).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+            <select value={activeRun.status} onChange={e=>updateRun.mutate({id:activeRun.id,status:e.target.value})} className="text-[12px] font-medium rounded-lg px-2 py-1.5 flex-1" style={{background:"#F5F5F0",color:"#0E2646",border:"0.5px solid rgba(245,245,240,0.3)"}}>{Object.entries(SC).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
             <button onClick={()=>{const m=prompt("Total miles:",activeRun.total_miles?.toString()||"");if(m!==null)updateRun.mutate({id:activeRun.id,total_miles:m?parseFloat(m):null});}} className="text-[11px] px-2.5 py-1.5 rounded-lg" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>Miles</button>
             <button onClick={()=>{const c=prompt("Actual cost:",activeRun.actual_cost?.toString()||"");if(c!==null)updateRun.mutate({id:activeRun.id,actual_cost:c?parseFloat(c):null});}} className="text-[11px] px-2.5 py-1.5 rounded-lg" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>Cost</button>
           </div>
@@ -193,9 +193,19 @@ function ManifestTab({items,onAddClick,onRemove,onUpdate,onMarkDelivered,onReord
       onRemove={()=>onRemove(item.id)} onUpdate={onUpdate} onMarkDelivered={()=>onMarkDelivered(item.id)} navigate={navigate}/>)}
     <button onClick={onAddClick} className="w-full text-center rounded-xl py-3 text-[13px] font-medium mb-3" style={{border:"1.5px dashed #D4D4D0",color:"#717182"}}><Plus size={14} className="inline mr-1"/>Add equipment to truck</button>
     {items.length>1&&<div className="rounded-xl p-3 mb-3" style={{border:"1px solid #F59E0B",backgroundColor:"#FEFCE8"}}>
-      <p className="text-[11px] font-bold mb-1" style={{color:"#854F0B"}}>Loading order (first on = last off truck)</p>
-      <p className="text-[12px]" style={{color:"#854F0B"}}>{[...items].reverse().map((it,i)=>`${i+1}. ${it.customer_name||it.orders?.contract_name||it.orders?.moly_contract_number||"Item"}`).join("  →  ")}</p>
-      <p className="text-[11px] mt-1" style={{color:"#92710d"}}>Drag items above to reorder loading</p>
+      <p className="text-[11px] font-bold mb-2" style={{color:"#854F0B"}}>Loading order (first on = last off truck)</p>
+      <div className="space-y-1">
+        {[...items].reverse().map((it,i)=>{
+          const label=it.orders?.moly_contract_number?`${it.orders.moly_contract_number} — ${it.orders.contract_name||""}`:it.description||it.customer_name||"Custom item";
+          const destLabel=it.destination_type==="catl"?"CATL yard":it.destination_type==="customer"?(it.orders?.customers?.name||it.customer_name||"Customer"):"Custom";
+          return <div key={it.id} className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{backgroundColor:"#F59E0B",color:"#fff"}}>{i+1}</span>
+            <span className="text-[12px] font-medium" style={{color:"#854F0B"}}>{label}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{backgroundColor:"rgba(133,79,11,0.12)",color:"#854F0B"}}>→ {destLabel}</span>
+          </div>;
+        })}
+      </div>
+      <p className="text-[11px] mt-2" style={{color:"#92710d"}}>Drag items above to reorder loading</p>
     </div>}
     <div className="border-t pt-3 mt-2" style={{borderColor:"#F0F0EC"}}>
       <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Route preview</p>
@@ -499,7 +509,7 @@ function PrintSheet({run,items,stops,onBack}:{run:FreightRun;items:ManifestItem[
               {item.unloading_equipment&&<p style={{margin:"2px 0",fontSize:12,color:"#717182"}}>Unloading: <strong>{UO.find(o=>o.value===item.unloading_equipment)?.label||item.unloading_equipment}</strong></p>}
             </div>
           </div>);})}
-        {items.length>1&&<div style={{border:"1px solid #F59E0B",borderRadius:8,padding:"10px 14px",marginBottom:20,backgroundColor:"#FEFCE8"}}><p style={{fontSize:12,fontWeight:700,color:"#854F0B",margin:"0 0 4px"}}>LOADING ORDER (load first → last off):</p><p style={{fontSize:13,color:"#854F0B",margin:0}}>{[...items].reverse().map((it,i)=>`${i+1}. ${it.customer_name||it.orders?.contract_name||"Item"}`).join("  →  ")}</p></div>}
+        {items.length>1&&<div style={{border:"1px solid #F59E0B",borderRadius:8,padding:"10px 14px",marginBottom:20,backgroundColor:"#FEFCE8"}}><p style={{fontSize:12,fontWeight:700,color:"#854F0B",margin:"0 0 8px"}}>LOADING ORDER (load first → last off):</p>{[...items].reverse().map((it,i)=>{const lbl=it.orders?.moly_contract_number?`${it.orders.moly_contract_number} — ${it.orders.contract_name||""}`:it.description||it.customer_name||"Custom item";const dl=it.destination_type==="catl"?"CATL yard":it.destination_type==="customer"?(it.orders?.customers?.name||it.customer_name||"Customer"):"Custom";return<div key={it.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{width:20,height:20,borderRadius:"50%",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,backgroundColor:"#F59E0B",color:"#fff",flexShrink:0}}>{i+1}</span><span style={{fontSize:13,fontWeight:600,color:"#854F0B"}}>{lbl}</span><span style={{fontSize:11,color:"#92710d"}}>→ {dl}</span></div>;})}</div>}
         {pickups.length>0&&<><h2 style={{fontSize:14,fontWeight:700,color:"#0E2646",textTransform:"uppercase",letterSpacing:"0.05em",margin:"20px 0 8px",borderBottom:"1px solid #D4D4D0",paddingBottom:4}}>Manufacturer pickups</h2>{pickups.map((s,i)=><PStop key={s.id} stop={s} idx={i+1} isP/>)}</>}
         {deliveries.length>0&&<><h2 style={{fontSize:14,fontWeight:700,color:"#0E2646",textTransform:"uppercase",letterSpacing:"0.05em",margin:"20px 0 8px",borderBottom:"1px solid #D4D4D0",paddingBottom:4}}>Delivery stops</h2>{deliveries.map((s,i)=><PStop key={s.id} stop={s} idx={i+1} isP={false}/>)}</>}
         <div style={{borderTop:"2px solid #0E2646",marginTop:24,paddingTop:8,textAlign:"center",fontSize:11,color:"#B4B2A9"}}>CATL Resources · Freight Run Sheet · Generated {format(new Date(),"MMM d, yyyy h:mm a")}</div>
