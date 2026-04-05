@@ -27,6 +27,9 @@ const LOC: Record<string,{label:string;short:string;city:string;state:string}> =
   ainsworth_ne:{label:"Daniels — Ainsworth, NE",short:"Daniels Ainsworth NE",city:"Ainsworth",state:"NE"},
   el_dorado_ks:{label:"MJE — El Dorado, KS",short:"MJE El Dorado KS",city:"El Dorado",state:"KS"},
   washburn_nd:{label:"River Ag — Washburn, ND",short:"River Ag Washburn ND",city:"Washburn",state:"ND"},
+  abilene_ks:{label:"Rawhide — Abilene, KS",short:"Rawhide Abilene KS",city:"Abilene",state:"KS"},
+  linn_ks:{label:"Linn Post & Pipe — Linn, KS",short:"Linn P&P Linn KS",city:"Linn",state:"KS"},
+  creighton_ne:{label:"Linn Post & Pipe — Creighton, NE",short:"Linn P&P Creighton NE",city:"Creighton",state:"NE"},
   custom:{label:"Custom location",short:"Custom",city:"",state:""},
 };
 const SC: Record<RunStatus,{bg:string;text:string;label:string}> = {
