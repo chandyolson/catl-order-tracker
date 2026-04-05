@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search, Plus, Package, Warehouse, LayoutGrid, List, Columns3,
-  CalendarIcon, AlertTriangle,
+  CalendarIcon, AlertTriangle, MapPin,
 } from "lucide-react";
 import { format, differenceInDays, addDays, addMonths } from "date-fns";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import StatusBadge from "@/components/StatusBadge";
 import NewOrderPicker from "@/components/NewOrderPicker";
+import EquipmentMap from "@/components/EquipmentMap";
 import { formatSavedOptionPill } from "@/lib/optionDisplay";
 
 // ─── constants ───────────────────────────────────────────────
@@ -95,7 +96,7 @@ export default function Equipment() {
   const [mfgFilter, setMfgFilter] = useState(urlMfg);
   const [sortIdx, setSortIdx] = useState(0);
   const [etaFilter, setEtaFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"card" | "list" | "board">("card");
+  const [viewMode, setViewMode] = useState<"card" | "list" | "board" | "map">("card");
   const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => { setTab((searchParams.get("tab") as TabKey) || "all"); }, [searchParams]);
@@ -253,6 +254,10 @@ export default function Equipment() {
                 style={{ backgroundColor: viewMode === "board" ? "#0E2646" : "transparent" }}>
                 <Columns3 size={14} color={viewMode === "board" ? "#F3D12A" : "#717182"} />
               </button>
+              <button onClick={() => setViewMode("map")} className="px-2.5 py-2 transition-colors"
+                style={{ backgroundColor: viewMode === "map" ? "#0E2646" : "transparent" }}>
+                <MapPin size={14} color={viewMode === "map" ? "#F3D12A" : "#717182"} />
+              </button>
             </div>
             <button onClick={() => setShowPicker(true)}
               className="w-10 h-10 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
@@ -358,7 +363,9 @@ export default function Equipment() {
         )}
 
         {/* Content */}
-        {ordersQuery.isLoading ? (
+        {viewMode === "map" ? (
+          <EquipmentMap />
+        ) : ordersQuery.isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-xl bg-white/50 animate-pulse" />)}
           </div>
