@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,13 +179,7 @@ export default function Freight() {
         <div className="px-4 pb-24">
           {activeTab==="manifest"?<ManifestTab items={items} onAddClick={()=>setShowAddItem(true)} onRemove={id=>{if(confirm("Remove from truck?"))removeItem.mutate(id);}} onUpdate={d=>updateItem.mutate(d)} onMarkDelivered={id=>updateItem.mutate({id,status:"delivered",delivered_at:new Date().toISOString()})} onReorder={reorderItems} navigate={navigate} stops={stops} activeRun={activeRun}/>
           :activeTab==="route"?<RouteTab stops={stops} activeRun={activeRun} onAddClick={()=>setShowAddStop(true)} onRemove={id=>{if(confirm("Remove stop?"))removeStop.mutate(id);}} onUpdate={d=>updateStop.mutate(d)} onMarkDone={id=>updateStop.mutate({id,status:"delivered",delivered_at:new Date().toISOString()})} onReorder={reorderStops} navigate={navigate}/>
-          :<FreightMap
-            points={buildMapPoints(activeRun, stops, items)}
-            totalMiles={activeRun.total_miles}
-            onMilesCalculated={(total, legs) => { updateRun.mutate({ id: activeRun.id, total_miles: total }); }}
-            onSaveMiles={(miles) => { updateRun.mutate({ id: activeRun.id, total_miles: miles }); }}
-            height={320}
-          />}
+          :<FreightMapWrapper run={activeRun} stops={stops} items={items} updateRun={updateRun} />}
         </div>
         {showAddItem&&<AddItemModal runId={activeRun.id} readyOrders={readyOrders} cnt={items.length} onAdd={d=>{addItem.mutate(d);setShowAddItem(false);}} onClose={()=>setShowAddItem(false)}/>}
         {showAddStop&&<AddRouteStopModal runId={activeRun.id} cnt={stops.length} onAdd={d=>{addStop.mutate(d);setShowAddStop(false);}} onClose={()=>setShowAddStop(false)}/>}
@@ -224,6 +218,18 @@ export default function Freight() {
       {showCarriers&&<CarriersModal carriers={carriers} onAdd={d=>createCarrier.mutate(d)} onDelete={id=>deleteCarrier.mutate(id)} onClose={()=>setShowCarriers(false)}/>}
     </div>
   );
+}
+
+function FreightMapWrapper({ run, stops, items, updateRun }: { run: FreightRun; stops: RouteStop[]; items: ManifestItem[]; updateRun: any }) {
+  const points = useMemo(() => buildMapPoints(run, stops, items), [run.id, stops.length, items.length]);
+  const savedRef = useRef(false);
+  const handleMilesCalculated = useCallback((total: number) => {
+    if (!savedRef.current) { savedRef.current = true; updateRun.mutate({ id: run.id, total_miles: total }); }
+  }, [run.id]);
+  const handleSaveMiles = useCallback((miles: number) => {
+    updateRun.mutate({ id: run.id, total_miles: miles });
+  }, [run.id]);
+  return <FreightMap points={points} totalMiles={run.total_miles} onMilesCalculated={handleMilesCalculated} onSaveMiles={handleSaveMiles} height={320} />;
 }
 
 function ManifestTab({items,onAddClick,onRemove,onUpdate,onMarkDelivered,onReorder,navigate,stops,activeRun}:{items:ManifestItem[];onAddClick:()=>void;onRemove:(id:string)=>void;onUpdate:(d:any)=>void;onMarkDelivered:(id:string)=>void;onReorder:(f:number,t:number)=>void;navigate:(p:string)=>void;stops:RouteStop[];activeRun:FreightRun;}) {

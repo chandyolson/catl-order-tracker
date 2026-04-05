@@ -40,6 +40,8 @@ export default function FreightMap({ points, totalMiles, onMilesCalculated, onSa
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const onMilesRef = useRef(onMilesCalculated);
+  onMilesRef.current = onMilesCalculated;
   const [legs, setLegs] = useState<LegResult[]>([]);
   const [calcTotal, setCalcTotal] = useState<number | null>(null);
   const [overrideMiles, setOverrideMiles] = useState("");
@@ -112,13 +114,14 @@ export default function FreightMap({ points, totalMiles, onMilesCalculated, onSa
         const lr: LegResult[] = dr.routes[0].legs.map((leg, i) => ({ from: geo[i].pt.label, to: geo[i + 1]?.pt.label || geo[geo.length - 1].pt.label, miles: Math.round((leg.distance?.value || 0) * 0.000621371), duration: leg.duration?.text || "" }));
         const tot = lr.reduce((s, l) => s + l.miles, 0);
         setLegs(lr); setCalcTotal(tot); setOverrideMiles(tot.toString());
-        onMilesCalculated?.(tot, lr);
+        onMilesRef.current?.(tot, lr);
       }
     } catch (err: any) { console.error("Route:", err); setError(err.message || "Route calculation failed."); }
     setLoading(false);
-  }, [points, onMilesCalculated]);
+  }, [points]);
 
-  useEffect(() => { if (ready && points.length >= 2) calculateRoute(); }, [ready, calculateRoute]);
+  const didCalc = useRef(false);
+  useEffect(() => { if (ready && points.length >= 2 && !didCalc.current) { didCalc.current = true; calculateRoute(); } }, [ready]);
   useEffect(() => { if (totalMiles && !calcTotal) setOverrideMiles(totalMiles.toString()); }, [totalMiles]);
 
   if (points.length < 2) return (
