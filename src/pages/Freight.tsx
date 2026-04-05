@@ -15,8 +15,8 @@ type StopType = "pickup"|"delivery"|"waypoint";
 type DestType = "customer"|"catl"|"custom";
 
 interface Carrier { id:string; name:string; type:"external_trucker"|"catl_vehicle"; phone:string|null; email:string|null; vehicle_description:string|null; notes:string|null; is_active:boolean; }
-interface FreightRun { id:string; name:string|null; pickup_location:string; start_location:string|null; start_city:string|null; start_state:string|null; end_location:string|null; end_city:string|null; end_state:string|null; total_miles:number|null; carrier_id:string|null; driver_name:string|null; status:RunStatus; pickup_date:string|null; estimated_arrival:string|null; actual_cost:number|null; freight_notes:string|null; share_token:string|null; created_at:string; carriers?:Carrier|null; }
-interface ManifestItem { id:string; freight_run_id:string; order_id:string|null; load_order:number; destination_type:DestType; customer_name:string|null; delivery_address:string|null; delivery_city:string|null; delivery_state:string|null; delivery_zip:string|null; delivery_phone:string|null; delivery_instructions:string|null; unloading_equipment:string|null; status:string; delivered_at:string|null; notes:string|null; orders?:{id:string;moly_contract_number:string|null;contract_name:string|null;base_model:string|null;build_shorthand:string|null;customer_id:string|null;customers?:{name:string;phone:string|null;address_line1:string|null;address_city:string|null;address_state:string|null;address_zip:string|null;}|null;}|null; }
+interface FreightRun { id:string; name:string|null; pickup_location:string; start_location:string|null; start_city:string|null; start_state:string|null; end_location:string|null; end_city:string|null; end_state:string|null; total_miles:number|null; carrier_id:string|null; driver_name:string|null; status:RunStatus; pickup_date:string|null; estimated_arrival:string|null; actual_cost:number|null; freight_notes:string|null; share_token:string|null; priority:number; created_at:string; carriers?:Carrier|null; }
+interface ManifestItem { id:string; freight_run_id:string; order_id:string|null; load_order:number; destination_type:DestType; customer_name:string|null; description:string|null; delivery_address:string|null; delivery_city:string|null; delivery_state:string|null; delivery_zip:string|null; delivery_phone:string|null; delivery_instructions:string|null; unloading_equipment:string|null; status:string; delivered_at:string|null; notes:string|null; orders?:{id:string;moly_contract_number:string|null;contract_name:string|null;base_model:string|null;build_shorthand:string|null;customer_id:string|null;customers?:{name:string;phone:string|null;address_line1:string|null;address_city:string|null;address_state:string|null;address_zip:string|null;}|null;}|null; }
 interface RouteStop { id:string; freight_run_id:string; order_id:string|null; stop_order:number; stop_type:StopType; customer_name:string|null; delivery_address:string|null; delivery_city:string|null; delivery_state:string|null; delivery_zip:string|null; delivery_phone:string|null; delivery_instructions:string|null; unloading_equipment:string|null; status:string; delivered_at:string|null; notes:string|null; orders?:any; }
 interface ReadyOrder { id:string; moly_contract_number:string|null; contract_name:string|null; base_model:string|null; build_shorthand:string|null; customer_id:string|null; delivery_instructions:string|null; status:string; customers?:{name:string;phone:string|null;address_line1:string|null;address_city:string|null;address_state:string|null;address_zip:string|null;}|null; }
 
@@ -63,7 +63,7 @@ export default function Freight() {
   const [showPrint, setShowPrint] = useState(false);
   const [filter, setFilter] = useState<"active"|"completed"|"all">("active");
 
-  const { data: runs=[], isLoading } = useQuery({ queryKey:["freight_runs"], queryFn: async()=>{ const{data,error}=await supabase.from("freight_runs").select("*, carriers(*)").order("created_at",{ascending:false}); if(error)throw error; return data as FreightRun[]; }});
+  const { data: runs=[], isLoading } = useQuery({ queryKey:["freight_runs"], queryFn: async()=>{ const{data,error}=await supabase.from("freight_runs").select("*, carriers(*)").order("priority",{ascending:false}).order("created_at",{ascending:false}); if(error)throw error; return data as FreightRun[]; }});
   const { data: runCounts={} } = useQuery({ queryKey:["freight_run_counts"], queryFn: async()=>{ const{data,error}=await supabase.from("freight_run_items").select("freight_run_id, orders(base_model, build_shorthand)"); if(error)throw error; const c:Record<string,{count:number;eq:string[]}>={}; (data||[]).forEach((item:any)=>{ if(!c[item.freight_run_id])c[item.freight_run_id]={count:0,eq:[]}; c[item.freight_run_id].count++; const e=item.orders?.build_shorthand?.split(",")[0]||item.orders?.base_model; if(e)c[item.freight_run_id].eq.push(e); }); return c; }});
   const { data: items=[] } = useQuery({ queryKey:["freight_manifest",activeRunId], enabled:!!activeRunId, queryFn: async()=>{ const{data,error}=await supabase.from("freight_run_items").select("*, orders(id, moly_contract_number, contract_name, base_model, build_shorthand, customer_id, customers(name, phone, address_line1, address_city, address_state, address_zip))").eq("freight_run_id",activeRunId!).order("load_order",{ascending:true}); if(error)throw error; return data as ManifestItem[]; }});
   const { data: stops=[] } = useQuery({ queryKey:["freight_route",activeRunId], enabled:!!activeRunId, queryFn: async()=>{ const{data,error}=await supabase.from("freight_run_stops").select("*, orders(id, moly_contract_number, contract_name, base_model, build_shorthand, customer_id, customers(name))").eq("freight_run_id",activeRunId!).order("stop_order",{ascending:true}); if(error)throw error; return data as RouteStop[]; }});
@@ -112,7 +112,10 @@ export default function Freight() {
               <button onClick={()=>{if(confirm("Delete this freight run?"))deleteRun.mutate(activeRun.id);}} className="text-[11px] px-2.5 py-1 rounded-full" style={{background:"rgba(220,50,50,0.2)",color:"#F09595"}}><Trash2 size={12}/></button>
             </div>
           </div>
-          <h2 className="text-[18px] font-bold mb-1" style={{color:"#F5F5F0"}}>{activeRun.name||"Freight run"}</h2>
+          <div className="flex items-center gap-2 mb-1">
+            {activeRun.priority>0&&<span className="w-6 h-6 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0" style={{backgroundColor:"#F3D12A",color:"#0E2646"}}>{activeRun.priority}</span>}
+            <h2 className="text-[18px] font-bold" style={{color:"#F5F5F0"}}>{activeRun.name||"Freight run"}</h2>
+          </div>
           <div className="flex items-center gap-3 flex-wrap text-[12px]">
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{backgroundColor:sc.bg,color:sc.text}}>{sc.label}</span>
             <span style={{color:"rgba(245,245,240,0.7)"}}>Pickup: {fd(activeRun.pickup_date)}</span>
@@ -123,6 +126,9 @@ export default function Freight() {
             {activeRun.actual_cost?<span style={{color:"#F3D12A"}}>{fc(activeRun.actual_cost)}</span>:null}
           </div>
           <div className="flex gap-2 mt-3">
+            <button onClick={()=>{const p=prompt("Priority (1=highest, 0=none):",activeRun.priority?.toString()||"0");if(p!==null)updateRun.mutate({id:activeRun.id,priority:parseInt(p)||0});}} className="text-[11px] px-2.5 py-1.5 rounded-lg flex items-center gap-1" style={{background:activeRun.priority>0?"rgba(243,209,42,0.3)":"rgba(245,245,240,0.1)",color:activeRun.priority>0?"#F3D12A":"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>
+              {activeRun.priority>0?`#${activeRun.priority}`:"Priority"}
+            </button>
             <select value={activeRun.status} onChange={e=>updateRun.mutate({id:activeRun.id,status:e.target.value})} className="text-[12px] rounded-lg px-2 py-1.5 flex-1" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>{Object.entries(SC).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
             <button onClick={()=>{const m=prompt("Total miles:",activeRun.total_miles?.toString()||"");if(m!==null)updateRun.mutate({id:activeRun.id,total_miles:m?parseFloat(m):null});}} className="text-[11px] px-2.5 py-1.5 rounded-lg" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>Miles</button>
             <button onClick={()=>{const c=prompt("Actual cost:",activeRun.actual_cost?.toString()||"");if(c!==null)updateRun.mutate({id:activeRun.id,actual_cost:c?parseFloat(c):null});}} className="text-[11px] px-2.5 py-1.5 rounded-lg" style={{background:"rgba(245,245,240,0.1)",color:"#F5F5F0",border:"0.5px solid rgba(245,245,240,0.2)"}}>Cost</button>
@@ -161,7 +167,13 @@ export default function Freight() {
         {!isLoading&&filteredRuns.length===0&&<div className="text-center py-12"><Truck size={32} style={{color:"#D4D4D0"}} className="mx-auto mb-3"/><p className="text-[14px]" style={{color:"#717182"}}>No freight runs yet</p><p className="text-[12px]" style={{color:"#B4B2A9"}}>Tap "New run" to plan a trip</p></div>}
         {filteredRuns.map(run=>{const rsc=SC[run.status]||SC.planning;const rc=runCounts[run.id];const ic=rc?.count||0;return(
           <button key={run.id} onClick={()=>{setActiveRunId(run.id);setActiveTab("manifest");}} className="w-full text-left rounded-xl p-3" style={{backgroundColor:"#fff",border:"0.5px solid #D4D4D0"}}>
-            <div className="flex items-center justify-between mb-1"><span className="text-[14px] font-medium" style={{color:"#0E2646"}}>{run.name||"Freight run"}</span><span className="text-[11px] px-2 py-0.5 rounded-full" style={{backgroundColor:rsc.bg,color:rsc.text}}>{rsc.label}</span></div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                {run.priority>0&&<span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{backgroundColor:"#F3D12A",color:"#0E2646"}}>{run.priority}</span>}
+                <span className="text-[14px] font-medium" style={{color:"#0E2646"}}>{run.name||"Freight run"}</span>
+              </div>
+              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{backgroundColor:rsc.bg,color:rsc.text}}>{rsc.label}</span>
+            </div>
             <div className="flex gap-3 text-[12px] flex-wrap" style={{color:"#717182"}}><span>{fd(run.pickup_date)}</span><span>{run.carriers?.name||run.driver_name||"No carrier"}</span><span>{ic} item{ic!==1?"s":""}</span>{run.total_miles&&<span>{run.total_miles} mi</span>}{ls(run.start_location)!==ls(run.end_location)&&<span>{ls(run.start_location,run.start_city,run.start_state)} → {ls(run.end_location,run.end_city,run.end_state)}</span>}</div>
           </button>);})}
       </div>
@@ -205,11 +217,11 @@ function ManifestCard({item,index,isDragging,isOver,onDragStart,onDragOver,onDro
   const [edit,setEdit]=useState(false);
   const done=item.status==="delivered";
   const dest=DB[item.destination_type]||DB.custom;
-  const name=item.orders?.moly_contract_number?`${item.orders.moly_contract_number} — ${item.orders.contract_name||"Unnamed"}`:item.customer_name||`Item ${index+1}`;
-  const eq=item.orders?.build_shorthand?.split(",")[0]||item.orders?.base_model||"";
+  const name=item.orders?.moly_contract_number?`${item.orders.moly_contract_number} — ${item.orders.contract_name||"Unnamed"}`:item.customer_name||item.description||`Item ${index+1}`;
+  const eq=item.orders?.build_shorthand?.split(",")[0]||item.orders?.base_model||item.description||"";
   const custName=item.orders?.customers?.name||item.customer_name||"";
   const city=item.delivery_city?`${item.delivery_city}, ${item.delivery_state||""}`:"";
-  const [ef,setEf]=useState({addr:item.delivery_address||"",city:item.delivery_city||"",state:item.delivery_state||"",zip:item.delivery_zip||"",phone:item.delivery_phone||"",instr:item.delivery_instructions||"",unload:item.unloading_equipment||"",notes:item.notes||""});
+  const isCustom=!item.order_id;  const [ef,setEf]=useState({addr:item.delivery_address||"",city:item.delivery_city||"",state:item.delivery_state||"",zip:item.delivery_zip||"",phone:item.delivery_phone||"",instr:item.delivery_instructions||"",unload:item.unloading_equipment||"",notes:item.notes||""});
 
   return (
     <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}
@@ -225,7 +237,7 @@ function ManifestCard({item,index,isDragging,isOver,onDragStart,onDragOver,onDro
                 {exp?<ChevronUp size={14} style={{color:"#717182"}}/>:<ChevronDown size={14} style={{color:"#717182"}}/>}
               </div>
             </div>
-            <p className="text-[12px] truncate" style={{color:"#717182"}}>{eq}{custName?(eq?" · ":"")+custName:""}{city?(custName||eq?" · ":"")+city:""}</p>
+            <p className="text-[12px] truncate" style={{color:"#717182"}}>{isCustom&&<span className="text-[10px] px-1 py-0.5 rounded mr-1" style={{backgroundColor:"#EEEDFE",color:"#3C3489"}}>Custom</span>}{eq}{custName?(eq?" · ":"")+custName:""}{city?(custName||eq?" · ":"")+city:""}</p>
           </div>
         </div>
       </button>
@@ -330,7 +342,7 @@ function AddItemModal({runId,readyOrders,cnt,onAdd,onClose}:{runId:string;readyO
   const [sel,setSel]=useState<ReadyOrder|null>(null);
   const [dest,setDest]=useState<DestType>("customer");
   const [addr,setAddr]=useState("");const[city,setCity]=useState("");const[state,setState]=useState("");const[zip,setZip]=useState("");
-  const [phone,setPhone]=useState("");const[instr,setInstr]=useState("");const[unload,setUnload]=useState("");const[customName,setCustomName]=useState("");
+  const [phone,setPhone]=useState("");const[instr,setInstr]=useState("");const[unload,setUnload]=useState("");const[customName,setCustomName]=useState("");const[customDesc,setCustomDesc]=useState("");const[linkOrderId,setLinkOrderId]=useState("");
   const pick=(o:ReadyOrder)=>{setSel(o);const c=o.customers;if(c){setAddr(c.address_line1||"");setCity(c.address_city||"");setState(c.address_state||"");setZip(c.address_zip||"");setPhone(c.phone||"");}setInstr(o.delivery_instructions||"");setDest(o.customer_id?"customer":"catl");};
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{backgroundColor:"rgba(0,0,0,0.4)"}}>
@@ -341,7 +353,18 @@ function AddItemModal({runId,readyOrders,cnt,onAdd,onClose}:{runId:string;readyO
             <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Select order ({readyOrders.length} ready)</p>
             {readyOrders.length===0&&<p className="text-[12px] py-4 text-center" style={{color:"#B4B2A9"}}>No orders with "ready" status. Mark equipment as ready first.</p>}
             <div className="space-y-1 mb-4">{readyOrders.map(o=><button key={o.id} onClick={()=>pick(o)} className="w-full text-left p-2.5 rounded-lg" style={{border:"0.5px solid #D4D4D0"}}><span className="text-[13px] font-medium" style={{color:"#0E2646"}}>{o.moly_contract_number||"—"} — {o.contract_name||"Unnamed"}</span><p className="text-[11px]" style={{color:"#717182"}}>{o.build_shorthand?.split(",")[0]||o.base_model||""}{o.customers?.name?` · ${o.customers.name}`:" · Inventory"}</p></button>)}</div>
-            <div className="border-t pt-3" style={{borderColor:"#F0F0EC"}}><p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Or add custom item</p><input value={customName} onChange={e=>setCustomName(e.target.value)} placeholder="Item description" className="w-full text-[12px] rounded-lg px-3 py-2 mb-2" style={{border:"0.5px solid #D4D4D0"}}/>{customName&&<button onClick={()=>setSel({id:"",moly_contract_number:null,contract_name:customName,base_model:null,build_shorthand:null,customer_id:null,delivery_instructions:null,status:""} as any)} className="text-[12px] font-medium px-4 py-1.5 rounded-full" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Continue</button>}</div>
+            <div className="border-t pt-3" style={{borderColor:"#F0F0EC"}}>
+              <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Or add custom item (trailer, extra panels, etc.)</p>
+              <input value={customName} onChange={e=>setCustomName(e.target.value)} placeholder="Item name (e.g. 40ft gooseneck trailer)" className="w-full text-[13px] rounded-lg px-3 py-2 mb-2" style={{border:"0.5px solid #D4D4D0"}}/>
+              <textarea value={customDesc} onChange={e=>setCustomDesc(e.target.value)} placeholder="Description or notes (e.g. attached to Contract 44270, customer's own trailer)" rows={2} className="w-full text-[12px] rounded-lg px-3 py-2 mb-2 resize-none" style={{border:"0.5px solid #D4D4D0"}}/>
+              <div className="mb-2"><label className="text-[11px]" style={{color:"#717182"}}>Link to order (optional)</label>
+                <select value={linkOrderId} onChange={e=>setLinkOrderId(e.target.value)} className="w-full text-[12px] rounded-lg px-2 py-2 mt-0.5" style={{border:"0.5px solid #D4D4D0"}}>
+                  <option value="">None — standalone item</option>
+                  {readyOrders.map(o=><option key={o.id} value={o.id}>{o.moly_contract_number||"—"} — {o.contract_name||"Unnamed"}</option>)}
+                </select>
+              </div>
+              {customName&&<button onClick={()=>setSel({id:linkOrderId||"",moly_contract_number:null,contract_name:customName,base_model:null,build_shorthand:null,customer_id:null,delivery_instructions:null,status:""} as any)} className="text-[12px] font-medium px-4 py-1.5 rounded-full" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Continue</button>}
+            </div>
           </>:<>
             <button onClick={()=>setSel(null)} className="flex items-center gap-1 text-[12px] mb-3" style={{color:"#55BAAA"}}><ArrowLeft size={13}/> Back</button>
             <div className="rounded-lg p-2.5 mb-3" style={{backgroundColor:"#F5F5F0"}}><p className="text-[13px] font-medium" style={{color:"#0E2646"}}>{sel.moly_contract_number||"Custom"} — {sel.contract_name||customName}</p><p className="text-[11px]" style={{color:"#717182"}}>{sel.build_shorthand?.split(",")[0]||sel.base_model||""}</p></div>
@@ -353,7 +376,7 @@ function AddItemModal({runId,readyOrders,cnt,onAdd,onClose}:{runId:string;readyO
               <div className="grid grid-cols-2 gap-2"><div><label className="text-[11px]" style={{color:"#717182"}}>Phone</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="(605) 555-1234" className="w-full text-[13px] rounded-lg px-2 py-2 mt-0.5" style={{border:"0.5px solid #D4D4D0"}}/></div><div><label className="text-[11px]" style={{color:"#717182"}}>Unloading</label><select value={unload} onChange={e=>setUnload(e.target.value)} className="w-full text-[13px] rounded-lg px-2 py-2 mt-0.5" style={{border:"0.5px solid #D4D4D0"}}>{UO.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div></div>
               <div><label className="text-[11px]" style={{color:"#717182"}}>Delivery instructions</label><textarea value={instr} onChange={e=>setInstr(e.target.value)} placeholder="Gate code, directions, etc." rows={2} className="w-full text-[13px] rounded-lg px-3 py-2 mt-0.5 resize-none" style={{border:"0.5px solid #D4D4D0"}}/></div>
             </div>}
-            <button onClick={()=>{const cn=sel.customers?.name||customName||sel.contract_name||null;onAdd({freight_run_id:runId,order_id:sel.id||null,load_order:cnt+1,destination_type:dest,customer_name:dest==="catl"?"CATL Resources — St. Onge, SD":cn,delivery_address:dest==="customer"?(addr||null):null,delivery_city:dest==="customer"?(city||null):dest==="catl"?"St. Onge":null,delivery_state:dest==="customer"?(state||null):dest==="catl"?"SD":null,delivery_zip:dest==="customer"?(zip||null):null,delivery_phone:dest==="customer"?(phone||null):null,delivery_instructions:dest==="customer"?(instr||null):dest==="catl"?"Deliver to CATL yard":null,unloading_equipment:dest==="customer"?(unload||null):null});}} className="w-full mt-4 text-[14px] font-medium py-3 rounded-xl" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Add to truck</button>
+            <button onClick={()=>{const cn=sel.customers?.name||customName||sel.contract_name||null;onAdd({freight_run_id:runId,order_id:sel.id||null,load_order:cnt+1,destination_type:dest,customer_name:dest==="catl"?"CATL Resources — St. Onge, SD":cn,description:customDesc||null,delivery_address:dest==="customer"?(addr||null):null,delivery_city:dest==="customer"?(city||null):dest==="catl"?"St. Onge":null,delivery_state:dest==="customer"?(state||null):dest==="catl"?"SD":null,delivery_zip:dest==="customer"?(zip||null):null,delivery_phone:dest==="customer"?(phone||null):null,delivery_instructions:dest==="customer"?(instr||null):dest==="catl"?"Deliver to CATL yard":null,unloading_equipment:dest==="customer"?(unload||null):null});}} className="w-full mt-4 text-[14px] font-medium py-3 rounded-xl" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Add to truck</button>
           </>}
         </div>
       </div>
@@ -393,7 +416,7 @@ function AddRouteStopModal({runId,cnt,onAdd,onClose}:{runId:string;cnt:number;on
 function NewRunModal({carriers,onCreate,onClose}:{carriers:Carrier[];onCreate:(d:any)=>void;onClose:()=>void;}) {
   const [name,setName]=useState("");const[sl,setSl]=useState("catl_stonge_sd");const[el,setEl]=useState("catl_stonge_sd");
   const [sc,setSc]=useState({city:"",state:""});const[ec,setEc]=useState({city:"",state:""});
-  const [cid,setCid]=useState("");const[drv,setDrv]=useState("");const[dt,setDt]=useState("");const[mi,setMi]=useState("");
+  const [cid,setCid]=useState("");const[drv,setDrv]=useState("");const[dt,setDt]=useState("");const[mi,setMi]=useState("");const[pri,setPri]=useState("");
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{backgroundColor:"rgba(0,0,0,0.4)"}}>
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{backgroundColor:"#fff"}}>
@@ -405,8 +428,8 @@ function NewRunModal({carriers,onCreate,onClose}:{carriers:Carrier[];onCreate:(d
             <div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Ending at</label><LocSel value={el} onChange={setEl}/>{el==="custom"&&<div className="grid grid-cols-2 gap-1 mt-1"><input value={ec.city} onChange={e=>setEc(p=>({...p,city:e.target.value}))} placeholder="City" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/><input value={ec.state} onChange={e=>setEc(p=>({...p,state:e.target.value}))} placeholder="State" className="text-[12px] rounded-lg px-2 py-1.5" style={{border:"0.5px solid #D4D4D0"}}/></div>}</div>
           </div>
           <div className="grid grid-cols-2 gap-2"><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Carrier / vehicle</label><CarSel value={cid} onChange={setCid} carriers={carriers}/></div><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Driver</label><input value={drv} onChange={e=>setDrv(e.target.value)} placeholder="Who's driving" className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div></div>
-          <div className="grid grid-cols-2 gap-2"><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Pickup date</label><input type="date" value={dt} onChange={e=>setDt(e.target.value)} className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Total miles (est.)</label><input value={mi} onChange={e=>setMi(e.target.value)} placeholder="850" className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div></div>
-          <button onClick={()=>{const si=LOC[sl],ei=LOC[el];onCreate({name:name||null,pickup_location:sl==="catl_stonge_sd"?"custom":sl,start_location:sl,start_city:sl==="custom"?sc.city||null:si?.city,start_state:sl==="custom"?sc.state||null:si?.state,end_location:el,end_city:el==="custom"?ec.city||null:ei?.city,end_state:el==="custom"?ec.state||null:ei?.state,total_miles:mi?parseFloat(mi):null,carrier_id:cid||null,driver_name:drv||null,pickup_date:dt||null});}} className="w-full text-[14px] font-medium py-3 rounded-xl" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Create run</button>
+          <div className="grid grid-cols-3 gap-2"><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Pickup date</label><input type="date" value={dt} onChange={e=>setDt(e.target.value)} className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Miles (est.)</label><input value={mi} onChange={e=>setMi(e.target.value)} placeholder="850" className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div><div><label className="text-[11px] font-medium" style={{color:"#717182"}}>Priority</label><input value={pri} onChange={e=>setPri(e.target.value)} placeholder="1=top" className="w-full text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/></div></div>
+          <button onClick={()=>{const si=LOC[sl],ei=LOC[el];onCreate({name:name||null,pickup_location:sl==="catl_stonge_sd"?"custom":sl,start_location:sl,start_city:sl==="custom"?sc.city||null:si?.city,start_state:sl==="custom"?sc.state||null:si?.state,end_location:el,end_city:el==="custom"?ec.city||null:ei?.city,end_state:el==="custom"?ec.state||null:ei?.state,total_miles:mi?parseFloat(mi):null,carrier_id:cid||null,driver_name:drv||null,pickup_date:dt||null,priority:pri?parseInt(pri):0});}} className="w-full text-[14px] font-medium py-3 rounded-xl" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Create run</button>
         </div>
       </div>
     </div>
@@ -462,7 +485,7 @@ function PrintSheet({run,items,stops,onBack}:{run:FreightRun;items:ManifestItem[
           {` → ${ls(run.end_location,run.end_city,run.end_state)}`}
         </div>
         <h2 style={{fontSize:14,fontWeight:700,color:"#0E2646",textTransform:"uppercase",letterSpacing:"0.05em",margin:"0 0 8px",borderBottom:"1px solid #D4D4D0",paddingBottom:4}}>Equipment manifest ({items.length} items)</h2>
-        {items.map((item,i)=>{const nm=item.orders?.moly_contract_number?`${item.orders.moly_contract_number} — ${item.orders.contract_name||""}`:item.customer_name||`Item ${i+1}`;const eq=item.orders?.build_shorthand?.split(",")[0]||item.orders?.base_model||"";const dest=DB[item.destination_type];const full=[item.delivery_address,item.delivery_city,item.delivery_state,item.delivery_zip].filter(Boolean).join(", ");return(
+        {items.map((item,i)=>{const nm=item.orders?.moly_contract_number?`${item.orders.moly_contract_number} — ${item.orders.contract_name||""}`:item.customer_name||item.description||`Item ${i+1}`;const eq=item.orders?.build_shorthand?.split(",")[0]||item.orders?.base_model||item.description||"";const dest=DB[item.destination_type];const full=[item.delivery_address,item.delivery_city,item.delivery_state,item.delivery_zip].filter(Boolean).join(", ");return(
           <div key={item.id} style={{border:"1px solid #D4D4D0",borderRadius:8,padding:"10px 14px",marginBottom:8,pageBreakInside:"avoid"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
               <div style={{width:24,height:24,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,backgroundColor:"#F3D12A",color:"#0E2646"}}>{i+1}</div>
