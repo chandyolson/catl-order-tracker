@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { useState, useMemo } from "react";
 
 const LOC: Record<string, string> = {
-  catl_wall_sd: "CATL Resources — St. Onge, SD",
+  catl_stonge_sd: "CATL Resources — St. Onge, SD",
   lorraine_ks: "Moly Mfg — Lorraine, KS",
   ainsworth_ne: "Daniels — Ainsworth, NE",
   el_dorado_ks: "MJE — El Dorado, KS",
@@ -45,6 +45,18 @@ export default function DriverShare() {
       const { data, error } = await supabase.from("freight_run_stops")
         .select("*, orders(moly_contract_number, contract_name, base_model, build_shorthand)")
         .eq("freight_run_id", run!.id).order("stop_order", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: manifestItems = [] } = useQuery({
+    queryKey: ["driver_share_manifest", run?.id],
+    enabled: !!run?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("freight_run_items")
+        .select("*, orders(moly_contract_number, contract_name, base_model, build_shorthand, customers(name))")
+        .eq("freight_run_id", run!.id).order("load_order", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -92,12 +104,38 @@ export default function DriverShare() {
         {` → ${locLabel(run.end_location, run.end_city, run.end_state)}`}
       </div>
 
+      {/* Equipment manifest */}
+      {manifestItems.length > 0 && (
+        <div style={{ margin: "12px 12px 0" }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#717182", margin: "0 0 6px" }}>
+            Equipment on truck ({manifestItems.length})
+          </p>
+          {manifestItems.map((item: any, i: number) => {
+            const nm = item.orders?.moly_contract_number ? `${item.orders.moly_contract_number} — ${item.orders.contract_name || ""}` : item.customer_name || `Item ${i+1}`;
+            const eq = item.orders?.build_shorthand?.split(",")[0] || item.orders?.base_model || "";
+            const destLabel = item.destination_type === "catl" ? "→ CATL yard" : item.destination_type === "customer" ? "→ Customer" : "→ Custom";
+            const destBg = item.destination_type === "catl" ? "#FAEEDA" : "#E1F5EE";
+            const destColor = item.destination_type === "catl" ? "#633806" : "#085041";
+            return (
+              <div key={item.id} style={{ backgroundColor: "#fff", border: "1px solid #D4D4D0", borderRadius: 10, padding: "10px 14px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, backgroundColor: "#F3D12A", color: "#0E2646", flexShrink: 0 }}>{i+1}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "#0E2646", margin: 0 }}>{nm}</p>
+                  <p style={{ fontSize: 12, color: "#717182", margin: "2px 0 0" }}>{eq}{item.orders?.customers?.name ? ` · ${item.orders.customers.name}` : ""}</p>
+                </div>
+                <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 99, backgroundColor: destBg, color: destColor, whiteSpace: "nowrap", flexShrink: 0 }}>{destLabel}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Loading order */}
-      {deliveries.length > 1 && (
+      {manifestItems.length > 1 && (
         <div style={{ margin: "8px 12px 0", padding: "10px 14px", borderRadius: 10, backgroundColor: "#FAEEDA", border: "1px solid rgba(243,209,42,0.3)" }}>
           <p style={{ fontSize: 12, color: "#633806", margin: 0, fontWeight: 600 }}>LOADING ORDER (load first → last off truck):</p>
           <p style={{ fontSize: 13, color: "#854F0B", margin: "4px 0 0" }}>
-            {[...deliveries].reverse().map((s: any, i: number) => `${i + 1}. ${s.customer_name || "Stop"}`).join("  →  ")}
+            {[...manifestItems].reverse().map((it: any, i: number) => `${i + 1}. ${it.customer_name || it.orders?.contract_name || "Item"}`).join("  →  ")}
           </p>
         </div>
       )}
@@ -136,7 +174,7 @@ export default function DriverShare() {
       {/* Footer */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, backgroundColor: "#0E2646", padding: "10px 16px", textAlign: "center" }}>
         <p style={{ color: "rgba(245,245,240,0.5)", fontSize: 11, margin: 0 }}>
-          CATL Resources · Livestock Equipment · {pickups.length} pickup{pickups.length !== 1 ? "s" : ""} · {deliveries.length} deliver{deliveries.length !== 1 ? "ies" : "y"}
+          CATL Resources · Livestock Equipment · {manifestItems.length} item{manifestItems.length !== 1 ? "s" : ""} · {stops.length} stop{stops.length !== 1 ? "s" : ""}
         </p>
       </div>
     </div>
