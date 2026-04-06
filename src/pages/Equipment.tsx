@@ -600,7 +600,7 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
     <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
       <div className={cn("hidden sm:grid gap-3 px-3 py-2", cols)} style={{ backgroundColor: "#0E2646" }}>
         {selectMode && <div />}
-        {["Contract", "Location", "Build", "Status", "ETA"].map(h => (
+        {["", "Location", "Build", "Status", "ETA"].map(h => (
           <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
         ))}
       </div>
@@ -636,12 +636,12 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
             )}
             {/* Contract # + Name — one line, two colors */}
             <div className="min-w-0 py-3 sm:py-0">
-              <span className="text-[12px] truncate block leading-snug">
-                {order.moly_contract_number && (
+              <span className="text-[14px] truncate block leading-snug">
+                {order.moly_contract_number && !order.contract_name?.startsWith(order.moly_contract_number) && (
                   <span className="font-normal mr-1.5" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
                 )}
                 <span className="font-semibold" style={{ color: "#0E2646" }}>
-                  {order.contract_name || order.order_number || "—"}
+                  {order.contract_name || `#${order.moly_contract_number}` || order.order_number || "—"}
                 </span>
               </span>
               <span className="text-[11px] sm:hidden block mt-0.5" style={{ color: "#717182" }}>
