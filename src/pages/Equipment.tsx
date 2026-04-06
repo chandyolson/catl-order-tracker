@@ -54,7 +54,7 @@ const BOARD_COLUMNS = [
   { status: "delivered", label: "Delivered", bg: "#27AE60", color: "#FFFFFF" },
 ];
 
-const selectStr = "*, customers(name), manufacturers(name, short_name), base_models:base_model_id(name, short_name)";
+const selectStr = "*, customers(name, address_city, address_state), manufacturers(name, short_name), base_models:base_model_id(name, short_name)";
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "$0";
@@ -593,11 +593,14 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
 
 // ─── list view ──────────────────────────────────────────────
 function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void }) {
+  const cols = selectMode
+    ? "grid-cols-[32px_1.6fr_1fr_1.4fr_90px_70px]"
+    : "grid-cols-[1.6fr_1fr_1.4fr_90px_70px]";
   return (
     <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-      <div className={cn("hidden sm:grid gap-2 px-3 py-2.5", selectMode ? "grid-cols-[32px_1fr_130px_130px_90px_70px_80px]" : "grid-cols-[1fr_130px_130px_90px_70px_80px]")} style={{ backgroundColor: "#0E2646" }}>
+      <div className={cn("hidden sm:grid gap-3 px-3 py-2", cols)} style={{ backgroundColor: "#0E2646" }}>
         {selectMode && <div />}
-        {["Contract", "Customer", "Build", "Status", "ETA", "Price"].map(h => (
+        {["Contract", "Location", "Build", "Status", "ETA"].map(h => (
           <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
         ))}
       </div>
@@ -606,17 +609,18 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
         const mfg = order.manufacturers as any;
         const eta = etaInfo(order.est_completion_date, order.delivered_date);
         const isSelected = selectMode && selectedIds?.has(order.id);
+        const location = [customer?.address_city, customer?.address_state].filter(Boolean).join(", ");
         return (
           <div
             key={order.id}
             onClick={() => { if (selectMode) onToggle?.(order.id); else navigate(`/orders/${order.id}`); }}
             className={cn(
-              "grid grid-cols-1 gap-1 sm:gap-2 px-3 py-2.5 border-b items-center cursor-pointer hover:bg-muted/50 transition-colors",
-              selectMode ? "sm:grid-cols-[32px_1fr_130px_130px_90px_70px_80px]" : "sm:grid-cols-[1fr_130px_130px_90px_70px_80px]",
+              "grid grid-cols-1 sm:gap-3 px-3 items-center cursor-pointer hover:bg-muted/50 transition-colors border-b",
+              cols,
               isSelected ? "bg-[rgba(85,186,170,0.04)]" : idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-white",
               eta.overdue && "ring-1 ring-inset ring-red-300"
             )}
-            style={{ borderColor: "rgba(212,212,208,0.5)" }}
+            style={{ borderColor: "rgba(212,212,208,0.5)", minHeight: 48 }}
           >
             {selectMode && (
               <div className="flex items-center justify-center">
@@ -630,31 +634,43 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
                 </div>
               </div>
             )}
-            <div className="min-w-0">
-              <span className="text-[13px] font-semibold truncate block" style={{ color: "#0E2646" }}>
-                {order.contract_name || order.moly_contract_number || order.order_number || "—"}
+            {/* Contract # + Name — one line, two colors */}
+            <div className="min-w-0 py-3 sm:py-0">
+              <span className="text-[12px] truncate block leading-snug">
+                {order.moly_contract_number && (
+                  <span className="font-normal mr-1.5" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
+                )}
+                <span className="font-semibold" style={{ color: "#0E2646" }}>
+                  {order.contract_name || order.order_number || "—"}
+                </span>
               </span>
-              {order.moly_contract_number && order.contract_name && (
-                <span className="text-[10px]" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
+              <span className="text-[11px] sm:hidden block mt-0.5" style={{ color: "#717182" }}>
+                {location || (customer?.name ? customer.name : "No customer")}
+              </span>
+            </div>
+            {/* Location (city, state) + customer name below — desktop */}
+            <div className="hidden sm:block min-w-0">
+              <span className="text-[12px] truncate block" style={{ color: location ? "#0E2646" : "#717182" }}>
+                {location || "—"}
+              </span>
+              {customer?.name && (
+                <span className="text-[10px] truncate block" style={{ color: "#717182" }}>{customer.name}</span>
               )}
             </div>
-            <span className="text-[12px] truncate" style={{ color: customer?.name ? "#0E2646" : "#717182" }}>
-              {customer?.name || "Unassigned"}
-            </span>
-            <div className="flex items-center gap-1.5 min-w-0">
+            {/* Build specs — mfg chip + full shorthand */}
+            <div className="hidden sm:flex items-center gap-1.5 min-w-0">
               {mfg && (
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
                   {mfg.short_name || mfg.name}
                 </span>
               )}
-              <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand?.split(",")[0] || ""}</span>
+              <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand || "—"}</span>
             </div>
-            <div><StatusBadge status={order.status} /></div>
-            <span className={cn("text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
+            {/* Status */}
+            <div className="hidden sm:block"><StatusBadge status={order.equipment_status || order.status} /></div>
+            {/* ETA */}
+            <span className={cn("hidden sm:block text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
               {fmtDate(order.est_completion_date)}
-            </span>
-            <span className="text-[12px] font-semibold text-right" style={{ color: "#0E2646" }}>
-              {order.customer_price ? fmtCurrency(order.customer_price) : "—"}
             </span>
           </div>
         );
