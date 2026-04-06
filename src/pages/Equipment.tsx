@@ -592,92 +592,121 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
 }
 
 // ─── list view ──────────────────────────────────────────────
+// Preferred manufacturer sort order
+const MFG_ORDER = ["Moly Manufacturing", "Daniels", "Rawhide", "MJE", "LEM", "Linn"];
+
 function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void }) {
   const cols = selectMode
     ? "grid-cols-[32px_1.6fr_1fr_1.4fr_90px_70px]"
     : "grid-cols-[1.6fr_1fr_1.4fr_90px_70px]";
+
+  // Group orders by manufacturer, sorted by preferred order
+  const groups: { mfgName: string; shortName: string; orders: any[] }[] = [];
+  const grouped: Record<string, any[]> = {};
+  for (const order of orders) {
+    const mfg = order.manufacturers as any;
+    const key = mfg?.name || "Other";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(order);
+  }
+  const sortedKeys = Object.keys(grouped).sort((a, b) => {
+    const ai = MFG_ORDER.findIndex(m => a.toLowerCase().includes(m.toLowerCase()));
+    const bi = MFG_ORDER.findIndex(m => b.toLowerCase().includes(m.toLowerCase()));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  for (const key of sortedKeys) {
+    const first = grouped[key][0].manufacturers as any;
+    groups.push({ mfgName: key, shortName: first?.short_name || key, orders: grouped[key] });
+  }
+
+  if (orders.length === 0) {
+    return <p className="text-sm text-center py-8" style={{ color: "#717182" }}>No orders match filters.</p>;
+  }
+
   return (
-    <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-      <div className={cn("hidden sm:grid gap-3 px-3 py-2", cols)} style={{ backgroundColor: "#0E2646" }}>
-        {selectMode && <div />}
-        {["", "Location", "Build", "Status", "ETA"].map(h => (
-          <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
-        ))}
-      </div>
-      {orders.map((order: any, idx: number) => {
-        const customer = order.customers as any;
-        const mfg = order.manufacturers as any;
-        const eta = etaInfo(order.est_completion_date, order.delivered_date);
-        const isSelected = selectMode && selectedIds?.has(order.id);
-        const location = [customer?.address_city, customer?.address_state].filter(Boolean).join(", ");
-        return (
-          <div
-            key={order.id}
-            onClick={() => { if (selectMode) onToggle?.(order.id); else navigate(`/orders/${order.id}`); }}
-            className={cn(
-              "grid grid-cols-1 sm:gap-3 px-3 items-center cursor-pointer hover:bg-muted/50 transition-colors border-b",
-              cols,
-              isSelected ? "bg-[rgba(85,186,170,0.04)]" : idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-white",
-              eta.overdue && "ring-1 ring-inset ring-red-300"
-            )}
-            style={{ borderColor: "rgba(212,212,208,0.5)", minHeight: 48 }}
-          >
-            {selectMode && (
-              <div className="flex items-center justify-center">
-                <div style={{
-                  width: 20, height: 20, borderRadius: 4,
-                  border: isSelected ? "none" : "1.5px solid #D4D4D0",
-                  backgroundColor: isSelected ? "#55BAAA" : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {isSelected && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                </div>
-              </div>
-            )}
-            {/* Contract # + Name — one line, two colors */}
-            <div className="min-w-0 py-3 sm:py-0">
-              <span className="text-[14px] truncate block leading-snug">
-                {order.moly_contract_number && !order.contract_name?.startsWith(order.moly_contract_number) && (
-                  <span className="font-normal mr-1.5" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
-                )}
-                <span className="font-semibold" style={{ color: "#0E2646" }}>
-                  {order.contract_name || `#${order.moly_contract_number}` || order.order_number || "—"}
-                </span>
-              </span>
-              <span className="text-[11px] sm:hidden block mt-0.5" style={{ color: "#717182" }}>
-                {location || (customer?.name ? customer.name : "No customer")}
-              </span>
+    <div className="space-y-3">
+      {groups.map(({ mfgName, shortName, orders: groupOrders }) => (
+        <div key={mfgName} className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          {/* Manufacturer group header */}
+          <div className={cn("grid gap-3 px-3 py-2", cols)} style={{ backgroundColor: "#0E2646" }}>
+            {selectMode && <div />}
+            <div className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#55BAAA" }}>
+              {mfgName} <span className="font-normal text-[10px]" style={{ color: "rgba(240,240,240,0.4)" }}>({groupOrders.length})</span>
             </div>
-            {/* Location (city, state) + customer name below — desktop */}
-            <div className="hidden sm:block min-w-0">
-              <span className="text-[12px] truncate block" style={{ color: location ? "#0E2646" : "#717182" }}>
-                {location || "—"}
-              </span>
-              {customer?.name && (
-                <span className="text-[10px] truncate block" style={{ color: "#717182" }}>{customer.name}</span>
-              )}
-            </div>
-            {/* Build specs — mfg chip + full shorthand */}
-            <div className="hidden sm:flex items-center gap-1.5 min-w-0">
-              {mfg && (
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(14,38,70,0.08)", color: "#0E2646" }}>
-                  {mfg.short_name || mfg.name}
-                </span>
-              )}
-              <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand || "—"}</span>
-            </div>
-            {/* Status */}
-            <div className="hidden sm:block"><StatusBadge status={order.equipment_status || order.status} /></div>
-            {/* ETA */}
-            <span className={cn("hidden sm:block text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
-              {fmtDate(order.est_completion_date)}
-            </span>
+            {["Location", "Build", "Status", "ETA"].map(h => (
+              <div key={h} className="hidden sm:block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.5)" }}>{h}</div>
+            ))}
           </div>
-        );
-      })}
-      {orders.length === 0 && (
-        <p className="text-sm text-center py-8" style={{ color: "#717182" }}>No orders match filters.</p>
-      )}
+
+          {/* Rows */}
+          {groupOrders.map((order: any, idx: number) => {
+            const customer = order.customers as any;
+            const mfg = order.manufacturers as any;
+            const eta = etaInfo(order.est_completion_date, order.delivered_date);
+            const isSelected = selectMode && selectedIds?.has(order.id);
+            const location = [customer?.address_city, customer?.address_state].filter(Boolean).join(", ");
+            return (
+              <div
+                key={order.id}
+                onClick={() => { if (selectMode) onToggle?.(order.id); else navigate(`/orders/${order.id}`); }}
+                className={cn(
+                  "grid grid-cols-1 sm:gap-3 px-3 items-center cursor-pointer hover:bg-muted/50 transition-colors border-t",
+                  cols,
+                  isSelected ? "bg-[rgba(85,186,170,0.04)]" : idx % 2 === 0 ? "bg-white" : "bg-[#FAFAF7]",
+                  eta.overdue && "ring-1 ring-inset ring-red-300"
+                )}
+                style={{ borderColor: "rgba(212,212,208,0.4)", minHeight: 48 }}
+              >
+                {selectMode && (
+                  <div className="flex items-center justify-center">
+                    <div style={{
+                      width: 20, height: 20, borderRadius: 4,
+                      border: isSelected ? "none" : "1.5px solid #D4D4D0",
+                      backgroundColor: isSelected ? "#55BAAA" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {isSelected && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </div>
+                  </div>
+                )}
+                {/* Contract # + Name */}
+                <div className="min-w-0 py-3 sm:py-0">
+                  <span className="text-[14px] truncate block leading-snug">
+                    {order.moly_contract_number && !order.contract_name?.startsWith(order.moly_contract_number) && (
+                      <span className="font-normal mr-1.5" style={{ color: "#717182" }}>#{order.moly_contract_number}</span>
+                    )}
+                    <span className="font-semibold" style={{ color: "#0E2646" }}>
+                      {order.contract_name || `#${order.moly_contract_number}` || order.order_number || "—"}
+                    </span>
+                  </span>
+                  <span className="text-[11px] sm:hidden block mt-0.5" style={{ color: "#717182" }}>
+                    {location || (customer?.name ? customer.name : "No customer")}
+                  </span>
+                </div>
+                {/* Location */}
+                <div className="hidden sm:block min-w-0">
+                  <span className="text-[12px] truncate block" style={{ color: location ? "#0E2646" : "#717182" }}>
+                    {location || "—"}
+                  </span>
+                  {customer?.name && (
+                    <span className="text-[10px] truncate block" style={{ color: "#717182" }}>{customer.name}</span>
+                  )}
+                </div>
+                {/* Build specs */}
+                <div className="hidden sm:flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand || "—"}</span>
+                </div>
+                {/* Status */}
+                <div className="hidden sm:block"><StatusBadge status={order.equipment_status || order.status} /></div>
+                {/* ETA */}
+                <span className={cn("hidden sm:block text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
+                  {fmtDate(order.est_completion_date)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
