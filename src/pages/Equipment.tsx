@@ -97,6 +97,7 @@ export default function Equipment() {
   const [sortIdx, setSortIdx] = useState(0);
   const [etaFilter, setEtaFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"card" | "list" | "board" | "map">("list");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showPicker, setShowPicker] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -431,7 +432,7 @@ export default function Equipment() {
               </div>
             )}
             {viewMode === "list" ? (
-              <ListView orders={filtered} navigate={navigate} selectMode={selectMode} selectedIds={selectedIds} onToggle={toggleSelect} />
+              <ListView orders={filtered} navigate={navigate} selectMode={selectMode} selectedIds={selectedIds} onToggle={toggleSelect} sortOrder={sortOrder} onSortChange={() => setSortOrder(s => s === "asc" ? "desc" : "asc")} />
             ) : (
               <div className="space-y-3">
                 {filtered.map((order: any) => (
@@ -595,7 +596,7 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
 // Preferred manufacturer sort order
 const MFG_ORDER = ["Moly Manufacturing", "Daniels", "Rawhide", "MJE", "LEM", "Linn"];
 
-function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void }) {
+function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrder = "asc", onSortChange }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void; sortOrder?: "asc" | "desc"; onSortChange?: () => void }) {
   const cols = selectMode
     ? "grid-cols-[32px_1.6fr_1fr_1.4fr_90px_70px]"
     : "grid-cols-[1.6fr_1fr_1.4fr_90px_70px]";
@@ -616,7 +617,12 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
   });
   for (const key of sortedKeys) {
     const first = grouped[key][0].manufacturers as any;
-    groups.push({ mfgName: key, shortName: first?.short_name || key, orders: grouped[key] });
+    const sorted = [...grouped[key]].sort((a, b) => {
+      const an = parseInt(a.moly_contract_number || "0", 10) || 0;
+      const bn = parseInt(b.moly_contract_number || "0", 10) || 0;
+      return sortOrder === "asc" ? an - bn : bn - an;
+    });
+    groups.push({ mfgName: key, shortName: first?.short_name || key, orders: sorted });
   }
 
   if (orders.length === 0) {
@@ -630,8 +636,15 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
           {/* Manufacturer group header */}
           <div className={cn("grid gap-3 px-3 py-2", cols)} style={{ backgroundColor: "#0E2646" }}>
             {selectMode && <div />}
-            <div className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#55BAAA" }}>
-              {mfgName} <span className="font-normal text-[10px]" style={{ color: "rgba(240,240,240,0.4)" }}>({groupOrders.length})</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#55BAAA" }}>
+                {mfgName} <span className="font-normal text-[10px]" style={{ color: "rgba(240,240,240,0.4)" }}>({groupOrders.length})</span>
+              </span>
+              {onSortChange && (
+                <button onClick={onSortChange} className="flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ color: "rgba(240,240,240,0.5)", background: "rgba(255,255,255,0.08)" }}>
+                  # {sortOrder === "asc" ? "↑" : "↓"}
+                </button>
+              )}
             </div>
             {["Location", "Build", "Status", "ETA"].map(h => (
               <div key={h} className="hidden sm:block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.5)" }}>{h}</div>
