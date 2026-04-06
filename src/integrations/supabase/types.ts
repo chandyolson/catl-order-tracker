@@ -1676,6 +1676,7 @@ export type Database = {
           moly_so_accepted_by: string | null
           notes: string | null
           notion_id: string | null
+          orange_sheet_notes: string | null
           order_number: string | null
           ordered_date: string | null
           our_cost: number | null
@@ -1750,6 +1751,7 @@ export type Database = {
           moly_so_accepted_by?: string | null
           notes?: string | null
           notion_id?: string | null
+          orange_sheet_notes?: string | null
           order_number?: string | null
           ordered_date?: string | null
           our_cost?: number | null
@@ -1824,6 +1826,7 @@ export type Database = {
           moly_so_accepted_by?: string | null
           notes?: string | null
           notion_id?: string | null
+          orange_sheet_notes?: string | null
           order_number?: string | null
           ordered_date?: string | null
           our_cost?: number | null

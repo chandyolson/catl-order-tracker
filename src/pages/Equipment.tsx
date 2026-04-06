@@ -98,6 +98,36 @@ export default function Equipment() {
   const [etaFilter, setEtaFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"card" | "list" | "board" | "map">("card");
   const [showPicker, setShowPicker] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function selectAll(ids: string[]) { setSelectedIds(new Set(ids)); }
+  function clearSelection() { setSelectedIds(new Set()); setSelectMode(false); }
+  async function bulkUpdateStatus(newStatus: string) {
+    if (selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    const { error } = await supabase.from("orders").update({ status: newStatus }).in("id", Array.from(selectedIds));
+    if (error) toast.error(error.message);
+    else { toast.success(`${selectedIds.size} orders → ${newStatus.replace(/_/g, " ")}`); clearSelection(); queryClient.invalidateQueries({ queryKey: ["equipment_orders"] }); }
+    setBulkUpdating(false);
+  }
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} orders? This cannot be undone.`)) return;
+    setBulkUpdating(true);
+    const { error } = await supabase.from("orders").delete().in("id", Array.from(selectedIds));
+    if (error) toast.error(error.message);
+    else { toast.success(`${selectedIds.size} orders deleted`); clearSelection(); queryClient.invalidateQueries({ queryKey: ["equipment_orders"] }); }
+    setBulkUpdating(false);
+  }
 
   useEffect(() => { setTab((searchParams.get("tab") as TabKey) || "all"); }, [searchParams]);
 
@@ -259,6 +289,13 @@ export default function Equipment() {
                 <MapPin size={14} color={viewMode === "map" ? "#F3D12A" : "#717182"} />
               </button>
             </div>
+            {(viewMode === "card" || viewMode === "list") && (
+              <button onClick={() => { if (selectMode) clearSelection(); else setSelectMode(true); }}
+                className="px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                style={{ backgroundColor: selectMode ? "#55BAAA" : "transparent", color: selectMode ? "#0E2646" : "#55BAAA", border: selectMode ? "none" : "1px solid #55BAAA" }}>
+                {selectMode ? "Done" : "Select"}
+              </button>
+            )}
             <button onClick={() => setShowPicker(true)}
               className="w-10 h-10 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
               style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
@@ -373,13 +410,61 @@ export default function Equipment() {
           <BoardView orders={filtered} navigate={navigate} queryClient={queryClient} />
         ) : filtered.length === 0 ? (
           <EmptyState tab={tab} onOrder={() => setShowPicker(true)} />
-        ) : viewMode === "list" ? (
-          <ListView orders={filtered} navigate={navigate} />
         ) : (
-          <div className="space-y-3">
-            {filtered.map((order: any) => (
-              <EquipmentCard key={order.id} order={order} tab={tab} navigate={navigate} />
-            ))}
+          <>
+            {/* Select-all row */}
+            {selectMode && (
+              <div className="flex items-center gap-3 py-2 px-1" style={{ color: "#717182", fontSize: 13 }}>
+                <button onClick={() => {
+                  const allIds = filtered.map((o: any) => o.id);
+                  if (selectedIds.size === allIds.length) clearSelection();
+                  else { selectAll(allIds); setSelectMode(true); }
+                }}
+                  style={{ width: 20, height: 20, borderRadius: 4, border: selectedIds.size === filtered.length && filtered.length > 0 ? "none" : "1.5px solid #D4D4D0",
+                    backgroundColor: selectedIds.size === filtered.length && filtered.length > 0 ? "#55BAAA" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                  {selectedIds.size === filtered.length && filtered.length > 0 && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                </button>
+                <span>Select all ({filtered.length})</span>
+              </div>
+            )}
+            {viewMode === "list" ? (
+              <ListView orders={filtered} navigate={navigate} selectMode={selectMode} selectedIds={selectedIds} onToggle={toggleSelect} />
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((order: any) => (
+                  <EquipmentCard key={order.id} order={order} tab={tab} navigate={navigate} selectMode={selectMode} selected={selectedIds.has(order.id)} onToggle={() => toggleSelect(order.id)} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Bulk action bar */}
+        {selectMode && selectedIds.size > 0 && (
+          <div style={{ position: "sticky", bottom: 16, zIndex: 20, background: "#0E2646", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#F5F5F0", flex: 1 }}>{selectedIds.size} selected</span>
+            <div style={{ position: "relative" }}>
+              <select
+                onChange={(e) => { if (e.target.value) { bulkUpdateStatus(e.target.value); e.target.value = ""; } }}
+                disabled={bulkUpdating}
+                style={{ fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 20, border: "none", background: "#55BAAA", color: "#0E2646", cursor: "pointer", appearance: "none", paddingRight: 28 }}>
+                <option value="">Status ▾</option>
+                {STATUS_OPTIONS.filter(s => s.value !== "all").map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={bulkDelete} disabled={bulkUpdating}
+              style={{ fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 20, border: "none", background: "rgba(255,255,255,0.1)", color: "#E87461", cursor: "pointer" }}>
+              Delete
+            </button>
+            <button onClick={clearSelection}
+              style={{ background: "transparent", border: "none", color: "rgba(245,245,240,0.5)", cursor: "pointer", fontSize: 18, padding: "0 4px" }}>
+              ×
+            </button>
           </div>
         )}
       </div>
@@ -389,7 +474,7 @@ export default function Equipment() {
 }
 
 // ─── equipment card ──────────────────────────────────────────
-function EquipmentCard({ order, tab, navigate }: { order: any; tab: TabKey; navigate: any }) {
+function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }: { order: any; tab: TabKey; navigate: any; selectMode?: boolean; selected?: boolean; onToggle?: () => void }) {
   const custName = (order.customers as any)?.name;
   const mfg = order.manufacturers as any;
   const options = Array.isArray(order.selected_options) ? order.selected_options : [];
@@ -401,9 +486,25 @@ function EquipmentCard({ order, tab, navigate }: { order: any; tab: TabKey; navi
   const etaData = etaInfo(order.est_completion_date, order.delivered_date);
 
   return (
-    <div className="rounded-xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ border: "1px solid #E5E5E0" }} onClick={() => navigate(`/orders/${order.id}`)}>
+    <div className="rounded-xl overflow-hidden shadow-sm cursor-pointer active:scale-[0.99] transition-transform flex"
+      style={{ border: selected ? "2px solid #55BAAA" : "1px solid #E5E5E0", background: selected ? "rgba(85,186,170,0.03)" : undefined }}
+      onClick={() => { if (selectMode) onToggle?.(); else navigate(`/orders/${order.id}`); }}>
 
+      {/* Selection checkbox */}
+      {selectMode && (
+        <div className="flex items-center pl-3 shrink-0 bg-white" onClick={(e) => { e.stopPropagation(); onToggle?.(); }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: 4, flexShrink: 0,
+            border: selected ? "none" : "1.5px solid #D4D4D0",
+            backgroundColor: selected ? "#55BAAA" : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          }}>
+            {selected && <svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
       {/* Navy header */}
       <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "#0E2646" }}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -485,15 +586,17 @@ function EquipmentCard({ order, tab, navigate }: { order: any; tab: TabKey; navi
           )}
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 // ─── list view ──────────────────────────────────────────────
-function ListView({ orders, navigate }: { orders: any[]; navigate: any }) {
+function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void }) {
   return (
     <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
-      <div className="hidden sm:grid grid-cols-[1fr_130px_130px_90px_70px_80px] gap-2 px-3 py-2.5" style={{ backgroundColor: "#0E2646" }}>
+      <div className={cn("hidden sm:grid gap-2 px-3 py-2.5", selectMode ? "grid-cols-[32px_1fr_130px_130px_90px_70px_80px]" : "grid-cols-[1fr_130px_130px_90px_70px_80px]")} style={{ backgroundColor: "#0E2646" }}>
+        {selectMode && <div />}
         {["Contract", "Customer", "Build", "Status", "ETA", "Price"].map(h => (
           <div key={h} className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>{h}</div>
         ))}
@@ -502,17 +605,31 @@ function ListView({ orders, navigate }: { orders: any[]; navigate: any }) {
         const customer = order.customers as any;
         const mfg = order.manufacturers as any;
         const eta = etaInfo(order.est_completion_date, order.delivered_date);
+        const isSelected = selectMode && selectedIds?.has(order.id);
         return (
           <div
             key={order.id}
-            onClick={() => navigate(`/orders/${order.id}`)}
+            onClick={() => { if (selectMode) onToggle?.(order.id); else navigate(`/orders/${order.id}`); }}
             className={cn(
-              "grid grid-cols-1 sm:grid-cols-[1fr_130px_130px_90px_70px_80px] gap-1 sm:gap-2 px-3 py-2.5 border-b items-center cursor-pointer hover:bg-muted/50 transition-colors",
-              idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-white",
+              "grid grid-cols-1 gap-1 sm:gap-2 px-3 py-2.5 border-b items-center cursor-pointer hover:bg-muted/50 transition-colors",
+              selectMode ? "sm:grid-cols-[32px_1fr_130px_130px_90px_70px_80px]" : "sm:grid-cols-[1fr_130px_130px_90px_70px_80px]",
+              isSelected ? "bg-[rgba(85,186,170,0.04)]" : idx % 2 === 1 ? "bg-[#FAFAF7]" : "bg-white",
               eta.overdue && "ring-1 ring-inset ring-red-300"
             )}
             style={{ borderColor: "rgba(212,212,208,0.5)" }}
           >
+            {selectMode && (
+              <div className="flex items-center justify-center">
+                <div style={{
+                  width: 20, height: 20, borderRadius: 4,
+                  border: isSelected ? "none" : "1.5px solid #D4D4D0",
+                  backgroundColor: isSelected ? "#55BAAA" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {isSelected && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </div>
+              </div>
+            )}
             <div className="min-w-0">
               <span className="text-[13px] font-semibold truncate block" style={{ color: "#0E2646" }}>
                 {order.contract_name || order.moly_contract_number || order.order_number || "—"}
