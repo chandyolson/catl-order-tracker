@@ -199,6 +199,7 @@ export default function Dashboard() {
           .limit(15),
         supabase.from("voice_memos").select("id, transcript, ai_summary, created_at, processing_status")
           .eq("processing_status", "complete")
+          .eq("archived", false)
           .order("created_at", { ascending: false }).limit(5),
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ready"),
@@ -318,9 +319,9 @@ export default function Dashboard() {
   };
 
   const deleteMemo = async (id: string) => {
-    if (!confirm("Archive this voice memo?")) return;
-    await supabase.from("voice_memos").update({ archived: true } as any).eq("id", id);
-    toast.success("Memo archived");
+    if (!confirm("Delete this voice memo?")) return;
+    await supabase.from("voice_memos").delete().eq("id", id);
+    toast.success("Memo deleted");
     fetchAll();
   };
 

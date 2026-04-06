@@ -121,7 +121,7 @@ export default function OverviewTab({
   const orderMemosQuery = useQuery({
     queryKey: ["order_memos", order.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("voice_memos").select("*").eq("order_id", order.id).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("voice_memos").select("*").eq("order_id", order.id).eq("archived", false).order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
