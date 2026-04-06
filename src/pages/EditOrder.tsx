@@ -129,6 +129,7 @@ export default function EditOrder() {
       freightEstimate: o.freight_estimate ? String(o.freight_estimate) : "",
       taxState: o.tax_state || "",
       taxRate: o.tax_rate || 0,
+      controlsSide: (o as any).controls_side || "",
     });
 
     setPageReady(true);
@@ -220,6 +221,7 @@ export default function EditOrder() {
         tax_rate: state.taxRate || 0,
         tax_amount: state.taxAmount || 0,
         total_with_tax: state.taxRate > 0 ? state.totalWithTax : null,
+        controls_side: state.controlsSide || null,
       }).eq("id", id!);
 
       if (updateError) throw updateError;

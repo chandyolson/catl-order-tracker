@@ -61,6 +61,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
   const [pivotType, setPivotType] = useState<"side_to_side" | "front_to_back" | "">("");
   const [dualChecked, setDualChecked] = useState(false);
   const [pivotChecked, setPivotChecked] = useState(false);
+  const [controlsSide, setControlsSide] = useState<"left" | "right" | "">(initialValues?.controlsSide || "left");
   const [initialized, setInitialized] = useState(!initialValues?.selectedOptions);
 
   /* ── Queries ────────────────────────────────────────────── */
@@ -166,6 +167,12 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
     setPickOneSelections(newPickOne);
     setInitialized(true);
   }, [initialized, initialValues?.selectedOptions, optionsQuery.data]);
+
+  /* ── Clear controlsSide when Dual is selected (both sides) ── */
+  useEffect(() => {
+    if (dualChecked && controlsSide) setControlsSide("");
+    if (!dualChecked && !controlsSide) setControlsSide("left");
+  }, [dualChecked]);
 
   /* ── Derived state ─────────────────────────────────────── */
   const selectedManufacturer = manufacturersQuery.data?.find((m) => m.id === effectiveManufacturerId);
@@ -454,8 +461,8 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
     selections, pickOneSelections, selectedOptionsList, customLineItems,
     discountType, discountAmount, freightEstimate, taxState, taxRate,
     calcRetail, calcCost, discountValue, customerPrice, ourCost, taxAmount, totalWithTax, margin,
-    dualChecked, pivotChecked, pivotType, pivotSide,
-  }), [effectiveManufacturerId, baseModelId, quickBuildId, buildShorthand, selections, pickOneSelections, selectedOptionsList, customLineItems, discountType, discountAmount, freightEstimate, taxState, taxRate, calcRetail, calcCost, discountValue, customerPrice, ourCost, taxAmount, totalWithTax, margin, dualChecked, pivotChecked, pivotType, pivotSide]);
+    dualChecked, pivotChecked, pivotType, pivotSide, controlsSide,
+  }), [effectiveManufacturerId, baseModelId, quickBuildId, buildShorthand, selections, pickOneSelections, selectedOptionsList, customLineItems, discountType, discountAmount, freightEstimate, taxState, taxRate, calcRetail, calcCost, discountValue, customerPrice, ourCost, taxAmount, totalWithTax, margin, dualChecked, pivotChecked, pivotType, pivotSide, controlsSide]);
 
   useImperativeHandle(ref, () => ({ getState }), [getState]);
   useEffect(() => { onChange?.(getState()); }, [getState]);
@@ -644,7 +651,18 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
             </label>
           </div>
         )}
-        {!dualChecked && !pivotChecked && <p className="text-[11px] px-2" style={{ color: "#717182" }}>Standard controls (included).</p>}
+        {!dualChecked && !pivotChecked && (
+          <div className="px-2 space-y-1.5">
+            <p className="text-[11px]" style={{ color: "#717182" }}>Standard controls (included).</p>
+            <div>
+              <p className="text-[11px] font-semibold mb-1" style={{ color: "#717182" }}>Controls side:</p>
+              <div className="flex items-center gap-2">
+                <SidePill label="Left" active={controlsSide === "left"} onClick={() => setControlsSide("left")} />
+                <SidePill label="Right" active={controlsSide === "right"} onClick={() => setControlsSide("right")} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -126,6 +126,7 @@ export default function NewOrder() {
           selected_options: allOptionsJson, notes: notes || null,
           tax_state: state.taxState || null, tax_rate: state.taxRate || 0,
           tax_amount: state.taxAmount || 0, total_with_tax: state.taxRate > 0 ? state.totalWithTax : null,
+          controls_side: state.controlsSide || null,
         }).select().single();
         if (orderError) throw orderError;
         toast.success(`Order ${molyContractNumber || contractName || "created"}`);

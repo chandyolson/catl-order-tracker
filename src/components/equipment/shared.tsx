@@ -75,6 +75,7 @@ export type ConfiguratorState = {
   pivotChecked: boolean;
   pivotType: string;
   pivotSide: string;
+  controlsSide: "left" | "right" | "";
 };
 
 /** Initial values the parent passes in (for edit mode) */
@@ -90,6 +91,7 @@ export type ConfiguratorInitialValues = {
   freightEstimate?: string;
   taxState?: string;
   taxRate?: number;
+  controlsSide?: "left" | "right" | "";
 };
 
 /* ─── Utilities ──────────────────────────────────────────── */
