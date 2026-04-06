@@ -41,6 +41,34 @@ export default function Settings() {
     },
   });
 
+  // ─── Google Status ─────────────────────────────────────
+  const googleStatusQuery = useQuery({
+    queryKey: ["google-status"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("google_tokens")
+        .select("id, account_email, account_name, access_token_expires_at, updated_at")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return { connected: false };
+      const expired = new Date(data.access_token_expires_at) < new Date();
+      return { connected: true, expired, email: data.account_email, name: data.account_name, tokenExpires: data.access_token_expires_at, lastUpdated: data.updated_at };
+    },
+  });
+
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  async function handleConnectGoogle() {
+    setConnectingGoogle(true);
+    try {
+      const resp = await fetch(`${supabaseUrl}/functions/v1/google-oauth-callback?action=auth_url`);
+      const data = await resp.json();
+      if (data.authUrl) window.open(data.authUrl, "_blank");
+      else toast.error("Failed to get Google auth URL");
+    } catch (err: any) { toast.error(err.message); }
+    finally { setConnectingGoogle(false); }
+  }
+
   // ─── Email Log Stats ───────────────────────────────────
   const emailStatsQuery = useQuery({
     queryKey: ["email_stats"],
@@ -250,6 +278,49 @@ export default function Settings() {
             )}
           </div>
         )}
+      </SettingsCard>
+
+      {/* ═══ Google Drive & Gmail ═══ */}
+      <SettingsCard title="Google Drive & Gmail">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(66,133,244,0.1)" }}>
+            <span className="text-lg font-bold" style={{ color: "#4285F4" }}>G</span>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "#27AE60" : "#D4183D" }} />
+              <span className="text-[13px] font-medium" style={{ color: googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "#27AE60" : "#D4183D" }}>
+                {googleStatusQuery.isLoading ? "Checking…" : googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "Connected" : googleStatusQuery.data?.expired ? "Token Expired" : "Not Connected"}
+              </span>
+            </div>
+            {googleStatusQuery.data?.connected && (
+              <div className="text-[12px] text-muted-foreground mt-0.5">
+                {googleStatusQuery.data.email} · Token: {googleStatusQuery.data.expired ? "expired — reconnect below" : `expires ${fmtDate(googleStatusQuery.data.tokenExpires)}`}
+              </div>
+            )}
+          </div>
+        </div>
+        <p className="text-[12px] text-muted-foreground mb-3">
+          Used for document chain (Drive scan, Gmail attachments), voice memo processing, and email scanning.
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleConnectGoogle}
+            disabled={connectingGoogle}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-semibold active:scale-[0.97] transition-transform disabled:opacity-50"
+            style={{ backgroundColor: googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "rgba(85,186,170,0.1)" : "#F3D12A", color: googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "#55BAAA" : "#0E2646", border: googleStatusQuery.data?.connected && !googleStatusQuery.data?.expired ? "1px solid #55BAAA" : "none" }}
+          >
+            {connectingGoogle ? "Opening…" : googleStatusQuery.data?.expired ? "Reconnect Google" : googleStatusQuery.data?.connected ? "Reconnect Google" : "Connect Google"}
+            <ExternalLink size={14} />
+          </button>
+          <button
+            onClick={() => { googleStatusQuery.refetch(); toast.success("Refreshed"); }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium active:scale-[0.97] transition-transform"
+            style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}
+          >
+            <RefreshCw size={14} /> Check Status
+          </button>
+        </div>
       </SettingsCard>
 
       {/* ═══ Email Configuration ═══ */}
