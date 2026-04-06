@@ -32,18 +32,18 @@ function StatusPipeline({ statuses, labels, current, onChange, color }: {
 }) {
   const idx = statuses.indexOf(current);
   return (
-    <div className="flex gap-1 overflow-x-auto">
+    <div className="flex flex-wrap gap-1">
       {statuses.map((s, i) => {
         const isActive = i <= idx;
         const isCurrent = s === current;
         return (
           <button key={s} type="button" onClick={() => onChange(s)}
-            className={cn("px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-all",
-              isCurrent ? "ring-2 ring-offset-1" : "")}
+            className={cn("px-2 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap transition-all",
+              isCurrent ? "ring-2 ring-offset-1 ring-offset-[#0E2646]" : "")}
             style={{
-              background: isActive ? color : "rgba(245,245,240,0.08)",
-              color: isActive ? "#0E2646" : "rgba(245,245,240,0.4)",
-              ringColor: isCurrent ? color : undefined,
+              background: isActive ? color : "rgba(245,245,240,0.12)",
+              color: isActive ? "#0E2646" : "rgba(245,245,240,0.45)",
+              ["--tw-ring-color" as string]: color,
             }}>
             {labels[s] || s}
           </button>
@@ -305,7 +305,10 @@ export default function EditOrder() {
           </div>
           {customerToggle && (
             <div className="mt-3">
-              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+              <Popover open={customerPopoverOpen} onOpenChange={(open) => {
+                setCustomerPopoverOpen(open);
+                if (open) setCustomerSearch(""); // start fresh every time
+              }}>
                 <PopoverTrigger asChild>
                   <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 text-left text-[16px] bg-card"
                     style={{ color: selectedCustomer ? "#0E2646" : "#717182" }}>
@@ -313,13 +316,13 @@ export default function EditOrder() {
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[340px] p-0" align="start">
-                  <Command>
+                  <Command shouldFilter={false}>
                     <CommandInput placeholder="Type a name..." value={customerSearch} onValueChange={setCustomerSearch} />
                     <CommandList>
-                      <CommandEmpty>No customers found</CommandEmpty>
+                      <CommandEmpty>{debouncedSearch.length < 2 ? "Type at least 2 characters..." : "No customers found"}</CommandEmpty>
                       <CommandGroup>
                         {(customerSearchQuery.data || []).map((c) => (
-                          <CommandItem key={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); if (!contractName && c.name) setContractName(c.name); }}>
+                          <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerPopoverOpen(false); if (!contractName && c.name) setContractName(c.name); }}>
                             <div className="flex-1 min-w-0">
                               <p className="text-[13px] font-medium truncate">{c.name}</p>
                               <p className="text-[11px] text-muted-foreground">{[c.address_city, c.address_state].filter(Boolean).join(", ")}</p>
