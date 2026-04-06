@@ -673,7 +673,7 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle }: { ord
                 <div className="min-w-0 py-3 sm:py-0">
                   <span className="text-[14px] truncate block leading-snug">
                     {order.moly_contract_number && !order.contract_name?.startsWith(order.moly_contract_number) && (
-                      <span className="font-normal mr-1.5" style={{ color: "#717182" }}>{order.moly_contract_number}</span>
+                      <span className="font-semibold mr-3" style={{ color: "#717182", fontSize: 15 }}>{order.moly_contract_number}</span>
                     )}
                     <span className="font-bold text-[15px]" style={{ color: "#0E2646" }}>
                       {order.contract_name || order.moly_contract_number || order.order_number || "—"}
