@@ -25,6 +25,12 @@
   - Standard = no price change
   - Extended = adds Extended Chute option ($1,268.80 cost / $1,586 retail)
   - Extended unlocks walk-through door qty > 1 per side
+- **Controls side** toggle: Left / Right (required on every chute)
+  - Default position of the standard controls — no extra cost
+  - This is the BASE controls placement. Upgrades (Dual, Side-to-Side Pivot, Front-to-Back Pivot) are separate paid options in the Controls group
+  - Must be noted on every order — Moly SO will show "Controls Side Left Controls" or similar
+  - Stored on the order so the comparison engine can verify it matches the Moly SO
+  - When Dual Controls is selected, controls side toggle hides (both sides)
 - **Quick build pills** — auto-toggle options for pre-configured combos
 
 ### 5. Recommended options (checkmark toggles)
@@ -96,5 +102,6 @@ Groups: Power, Squeeze, Controls, Head/Neck, Doors/Exits, Side/Pan, Scales, Carr
 - model_options.max_per_side — limit per side (walk-thru door = 4 on extended)
 - model_options.selection_type — simple, side, pick_one
 - orders.equipment_status, orders.customer_status — two-track model
+- orders.controls_side — 'left' or 'right' (null when Dual Controls selected). Required field for every chute.
 - orders.tax_rate, orders.tax_amount, orders.total_with_tax — tax fields
 - orders.our_cost, orders.customer_price — pricing
