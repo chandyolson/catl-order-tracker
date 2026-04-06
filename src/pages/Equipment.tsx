@@ -96,7 +96,7 @@ export default function Equipment() {
   const [mfgFilter, setMfgFilter] = useState(urlMfg);
   const [sortIdx, setSortIdx] = useState(0);
   const [etaFilter, setEtaFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"card" | "list" | "board" | "map">("card");
+  const [viewMode, setViewMode] = useState<"card" | "list" | "board" | "map">("list");
   const [showPicker, setShowPicker] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
