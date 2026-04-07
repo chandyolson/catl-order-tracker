@@ -390,8 +390,3 @@ export default function EditOrder() {
     </div>
   );
 }
-
-      </div>
-    </div>
-  );
-}
