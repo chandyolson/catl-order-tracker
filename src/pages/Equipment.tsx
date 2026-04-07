@@ -663,7 +663,7 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrd
                 key={order.id}
                 onClick={() => { if (selectMode) onToggle?.(order.id); else navigate(`/orders/${order.id}`); }}
                 className={cn(
-                  "grid grid-cols-1 sm:gap-3 px-3 items-center cursor-pointer hover:bg-muted/50 transition-colors border-t",
+                  "grid grid-cols-1 sm:gap-3 px-3 cursor-pointer hover:bg-muted/50 transition-colors border-t items-start",
                   cols,
                   isSelected ? "bg-[rgba(85,186,170,0.04)]" : idx % 2 === 0 ? "bg-white" : "bg-[#FAFAF7]",
                   eta.overdue && "ring-1 ring-inset ring-red-300"
@@ -705,14 +705,28 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrd
                     <span className="text-[10px] truncate block" style={{ color: "#717182" }}>{customer.name}</span>
                   )}
                 </div>
-                {/* Build specs */}
-                <div className="hidden sm:flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] truncate" style={{ color: "#55BAAA" }}>{order.build_shorthand || "—"}</span>
+                {/* Build specs — full option pills */}
+                <div className="hidden sm:block min-w-0 py-1.5">
+                  {(() => {
+                    const opts = Array.isArray(order.selected_options) ? order.selected_options : [];
+                    const pills = opts.map((o: any) => formatSavedOptionPill(o)).filter(Boolean);
+                    if (pills.length === 0) return <span className="text-[11px]" style={{ color: "#717182" }}>—</span>;
+                    return (
+                      <div className="flex flex-wrap gap-[3px]">
+                        {pills.map((p: string, i: number) => (
+                          <span key={i} className="text-[10px] font-medium px-1.5 py-[2px] rounded-full leading-tight"
+                            style={{ backgroundColor: "rgba(85,186,170,0.12)", color: "#2e7e74", whiteSpace: "nowrap" }}>
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {/* Status */}
-                <div className="hidden sm:block"><StatusBadge status={order.equipment_status || order.status} /></div>
+                <div className="hidden sm:block pt-2"><StatusBadge status={order.equipment_status || order.status} /></div>
                 {/* ETA */}
-                <span className={cn("hidden sm:block text-[11px]", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
+                <span className={cn("hidden sm:block text-[11px] pt-2", eta.overdue ? "font-semibold" : "")} style={{ color: eta.overdue ? "#D4183D" : "#717182" }}>
                   {fmtDate(order.est_completion_date)}
                 </span>
               </div>
