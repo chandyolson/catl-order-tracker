@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Printer, ArrowLeft, Share2, Plus, Trash2 } from "lucide-react";
+import { Printer, ArrowLeft, Share2, Plus, Trash2, Edit2, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -19,6 +19,8 @@ export default function OrangeSheet() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [sheetNotes, setSheetNotes] = useState("");
   const [notesDirty, setNotesDirty] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemText, setEditingItemText] = useState("");
 
   // ── Order data ──
   const { data: order, isLoading } = useQuery({
@@ -98,6 +100,14 @@ export default function OrangeSheet() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["orange_sheet_items", id] }),
+  });
+
+  const updateItem = useMutation({
+    mutationFn: async ({ itemId, text }: { itemId: string; text: string }) => {
+      const { error } = await supabase.from("orange_sheet_items").update({ item_text: text, updated_at: new Date().toISOString() }).eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["orange_sheet_items", id] }); setEditingItemId(null); },
   });
 
   const saveNotes = useMutation({
@@ -240,16 +250,32 @@ export default function OrangeSheet() {
                 >
                   {item.is_checked && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </button>
-                <span style={{ fontSize: 13, color: item.is_checked ? "#B4B2A9" : "#1A1A1A", flex: 1, textDecoration: item.is_checked ? "line-through" : "none", lineHeight: 1.3 }}>
-                  {item.item_text}
-                </span>
-                {item.assigned_to && (
-                  <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 8px", borderRadius: 10, background: "rgba(14,38,70,0.08)", color: "#0E2646", flexShrink: 0 }}>{item.assigned_to}</span>
+                {editingItemId === item.id ? (
+                  <>
+                    <input value={editingItemText} onChange={e => setEditingItemText(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && updateItem.mutate({ itemId: item.id, text: editingItemText })}
+                      style={{ flex: 1, fontSize: 13, padding: "2px 8px", borderRadius: 6, border: "0.5px solid #D4D4D0", outline: "none" }} autoFocus />
+                    <button onClick={() => updateItem.mutate({ itemId: item.id, text: editingItemText })} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#27AE60" }}><Check size={13} /></button>
+                    <button onClick={() => setEditingItemId(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "#717182" }}><X size={13} /></button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 13, color: item.is_checked ? "#B4B2A9" : "#1A1A1A", flex: 1, textDecoration: item.is_checked ? "line-through" : "none", lineHeight: 1.3 }}>
+                      {item.item_text}
+                    </span>
+                    {item.assigned_to && (
+                      <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 8px", borderRadius: 10, background: "rgba(14,38,70,0.08)", color: "#0E2646", flexShrink: 0 }}>{item.assigned_to}</span>
+                    )}
+                    <button className="print:hidden" onClick={() => { setEditingItemId(item.id); setEditingItemText(item.item_text); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0, opacity: 0.4 }}>
+                      <Edit2 size={12} color="#55BAAA" />
+                    </button>
+                    <button className="print:hidden" onClick={() => deleteItem.mutate(item.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0, opacity: 0.4 }}>
+                      <Trash2 size={12} color="#D4183D" />
+                    </button>
+                  </>
                 )}
-                <button className="print:hidden" onClick={() => deleteItem.mutate(item.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0, opacity: 0.4 }}>
-                  <Trash2 size={12} color="#D4183D" />
-                </button>
               </div>
             ))}
 

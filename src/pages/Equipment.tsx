@@ -40,6 +40,8 @@ const STATUS_OPTIONS = [
 
 const SORTS = [
   { label: "Newest first", col: "updated_at", asc: false },
+  { label: "Contract # ↑", col: "moly_contract_number", asc: true },
+  { label: "Contract # ↓", col: "moly_contract_number", asc: false },
   { label: "ETA soonest", col: "est_completion_date", asc: true },
   { label: "Customer A-Z", col: "customer_name", asc: true, isCustomer: true },
   { label: "Price high-low", col: "customer_price", asc: false },
@@ -222,6 +224,9 @@ export default function Equipment() {
       if ((sort as any).isCustomer) {
         aVal = (a.customers as any)?.name || "";
         bVal = (b.customers as any)?.name || "";
+      } else if (sort.col === "moly_contract_number") {
+        aVal = parseInt(a.moly_contract_number || "0", 10) || 0;
+        bVal = parseInt(b.moly_contract_number || "0", 10) || 0;
       } else {
         aVal = a[sort.col] ?? "";
         bVal = b[sort.col] ?? "";
@@ -305,24 +310,24 @@ export default function Equipment() {
           </div>
         </div>
 
-        {/* KPI pills */}
+        {/* KPI pills — clickable to filter */}
         <div className="flex gap-2 flex-wrap">
-          <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#0E2646" }}>
+          <button onClick={() => switchTab("assigned")} className="px-3 py-1.5 rounded-full text-xs font-semibold text-white active:scale-[0.96] transition-transform" style={{ backgroundColor: "#0E2646" }}>
             {counts.assigned} Assigned
-          </span>
-          <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#55BAAA" }}>
+          </button>
+          <button onClick={() => switchTab("instock")} className="px-3 py-1.5 rounded-full text-xs font-semibold text-white active:scale-[0.96] transition-transform" style={{ backgroundColor: "#55BAAA" }}>
             {counts.instock} In Stock
-          </span>
-          <span className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
+          </button>
+          <button onClick={() => switchTab("onorder")} className="px-3 py-1.5 rounded-full text-xs font-semibold active:scale-[0.96] transition-transform" style={{ backgroundColor: "#F3D12A", color: "#0E2646" }}>
             {counts.onorder} On Order
-          </span>
-          <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#27AE60" }}>
+          </button>
+          <button onClick={() => switchTab("delivered")} className="px-3 py-1.5 rounded-full text-xs font-semibold text-white active:scale-[0.96] transition-transform" style={{ backgroundColor: "#27AE60" }}>
             {counts.delivered} Delivered
-          </span>
+          </button>
           {kpis.ready > 0 && (
-            <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#55BAAA" }}>
+            <button onClick={() => { setStatusFilter("ready"); switchTab("all"); }} className="px-3 py-1.5 rounded-full text-xs font-semibold text-white active:scale-[0.96] transition-transform" style={{ backgroundColor: "#55BAAA" }}>
               {kpis.ready} Ready for Pickup
-            </span>
+            </button>
           )}
         </div>
 

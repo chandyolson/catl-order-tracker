@@ -111,7 +111,7 @@ export default function Customers() {
                   {h.label} <SortIcon col={h.key} />
                 </button>
               ))}
-              <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.6)" }}>Contact</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider flex items-center" style={{ color: "rgba(240,240,240,0.6)" }}>Contact</div>
             </div>
 
             {/* Rows */}

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Edit2, Check, X, Phone, Mail, MapPin } from "lucide-react";
+import { ChevronLeft, Edit2, Check, X, Phone, Mail, MapPin, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
@@ -122,6 +122,23 @@ export default function CustomerDetail() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("customers").delete().eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Customer deleted");
+      navigate("/customers");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to delete"),
+  });
+
+  function handleDelete() {
+    if (!confirm(`Delete ${customer?.name}? This cannot be undone. Any linked orders will be unaffected.`)) return;
+    deleteMutation.mutate();
+  }
+
   if (customerQuery.isLoading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading…</div>;
   if (!customer) return <div className="flex items-center justify-center h-64 text-muted-foreground">Customer not found</div>;
 
@@ -183,12 +200,18 @@ export default function CustomerDetail() {
               )}
             </div>
             {!editing && (
-              <button onClick={startEdit} className="p-2 rounded-lg shrink-0" style={{ color: "rgba(240,240,240,0.5)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#F0F0F0"; e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,240,240,0.5)"; e.currentTarget.style.backgroundColor = "transparent"; }}
-              >
-                <Edit2 size={16} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={startEdit} className="p-2 rounded-lg" style={{ color: "rgba(240,240,240,0.5)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#F0F0F0"; e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,240,240,0.5)"; e.currentTarget.style.backgroundColor = "transparent"; }}>
+                  <Edit2 size={16} />
+                </button>
+                <button onClick={handleDelete} className="p-2 rounded-lg" style={{ color: "rgba(212,24,61,0.6)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#D4183D"; e.currentTarget.style.backgroundColor = "rgba(212,24,61,0.12)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(212,24,61,0.6)"; e.currentTarget.style.backgroundColor = "transparent"; }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
             )}
           </div>
         </div>

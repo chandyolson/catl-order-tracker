@@ -417,14 +417,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {/* Open Estimates */}
           <button onClick={() => navigate("/leads")}
-            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            className="rounded-xl p-4 text-center active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #0D4A40 60%, #55BAAA 100%)" }}>
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
               <TrendingUp size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
               <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Open Estimates</span>
             </div>
             <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{openEstimates.length}</p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center gap-3">
               {hotCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#E8503A" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{hotCount} hot</span></span>}
               {warmCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#F3D12A" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{warmCount} warm</span></span>}
               {coldCount > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#717182" }} /><span className="text-[10px]" style={{ color: "rgba(255,255,255,0.6)" }}>{coldCount} cold</span></span>}
@@ -434,9 +434,9 @@ export default function Dashboard() {
 
           {/* Ready to Deliver */}
           <button onClick={() => navigate("/equipment?status=ready")}
-            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            className="rounded-xl p-4 text-center active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #0A3020 60%, #22763A 100%)" }}>
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
               <Truck size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
               <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Ready to Deliver</span>
             </div>
@@ -448,14 +448,14 @@ export default function Dashboard() {
 
           {/* Unsold Inventory */}
           <button onClick={() => navigate("/equipment?tab=instock")}
-            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            className="rounded-xl p-4 text-center active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(150deg, #0E2646 0%, #163A5E 60%, #1E5A7A 100%)" }}>
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
               <Warehouse size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
               <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Unsold Inventory</span>
             </div>
             <p className="text-[26px] font-semibold text-white leading-none mb-2" style={{ letterSpacing: "-0.02em" }}>{unsoldTotal}</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {Object.entries(invByCategory).map(([cat, count]) => (
                 <span key={cat} className="text-[10px] rounded px-1.5 py-0.5"
                   style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.75)" }}>
@@ -468,11 +468,11 @@ export default function Dashboard() {
 
           {/* Open Tasks */}
           <button onClick={() => document.getElementById("dashboard-tasks")?.scrollIntoView({ behavior: "smooth" })}
-            className="rounded-xl p-4 text-left active:scale-[0.97] transition-transform"
+            className="rounded-xl p-4 text-center active:scale-[0.97] transition-transform"
             style={{ background: overdueCount > 0
               ? "linear-gradient(150deg, #0E2646 0%, #3A0E0E 60%, #7A1A1A 100%)"
               : "linear-gradient(150deg, #0E2646 0%, #163A5E 60%, #1E5A7A 100%)" }}>
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center justify-center gap-1.5 mb-2">
               <CheckSquare size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
               <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.45)" }}>Open Tasks</span>
             </div>
