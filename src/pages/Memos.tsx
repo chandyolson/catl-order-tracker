@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Mic, Trash2, Archive, ChevronDown, ChevronUp, Search, RefreshCw } from "lucide-react";
+import { Mic, Trash2, Archive, ChevronDown, ChevronUp, Search, RefreshCw, Edit2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -29,6 +29,22 @@ export default function Memos() {
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSummary, setEditSummary] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editTranscript, setEditTranscript] = useState("");
+
+  async function saveMemoEdit(id: string) {
+    const { error } = await supabase.from("voice_memos").update({
+      ai_summary: editSummary || null,
+      notes: editNotes || null,
+      transcript: editTranscript || null,
+    } as any).eq("id", id);
+    if (error) { toast.error("Failed to save"); return; }
+    toast.success("Memo saved");
+    setEditingId(null);
+    queryClient.invalidateQueries({ queryKey: ["all_memos"] });
+  }
 
   const { data: memos = [], isLoading, refetch } = useQuery({
     queryKey: ["all_memos", showArchived],
@@ -179,50 +195,102 @@ export default function Memos() {
               {/* Expanded detail */}
               {isExpanded && (
                 <div className="px-4 pb-3" style={{ borderTop: "0.5px solid #F0F0EC" }}>
-                  {memo.commitments && Array.isArray(memo.commitments) && memo.commitments.length > 0 && (
-                    <div className="mt-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#F3D12A" }}>Commitments</p>
-                      {memo.commitments.map((c: any, i: number) => (
-                        <p key={i} className="text-[12px]" style={{ color: "#0E2646" }}>• {typeof c === "string" ? c : c.description || c.text || JSON.stringify(c)}</p>
-                      ))}
-                    </div>
-                  )}
-                  {memo.equipment_mentioned && Array.isArray(memo.equipment_mentioned) && memo.equipment_mentioned.length > 0 && (
-                    <div className="mt-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#55BAAA" }}>Equipment mentioned</p>
-                      <div className="flex flex-wrap gap-1">
-                        {memo.equipment_mentioned.map((e: any, i: number) => (
-                          <span key={i} className="text-[11px] px-2.5 py-0.5 rounded-full" style={{ background: "rgba(85,186,170,0.12)", color: "#2e7e74" }}>
-                            {typeof e === "string" ? e : e.name || JSON.stringify(e)}
-                          </span>
-                        ))}
+                  {editingId === memo.id ? (
+                    /* ── Edit mode ── */
+                    <div className="space-y-3 pt-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Summary / AI notes</p>
+                        <textarea value={editSummary} onChange={e => setEditSummary(e.target.value)} rows={4}
+                          className="w-full text-[13px] px-3 py-2 rounded-lg outline-none resize-none"
+                          style={{ border: "0.5px solid #D4D4D0", background: "#fff" }} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Your notes</p>
+                        <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={3}
+                          placeholder="Add your own notes, corrections, context..."
+                          className="w-full text-[13px] px-3 py-2 rounded-lg outline-none resize-none"
+                          style={{ border: "0.5px solid #D4D4D0", background: "#fff" }} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Transcript (correct if needed)</p>
+                        <textarea value={editTranscript} onChange={e => setEditTranscript(e.target.value)} rows={5}
+                          className="w-full text-[11px] px-3 py-2 rounded-lg outline-none resize-none"
+                          style={{ border: "0.5px solid #D4D4D0", background: "#fafaf8", color: "#717182" }} />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => saveMemoEdit(memo.id)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold"
+                          style={{ background: "#55BAAA", color: "#fff" }}>
+                          <Check size={13} /> Save
+                        </button>
+                        <button onClick={() => setEditingId(null)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px]"
+                          style={{ background: "#F5F5F0", color: "#717182" }}>
+                          <X size={13} /> Cancel
+                        </button>
                       </div>
                     </div>
-                  )}
-                  {memo.transcript && memo.ai_summary && (
-                    <details className="mt-2.5">
-                      <summary className="text-[10px] font-bold uppercase tracking-wider cursor-pointer" style={{ color: "#717182" }}>Full transcript</summary>
-                      <p className="text-[11px] mt-1 leading-relaxed whitespace-pre-wrap" style={{ color: "#717182" }}>{memo.transcript}</p>
-                    </details>
-                  )}
+                  ) : (
+                    /* ── View mode ── */
+                    <>
+                      {/* Notes (user-added) */}
+                      {memo.notes && (
+                        <div className="mt-2.5 px-3 py-2 rounded-lg" style={{ background: "rgba(243,209,42,0.08)", border: "0.5px solid rgba(243,209,42,0.2)" }}>
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#9a7a00" }}>Your notes</p>
+                          <p className="text-[12px] leading-relaxed" style={{ color: "#1A1A1A" }}>{memo.notes}</p>
+                        </div>
+                      )}
+                      {memo.commitments && Array.isArray(memo.commitments) && memo.commitments.length > 0 && (
+                        <div className="mt-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#F3D12A" }}>Commitments</p>
+                          {memo.commitments.map((c: any, i: number) => (
+                            <p key={i} className="text-[12px]" style={{ color: "#0E2646" }}>• {typeof c === "string" ? c : c.description || c.text || JSON.stringify(c)}</p>
+                          ))}
+                        </div>
+                      )}
+                      {memo.equipment_mentioned && Array.isArray(memo.equipment_mentioned) && memo.equipment_mentioned.length > 0 && (
+                        <div className="mt-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#55BAAA" }}>Equipment mentioned</p>
+                          <div className="flex flex-wrap gap-1">
+                            {memo.equipment_mentioned.map((e: any, i: number) => (
+                              <span key={i} className="text-[11px] px-2.5 py-0.5 rounded-full" style={{ background: "rgba(85,186,170,0.12)", color: "#2e7e74" }}>
+                                {typeof e === "string" ? e : e.name || JSON.stringify(e)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {memo.transcript && memo.ai_summary && (
+                        <details className="mt-2.5">
+                          <summary className="text-[10px] font-bold uppercase tracking-wider cursor-pointer" style={{ color: "#717182" }}>Full transcript</summary>
+                          <p className="text-[11px] mt-1 leading-relaxed whitespace-pre-wrap" style={{ color: "#717182" }}>{memo.transcript}</p>
+                        </details>
+                      )}
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 mt-3 pt-2.5" style={{ borderTop: "0.5px solid #F0F0EC" }}>
-                    <button
-                      onClick={() => archiveMemo(memo.id, memo.archived)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
-                      style={{ background: "rgba(113,113,130,0.08)", color: "#717182" }}>
-                      <Archive size={12} />
-                      {memo.archived ? "Restore" : "Archive"}
-                    </button>
-                    <button
-                      onClick={() => deleteMemo(memo.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
-                      style={{ background: "rgba(212,24,61,0.07)", color: "#D4183D" }}>
-                      <Trash2 size={12} />
-                      Delete
-                    </button>
-                  </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 mt-3 pt-2.5" style={{ borderTop: "0.5px solid #F0F0EC" }}>
+                        <button
+                          onClick={() => { setEditingId(memo.id); setEditSummary(memo.ai_summary || ""); setEditNotes(memo.notes || ""); setEditTranscript(memo.transcript || ""); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
+                          style={{ background: "rgba(85,186,170,0.08)", color: "#55BAAA" }}>
+                          <Edit2 size={12} /> Edit / Add notes
+                        </button>
+                        <button
+                          onClick={() => archiveMemo(memo.id, memo.archived)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
+                          style={{ background: "rgba(113,113,130,0.08)", color: "#717182" }}>
+                          <Archive size={12} />
+                          {memo.archived ? "Restore" : "Archive"}
+                        </button>
+                        <button
+                          onClick={() => deleteMemo(memo.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
+                          style={{ background: "rgba(212,24,61,0.07)", color: "#D4183D" }}>
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
