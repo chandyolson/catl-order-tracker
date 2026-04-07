@@ -178,13 +178,12 @@ export default function NewOrder() {
           <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Mfg</span>
             <select
-              value={configuratorRef.current?.getState()?.manufacturerId || ""}
+              value={selectedManufacturerId}
               onChange={(e) => {
                 const mfr = manufacturersQuery.data?.find((m) => m.id === e.target.value);
                 const isMoly = mfr?.name?.toLowerCase().includes("moly");
                 setShowMolyPortal(!!isMoly);
                 setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
-                // Trigger re-render via a page-level state
                 setSelectedManufacturerId(e.target.value);
               }}
               className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold">
