@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   Truck,
+  Mic,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import NewOrderPicker from "@/components/NewOrderPicker";
@@ -20,6 +21,7 @@ const navItems = [
   { label: "Leads", path: "/leads", icon: TrendingUp },
   { label: "Freight", path: "/freight", icon: Truck },
   { label: "Customers", path: "/customers", icon: Users },
+  { label: "Memos", path: "/memos", icon: Mic },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 

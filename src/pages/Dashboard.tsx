@@ -687,7 +687,8 @@ export default function Dashboard() {
             <Mic size={12} style={{ color: "#55BAAA" }} />
             <span className="text-[13px] font-extrabold uppercase tracking-wide" style={{ color: "#0E2646" }}>Recent Memos</span>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#F5F5F0", color: "#0E2646" }}>{recentMemos.length}</span>
-            <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
+            <button onClick={refreshMemos} className="text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
+            <button onClick={() => navigate("/memos")} className="ml-1 text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(14,38,70,0.07)", color: "#0E2646" }}>View all →</button>
           </div>
           {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No recent memos</p>}
           {recentMemos.map(memo => {

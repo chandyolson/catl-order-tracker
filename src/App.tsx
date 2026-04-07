@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Equipment from "./pages/Equipment";
 import Leads from "./pages/Leads";
+import Memos from "./pages/Memos";
 import OrderDetail from "./pages/OrderDetail";
 import NewOrder from "./pages/NewOrder";
 import EditOrder from "./pages/EditOrder";
@@ -57,7 +58,8 @@ function AppRoutes() {
         <Route path="/production" element={<Navigate to="/equipment" replace />} />
         <Route path="/estimates" element={<Navigate to="/leads" replace />} />
         <Route path="/tasks" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/voice-memos" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/voice-memos" element={<Navigate to="/memos" replace />} />
+        <Route path="/memos" element={<Memos />} />
         <Route path="/documents" element={<Navigate to="/dashboard" replace />} />
         <Route path="/paperwork" element={<Navigate to="/dashboard" replace />} />
 
