@@ -163,6 +163,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [openEstimates, setOpenEstimates] = useState<Estimate[]>([]);
   const [recentMemos, setRecentMemos] = useState<VoiceMemo[]>([]);
+  const [expandedMemoId, setExpandedMemoId] = useState<string | null>(null);
   const [openTaskCount, setOpenTaskCount] = useState(0);
   const [readyCount, setReadyCount] = useState(0);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -689,21 +690,29 @@ export default function Dashboard() {
             <button onClick={refreshMemos} className="ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full active:scale-[0.95] transition-transform" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}><RefreshCw size={10} className="inline mr-1" />Refresh</button>
           </div>
           {recentMemos.length === 0 && <p className="text-sm text-center py-4" style={{ color: "#717182" }}>No recent memos</p>}
-          {recentMemos.map(memo => (
-            <div key={memo.id} className="flex items-center gap-2 px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group"
-              style={{ borderBottom: "0.5px solid #F5F5F0" }}>
-              <Mic size={11} style={{ color: "#55BAAA", flexShrink: 0 }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-medium truncate" style={{ color: "#1A1A1A" }}>
-                  {memo.ai_summary ? memo.ai_summary.slice(0, 120) + (memo.ai_summary.length > 120 ? "…" : "") : memo.transcript ? memo.transcript.slice(0, 100) + (memo.transcript.length > 100 ? "…" : "") : "Processing…"}
-                </p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
-                  {formatTime(memo.created_at)}
-                </p>
+          {recentMemos.map(memo => {
+            const isExpanded = expandedMemoId === memo.id;
+            const fullText = memo.ai_summary || memo.transcript || "";
+            const previewText = fullText.slice(0, 120) + (fullText.length > 120 ? "…" : "");
+            return (
+              <div key={memo.id} className="px-4 py-2.5 hover:bg-[#F9F9F7] transition-colors group cursor-pointer"
+                style={{ borderBottom: "0.5px solid #F5F5F0" }}
+                onClick={() => setExpandedMemoId(isExpanded ? null : memo.id)}>
+                <div className="flex items-start gap-2">
+                  <Mic size={11} style={{ color: "#55BAAA", flexShrink: 0, marginTop: 2 }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-medium" style={{ color: "#1A1A1A", whiteSpace: isExpanded ? "pre-wrap" : "nowrap", overflow: isExpanded ? "visible" : "hidden", textOverflow: isExpanded ? "unset" : "ellipsis" }}>
+                      {fullText ? (isExpanded ? fullText : previewText) : "Processing…"}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#717182" }}>
+                      {formatTime(memo.created_at)}{fullText.length > 120 && <span style={{ color: "#55BAAA", marginLeft: 6 }}>{isExpanded ? "tap to collapse" : "tap to expand"}</span>}
+                    </p>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-0.5"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
+                </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteMemo(memo.id); }} className="p-1 opacity-0 group-hover:opacity-100 flex-shrink-0"><Trash2 size={11} style={{ color: "#D4183D" }} /></button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
