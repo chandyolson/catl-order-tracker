@@ -349,7 +349,10 @@ export type Database = {
           created_at: string | null
           customer_type: string | null
           email: string | null
+          geocoded_at: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           notes: string | null
           phone: string | null
@@ -365,7 +368,10 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           email?: string | null
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -381,7 +387,10 @@ export type Database = {
           created_at?: string | null
           customer_type?: string | null
           email?: string | null
+          geocoded_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -815,6 +824,87 @@ export type Database = {
           },
         ]
       }
+      freight_run_items: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          delivered_at: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_instructions: string | null
+          delivery_phone: string | null
+          delivery_state: string | null
+          delivery_zip: string | null
+          description: string | null
+          destination_type: string
+          freight_run_id: string
+          id: string
+          load_order: number
+          notes: string | null
+          order_id: string | null
+          status: string
+          unloading_equipment: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_instructions?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          description?: string | null
+          destination_type?: string
+          freight_run_id: string
+          id?: string
+          load_order?: number
+          notes?: string | null
+          order_id?: string | null
+          status?: string
+          unloading_equipment?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          delivered_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_instructions?: string | null
+          delivery_phone?: string | null
+          delivery_state?: string | null
+          delivery_zip?: string | null
+          description?: string | null
+          destination_type?: string
+          freight_run_id?: string
+          id?: string
+          load_order?: number
+          notes?: string | null
+          order_id?: string | null
+          status?: string
+          unloading_equipment?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freight_run_items_freight_run_id_fkey"
+            columns: ["freight_run_id"]
+            isOneToOne: false
+            referencedRelation: "freight_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freight_run_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       freight_run_stops: {
         Row: {
           created_at: string
@@ -910,6 +1000,7 @@ export type Database = {
           pickup_date: string | null
           pickup_location: string
           pickup_state: string | null
+          priority: number | null
           share_token: string | null
           start_address: string | null
           start_city: string | null
@@ -938,6 +1029,7 @@ export type Database = {
           pickup_date?: string | null
           pickup_location?: string
           pickup_state?: string | null
+          priority?: number | null
           share_token?: string | null
           start_address?: string | null
           start_city?: string | null
@@ -966,6 +1058,7 @@ export type Database = {
           pickup_date?: string | null
           pickup_location?: string
           pickup_state?: string | null
+          priority?: number | null
           share_token?: string | null
           start_address?: string | null
           start_city?: string | null
@@ -1403,6 +1496,83 @@ export type Database = {
           },
         ]
       }
+      orange_sheet_items: {
+        Row: {
+          assigned_to: string | null
+          category: string | null
+          created_at: string | null
+          id: string
+          is_checked: boolean | null
+          is_standard: boolean | null
+          item_text: string
+          order_id: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_checked?: boolean | null
+          is_standard?: boolean | null
+          item_text: string
+          order_id: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_checked?: boolean | null
+          is_standard?: boolean | null
+          item_text?: string
+          order_id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orange_sheet_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orange_sheet_standards: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          default_assigned_to: string | null
+          id: string
+          is_active: boolean | null
+          item_text: string
+          sort_order: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          default_assigned_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_text: string
+          sort_order?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          default_assigned_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_text?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       order_document_slots: {
         Row: {
           base_model: string | null
@@ -1639,6 +1809,7 @@ export type Database = {
           build_shorthand: string | null
           catl_number: string | null
           contract_name: string | null
+          controls_side: string | null
           created_at: string | null
           current_estimate_version: number | null
           customer_id: string | null
@@ -1714,6 +1885,7 @@ export type Database = {
           build_shorthand?: string | null
           catl_number?: string | null
           contract_name?: string | null
+          controls_side?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
@@ -1789,6 +1961,7 @@ export type Database = {
           build_shorthand?: string | null
           catl_number?: string | null
           contract_name?: string | null
+          controls_side?: string | null
           created_at?: string | null
           current_estimate_version?: number | null
           customer_id?: string | null
@@ -1944,6 +2117,44 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processed_drive_files: {
+        Row: {
+          created_at: string | null
+          drive_file_id: string
+          file_name: string | null
+          file_type: string | null
+          id: string
+          memo_id: string | null
+          processed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          drive_file_id: string
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          memo_id?: string | null
+          processed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          drive_file_id?: string
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          memo_id?: string | null
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processed_drive_files_memo_id_fkey"
+            columns: ["memo_id"]
+            isOneToOne: false
+            referencedRelation: "voice_memos"
             referencedColumns: ["id"]
           },
         ]
@@ -2154,6 +2365,7 @@ export type Database = {
           processing_status: string | null
           recorded_by: string | null
           source_app: string | null
+          tasks_extracted: boolean | null
           transcript: string | null
           transcription_confidence: number | null
           updated_at: string | null
@@ -2181,6 +2393,7 @@ export type Database = {
           processing_status?: string | null
           recorded_by?: string | null
           source_app?: string | null
+          tasks_extracted?: boolean | null
           transcript?: string | null
           transcription_confidence?: number | null
           updated_at?: string | null
@@ -2208,6 +2421,7 @@ export type Database = {
           processing_status?: string | null
           recorded_by?: string | null
           source_app?: string | null
+          tasks_extracted?: boolean | null
           transcript?: string | null
           transcription_confidence?: number | null
           updated_at?: string | null
