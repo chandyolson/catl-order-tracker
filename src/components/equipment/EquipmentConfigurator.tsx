@@ -66,6 +66,11 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
   const [pivotChecked, setPivotChecked] = useState(false);
   const [controlsSide, setControlsSide] = useState<"left" | "right" | "">(initialValues?.controlsSide || "left");
   const [initialized, setInitialized] = useState(!initialValues?.selectedOptions);
+  const [sectionsOpen, setSectionsOpen] = useState<Record<string, boolean>>({
+    recommended: false,
+    all_options: false,
+    custom: false,
+  });
 
   /* ── Queries ────────────────────────────────────────────── */
   const effectiveManufacturerId = manufacturerIdProp || manufacturerIdOverride || manufacturerId;
@@ -470,6 +475,10 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
   useImperativeHandle(ref, () => ({ getState }), [getState]);
   useEffect(() => { onChange?.(getState()); }, [getState]);
 
+  function toggleSection(key: string) {
+    setSectionsOpen(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
   /* ══════════════════════════════════════════════════════════
      RENDER HELPERS
      ══════════════════════════════════════════════════════════ */
@@ -853,34 +862,28 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
               </div>
             </div>
             {/* Headers */}
-            <div className="flex justify-between mb-1.5">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1.5">
               <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Item</span>
-              <div className="flex gap-4">
-                <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span>
-                <span className="text-[9px] uppercase tracking-wider" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span>
-              </div>
+              <span className="text-[9px] uppercase tracking-wider text-right" style={{ color: "rgba(85,186,170,0.6)" }}>Cost</span>
+              <span className="text-[9px] uppercase tracking-wider text-right" style={{ color: "rgba(245,245,240,0.35)" }}>Retail</span>
             </div>
             <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
             {/* Base */}
             <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Base model</p>
-            <div className="flex justify-between mb-1.5">
-              <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{selectedBaseModel.name}</span>
-              <div className="flex gap-4">
-                <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
-                <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
-              </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1.5">
+              <span className="text-[12px] truncate pr-2" style={{ color: "#F5F5F0" }}>{selectedBaseModel.name}</span>
+              <span className="text-[12px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(selectedBaseModel.cost_price || 0)}</span>
+              <span className="text-[12px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(selectedBaseModel.retail_price)}</span>
             </div>
             {/* Options */}
             {selectedOptionsList.length > 0 && (<>
               <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
               <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Options</p>
               {selectedOptionsList.map(({ option, quantity }, i) => (
-                <div key={i} className="flex justify-between mb-1">
-                  <span className="text-[12px] flex-1 min-w-0 truncate mr-2" style={{ color: "#F5F5F0" }}>{option.display_name || option.name}{quantity > 1 ? ` ×${quantity}` : ""}</span>
-                  <div className="flex gap-4 flex-shrink-0">
-                    <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span>
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span>
-                  </div>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
+                  <span className="text-[12px] truncate pr-2" style={{ color: "#F5F5F0" }}>{option.display_name || option.name}{quantity > 1 ? ` ×${quantity}` : ""}</span>
+                  <span className="text-[12px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(option.cost_price * quantity)}</span>
+                  <span className="text-[12px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(option.retail_price * quantity)}</span>
                 </div>
               ))}
             </>)}
@@ -889,33 +892,39 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
               <div className="my-1.5" style={{ height: 1, background: "rgba(245,245,240,0.06)" }} />
               <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.5)" }}>Custom items</p>
               {customLineItems.filter(c => c.name.trim()).map((c, i) => (
-                <div key={i} className="flex justify-between mb-1">
-                  <span className="text-[12px]" style={{ color: "#F5F5F0" }}>{c.name}</span>
-                  <div className="flex gap-4">
-                    <span className="text-[12px]" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span>
-                    <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span>
-                  </div>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
+                  <span className="text-[12px] truncate pr-2" style={{ color: "#F5F5F0" }}>{c.name}</span>
+                  <span className="text-[12px] text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(parseFloat(c.cost) || 0)}</span>
+                  <span className="text-[12px] text-right" style={{ color: "rgba(245,245,240,0.7)" }}>${fmtCurrency(parseFloat(c.retail) || 0)}</span>
                 </div>
               ))}
             </>)}
             {/* Discount */}
             {discountValue > 0 && (
-              <div className="flex justify-between mb-1">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
                 <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Discount</span>
-                <span className="text-[12px]" style={{ color: "#F3D12A" }}>-${fmtCurrency(discountValue)}</span>
+                <span className="text-[12px] text-right col-span-2" style={{ color: "#F3D12A" }}>-${fmtCurrency(discountValue)}</span>
               </div>
             )}
             <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
             {/* Subtotals */}
-            <div className="flex justify-between mb-1">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
               <span className="text-[12px] font-medium" style={{ color: "rgba(245,245,240,0.7)" }}>Subtotals</span>
-              <div className="flex gap-4">
-                <span className="text-[13px] font-medium" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
-                <span className="text-[13px] font-medium" style={{ color: "#F5F5F0" }}>${fmtCurrency(calcRetail)}</span>
-              </div>
+              <span className="text-[13px] font-medium text-right" style={{ color: "#55BAAA" }}>${fmtCurrency(ourCost)}</span>
+              <span className="text-[13px] font-medium text-right" style={{ color: "#F5F5F0" }}>${fmtCurrency(calcRetail)}</span>
             </div>
-            {taxRate > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState} {taxRate}%)</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(taxAmount)}</span></div>}
-            {freightEstimate && parseFloat(freightEstimate) > 0 && <div className="flex justify-between mb-1"><span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span><span className="text-[12px]" style={{ color: "#F5F5F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span></div>}
+            {taxRate > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
+                <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Tax ({taxState} {taxRate}%)</span>
+                <span className="text-[12px] text-right col-span-2" style={{ color: "#F5F5F0" }}>${fmtCurrency(taxAmount)}</span>
+              </div>
+            )}
+            {freightEstimate && parseFloat(freightEstimate) > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 72px" }} className="mb-1">
+                <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Freight</span>
+                <span className="text-[12px] text-right col-span-2" style={{ color: "#F5F5F0" }}>${fmtCurrency(parseFloat(freightEstimate))}</span>
+              </div>
+            )}
             <div className="my-2" style={{ height: 1, background: "rgba(245,245,240,0.1)" }} />
             <div className="flex justify-between">
               <span className="text-[12px]" style={{ color: "rgba(245,245,240,0.5)" }}>Margin</span>
@@ -925,94 +934,155 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
         </div>
       )}
 
-      {/* Recommended options (Moly only) */}
-      {selectedBaseModel && isMoly && (
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>Recommended options</p>
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("8ae10596-a7f2-4c78-9412-e6f1c43c876c", "Hyd lower squeeze")}
-              {renderRecommendedCheckmark("54277864-a9e6-4edc-a9fb-9362c16cc1a6", "Xtra Power squeeze")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("781cc905-05f0-4537-b2e0-a550275d646e", "Dual controls")}
-              <div />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("99ca3ab9-eee2-484b-a8fa-8e24217e9f6b", "Walk-thru door L", "left")}
-              {renderRecommendedCheckmark("99ca3ab9-eee2-484b-a8fa-8e24217e9f6b", "Walk-thru door R", "right")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("77e99584-7462-40aa-b8c8-dc071963d0bd", "Neck access L", "left")}
-              {renderRecommendedCheckmark("77e99584-7462-40aa-b8c8-dc071963d0bd", "Neck access R", "right")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("61764474-4f25-43a9-8885-271d3ef4973e", "Neckbar L", "left")}
-              {renderRecommendedCheckmark("61764474-4f25-43a9-8885-271d3ef4973e", "Neckbar R", "right")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("89cc9ae7-32ef-46ac-92f0-4e132c62e696", "Neck extenders")}
-              {renderRecommendedCheckmark("639108fc-8857-4428-90bf-c55c7f9493e4", "Rear hookup")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {renderRecommendedCheckmark("b2a248c9-3d4f-417e-bf8c-16bc53c6627e", "Chest bar")}
-              <div />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* All options by group (expanded) */}
-      {selectedBaseModel && groupedOptions.length > 0 && (
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-3" style={{ color: "#0E2646" }}>All options</p>
-          <div className="space-y-4">
-            {groupedOptions.map(([group, opts]) => {
-              const content = renderGroupContent(group, opts);
-              if (!content) return null;
-              return (
-                <div key={group}>
-                  <p className="text-[12px] font-bold uppercase tracking-wide mb-2 pb-1 border-b" style={{ color: "#0E2646", borderColor: "#D4D4D0" }}>{group.replace(/[-_]/g, " ")}</p>
-                  {content}
+      {/* Recommended options (Moly only) — collapsible */}
+      {selectedBaseModel && isMoly && (() => {
+        const selectedCount = [
+          "8ae10596-a7f2-4c78-9412-e6f1c43c876c",
+          "54277864-a9e6-4edc-a9fb-9362c16cc1a6",
+          "781cc905-05f0-4537-b2e0-a550275d646e",
+          "99ca3ab9-eee2-484b-a8fa-8e24217e9f6b",
+          "77e99584-7462-40aa-b8c8-dc071963d0bd",
+          "61764474-4f25-43a9-8885-271d3ef4973e",
+          "89cc9ae7-32ef-46ac-92f0-4e132c62e696",
+          "639108fc-8857-4428-90bf-c55c7f9493e4",
+          "b2a248c9-3d4f-417e-bf8c-16bc53c6627e",
+        ].filter(id => isRecommendedSelected(id)).length;
+        const isOpen = sectionsOpen.recommended;
+        return (
+          <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+            <button type="button" onClick={() => toggleSection("recommended")}
+              className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 transition-colors">
+              <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>Recommended options</span>
+              <div className="flex items-center gap-2">
+                {selectedCount > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{selectedCount} selected</span>
+                )}
+                <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
+              </div>
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4 space-y-2" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+                <div className="pt-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("8ae10596-a7f2-4c78-9412-e6f1c43c876c", "Hyd lower squeeze")}
+                    {renderRecommendedCheckmark("54277864-a9e6-4edc-a9fb-9362c16cc1a6", "Xtra Power squeeze")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("781cc905-05f0-4537-b2e0-a550275d646e", "Dual controls")}
+                    <div />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("99ca3ab9-eee2-484b-a8fa-8e24217e9f6b", "Walk-thru door L", "left")}
+                    {renderRecommendedCheckmark("99ca3ab9-eee2-484b-a8fa-8e24217e9f6b", "Walk-thru door R", "right")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("77e99584-7462-40aa-b8c8-dc071963d0bd", "Neck access L", "left")}
+                    {renderRecommendedCheckmark("77e99584-7462-40aa-b8c8-dc071963d0bd", "Neck access R", "right")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("61764474-4f25-43a9-8885-271d3ef4973e", "Neckbar L", "left")}
+                    {renderRecommendedCheckmark("61764474-4f25-43a9-8885-271d3ef4973e", "Neckbar R", "right")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("89cc9ae7-32ef-46ac-92f0-4e132c62e696", "Neck extenders")}
+                    {renderRecommendedCheckmark("639108fc-8857-4428-90bf-c55c7f9493e4", "Rear hookup")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderRecommendedCheckmark("b2a248c9-3d4f-417e-bf8c-16bc53c6627e", "Chest bar")}
+                    <div />
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Custom line items */}
-      {selectedBaseModel && (
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Custom line items</p>
-            <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform"
-              style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>+ Add item</button>
+      {/* All options by group — collapsible */}
+      {selectedBaseModel && groupedOptions.length > 0 && (() => {
+        const totalSelected = selectedOptionsList.length;
+        const isOpen = sectionsOpen.all_options;
+        return (
+          <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+            <button type="button" onClick={() => toggleSection("all_options")}
+              className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 transition-colors">
+              <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>All options</span>
+              <div className="flex items-center gap-2">
+                {totalSelected > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{totalSelected} selected</span>
+                )}
+                <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
+              </div>
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+                <div className="space-y-4 pt-3">
+                  {groupedOptions.map(([group, opts]) => {
+                    const content = renderGroupContent(group, opts);
+                    if (!content) return null;
+                    return (
+                      <div key={group}>
+                        <p className="text-[12px] font-bold uppercase tracking-wide mb-2 pb-1 border-b" style={{ color: "#0E2646", borderColor: "#D4D4D0" }}>{group.replace(/[-_]/g, " ")}</p>
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-          {customLineItems.length === 0 && <p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, miscellaneous, or any custom-priced item.</p>}
-          {customLineItems.map((item, idx) => (
-            <div key={idx} className="flex gap-2 items-end mb-2">
-              <div className="flex-1">
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}
-                <input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} placeholder="e.g. Additional Spool Valves"
-                  className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        );
+      })()}
+
+      {/* Custom line items — collapsible */}
+      {selectedBaseModel && (() => {
+        const isOpen = sectionsOpen.custom;
+        const hasItems = customLineItems.filter(c => c.name.trim()).length > 0;
+        return (
+          <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+            <button type="button" onClick={() => toggleSection("custom")}
+              className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 transition-colors">
+              <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>Custom items</span>
+              <div className="flex items-center gap-2">
+                {hasItems && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#9a7a00" }}>{customLineItems.filter(c => c.name.trim()).length} added</span>
+                )}
+                <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
               </div>
-              <div style={{ width: 90 }}>
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}
-                <CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" />
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+                <div className="flex items-center justify-between mt-3 mb-2">
+                  <p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, or any custom-priced item.</p>
+                  <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform shrink-0 ml-2"
+                    style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>+ Add</button>
+                </div>
+                {customLineItems.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 items-end mb-2">
+                    <div className="flex-1">
+                      {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Item name</p>}
+                      <input value={item.name} onChange={e => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} placeholder="e.g. Additional Spool Valves"
+                        className="w-full border border-border rounded px-2 py-1.5 bg-card text-sm outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+                    </div>
+                    <div style={{ width: 90 }}>
+                      {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Retail $</p>}
+                      <CurrencyInput value={item.retail} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, retail: v } : c))} placeholder="0" />
+                    </div>
+                    <div style={{ width: 90 }}>
+                      {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}
+                      <CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" />
+                    </div>
+                    <button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5">
+                      <Trash2 size={14} style={{ color: "#D4183D" }} />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div style={{ width: 90 }}>
-                {idx === 0 && <p className="text-[10px] font-semibold mb-0.5" style={{ color: "#717182" }}>Cost $</p>}
-                <CurrencyInput value={item.cost} onChange={v => setCustomLineItems(prev => prev.map((c, i) => i === idx ? { ...c, cost: v } : c))} placeholder="0" />
-              </div>
-              <button type="button" onClick={() => setCustomLineItems(prev => prev.filter((_, i) => i !== idx))} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 mb-0.5">
-                <Trash2 size={14} style={{ color: "#D4183D" }} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
 
     </div>
   );
