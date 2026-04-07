@@ -709,7 +709,7 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrd
                 <div className="hidden sm:block min-w-0">
                   {(() => {
                     const bm = order.base_models as any;
-                    const name = bm?.short_name || bm?.name;
+                    const name = bm?.name;
                     return name
                       ? <span className="text-[12px] font-semibold truncate block" style={{ color: "#0E2646" }}>{name}</span>
                       : <span className="text-[11px]" style={{ color: "#717182" }}>—</span>;
