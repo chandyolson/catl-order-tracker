@@ -29,7 +29,7 @@ const STATE_TAX_RATES: Record<string, { rate: number }> = {
 const EQUIPMENT_STATUSES = ["ordered", "building", "ready", "in_transit", "at_catl", "delivered"];
 const EQUIPMENT_LABELS: Record<string, string> = {
   ordered: "Ordered", building: "Building", ready: "Ready",
-  in_transit: "In Transit", at_catl: "At CATL", delivered: "Delivered",
+  in_transit: "In Transit", at_catl: "CATL HQ", delivered: "Delivered",
 };
 
 const CUSTOMER_STATUSES = ["estimate", "sold", "awaiting_delivery", "delivered", "paid", "closed"];

@@ -7,7 +7,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
   delivered: { label: "Delivered", bg: "bg-green-100", text: "text-green-700" },
   closed: { label: "Closed", bg: "bg-gray-200", text: "text-gray-500" },
   in_transit: { label: "In Transit", bg: "bg-sky-100", text: "text-sky-700" },
-  at_catl: { label: "At CATL", bg: "bg-teal-100", text: "text-teal-700" },
+  at_catl: { label: "CATL HQ", bg: "bg-teal-100", text: "text-teal-700" },
   ordered: { label: "Ordered", bg: "bg-indigo-100", text: "text-indigo-700" },
 };
 
