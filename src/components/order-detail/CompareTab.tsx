@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, AlertTriangle, Check, RefreshCw, X, FileText, Zap, Link2 } from "lucide-react";
+import { ExternalLink, AlertTriangle, Check, RefreshCw, X, FileText, Zap, Link2, Edit2, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 function fmt$(n: number | null | undefined) {
@@ -32,6 +32,22 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
   const [rightSlot, setRightSlot] = useState("mfg_sales_order");
   const [extractingSlot, setExtractingSlot] = useState<string | null>(null);
   const [mappingItem, setMappingItem] = useState<{ our: string; their: string } | null>(null);
+  const [editingMappingId, setEditingMappingId] = useState<string | null>(null);
+  const [editMappingOur, setEditMappingOur] = useState("");
+  const [editMappingTheir, setEditMappingTheir] = useState("");
+
+  const mappingsQuery = useQuery({
+    queryKey: ["manufacturer_item_mappings", order.manufacturer_id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("manufacturer_item_mappings") as any)
+        .select("id, our_item_name, mfg_item_name, confidence, confirmed_by")
+        .eq("manufacturer_id", order.manufacturer_id)
+        .order("our_item_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!order.manufacturer_id,
+  });
 
   // Fetch slots — only select the fields we need (avoid pulling huge raw_extracted_text)
   const slotsQuery = useQuery({
@@ -99,6 +115,24 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
     },
     onSuccess: () => { toast.success("Mapping saved — re-run comparison to see the match"); setMappingItem(null); },
     onError: (err: any) => toast.error(err.message || "Failed to save mapping"),
+  });
+
+  const deleteMappingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("manufacturer_item_mappings") as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Mapping deleted"); mappingsQuery.refetch(); },
+    onError: (err: any) => toast.error(err.message || "Failed to delete mapping"),
+  });
+
+  const updateMappingMutation = useMutation({
+    mutationFn: async ({ id, ourName, theirName }: { id: string; ourName: string; theirName: string }) => {
+      const { error } = await (supabase.from("manufacturer_item_mappings") as any).update({ our_item_name: ourName, mfg_item_name: theirName }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Mapping updated"); mappingsQuery.refetch(); setEditingMappingId(null); },
+    onError: (err: any) => toast.error(err.message || "Failed to update mapping"),
   });
 
   const slots = slotsQuery.data || [];
@@ -287,6 +321,58 @@ export default function CompareTab({ orderId, order }: CompareTabProps) {
           </button>
         </div>
       )}
+
+      {/* Mappings management */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#0E2646" }}>Item Mappings ({mappingsQuery.data?.length || 0})</h3>
+        </div>
+        <div className="space-y-1.5">
+          {(mappingsQuery.data || []).map((m: any) => (
+            <div key={m.id} className="rounded-lg p-2.5" style={{ border: "0.5px solid #D4D4D0" }}>
+              {editingMappingId === m.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Our name</p>
+                      <input value={editMappingOur} onChange={e => setEditMappingOur(e.target.value)}
+                        className="w-full text-[12px] px-2 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "#717182" }}>Mfg name</p>
+                      <input value={editMappingTheir} onChange={e => setEditMappingTheir(e.target.value)}
+                        className="w-full text-[12px] px-2 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => updateMappingMutation.mutate({ id: m.id, ourName: editMappingOur, theirName: editMappingTheir })}
+                      className="flex-1 text-[11px] font-medium py-1.5 rounded-lg" style={{ backgroundColor: "#55BAAA", color: "#fff" }}>Save</button>
+                    <button onClick={() => setEditingMappingId(null)}
+                      className="flex-1 text-[11px] font-medium py-1.5 rounded-lg" style={{ backgroundColor: "#F5F5F0", color: "#717182" }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[12px] font-medium" style={{ color: "#0E2646" }}>{m.our_item_name}</span>
+                      <span className="text-[10px]" style={{ color: "#717182" }}>↔</span>
+                      <span className="text-[12px]" style={{ color: "#717182" }}>{m.mfg_item_name}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => { setEditingMappingId(m.id); setEditMappingOur(m.our_item_name); setEditMappingTheir(m.mfg_item_name); }}
+                    className="p-1.5 rounded-lg shrink-0" style={{ color: "#55BAAA", backgroundColor: "rgba(85,186,170,0.08)" }}><Edit2 size={12} /></button>
+                  <button onClick={() => { if (confirm(`Delete mapping "${m.our_item_name}"?`)) deleteMappingMutation.mutate(m.id); }}
+                    className="p-1.5 rounded-lg shrink-0" style={{ color: "#E24B4A", backgroundColor: "rgba(226,75,74,0.08)" }}><Trash2 size={12} /></button>
+                </div>
+              )}
+            </div>
+          ))}
+          {(mappingsQuery.data?.length === 0) && (
+            <p className="text-[12px] py-2 text-center" style={{ color: "#717182" }}>No mappings yet — they're created when you link unmatched items above.</p>
+          )}
+        </div>
+      </div>
 
       {(leftDoc?.file_url || rightDoc?.file_url) && (
         <div>

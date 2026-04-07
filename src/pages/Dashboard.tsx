@@ -642,33 +642,65 @@ export default function Dashboard() {
                   </div>
                   {/* Inline edit panel */}
                   {isEditing && (
-                    <div className="px-4 pb-3 pt-1 flex items-center gap-2 flex-wrap" style={{ backgroundColor: "#F9F9F7", borderBottom: "0.5px solid #F5F5F0" }}>
-                      <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
-                      {TEAM.map(name => (
-                        <button key={name} onClick={async () => {
-                          const newVal = t.assigned_to === name ? null : name;
-                          await supabase.from("tasks").update({ assigned_to: newVal } as any).eq("id", t.id);
-                          setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, assigned_to: newVal } : tk));
-                          toast.success(newVal ? `Assigned to ${newVal}` : "Unassigned");
+                    <div className="px-4 pb-3 pt-2 space-y-2" style={{ backgroundColor: "#F9F9F7", borderBottom: "0.5px solid #F5F5F0" }}>
+                      {/* Title edit */}
+                      <input
+                        defaultValue={t.title}
+                        onBlur={async (e) => {
+                          const val = e.target.value.trim();
+                          if (val && val !== t.title) {
+                            await supabase.from("tasks").update({ title: val } as any).eq("id", t.id);
+                            setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, title: val } : tk));
+                          }
                         }}
-                          className="text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
-                          style={{ backgroundColor: t.assigned_to === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: t.assigned_to === name ? "#F3D12A" : "#0E2646" }}>
-                          {name}
-                        </button>
-                      ))}
-                      <span className="text-[10px] font-semibold ml-3" style={{ color: "#717182" }}>Priority:</span>
-                      {["urgent", "high", "normal", "low"].map(p => (
-                        <button key={p} onClick={async () => {
-                          await supabase.from("tasks").update({ priority: p } as any).eq("id", t.id);
-                          setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, priority: p } : tk));
-                        }}
-                          className={`text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${t.priority === p ? priorityColors[p] || "" : ""}`}
-                          style={t.priority !== p ? { backgroundColor: "rgba(113,113,130,0.08)", color: "#717182" } : {}}>
-                          {p}
-                        </button>
-                      ))}
+                        className="w-full text-[13px] px-2.5 py-1.5 rounded-lg outline-none"
+                        style={{ border: "0.5px solid #D4D4D0", background: "#fff" }}
+                      />
+                      {/* Due date edit */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Due:</span>
+                        <input type="date" defaultValue={t.due_date || ""}
+                          onBlur={async (e) => {
+                            const val = e.target.value || null;
+                            await supabase.from("tasks").update({ due_date: val } as any).eq("id", t.id);
+                            setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, due_date: val } : tk));
+                          }}
+                          className="text-[12px] px-2 py-1 rounded-lg outline-none"
+                          style={{ border: "0.5px solid #D4D4D0", background: "#fff" }}
+                        />
+                      </div>
+                      {/* Assign */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
+                        {TEAM.map(name => (
+                          <button key={name} onClick={async () => {
+                            const newVal = t.assigned_to === name ? null : name;
+                            await supabase.from("tasks").update({ assigned_to: newVal } as any).eq("id", t.id);
+                            setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, assigned_to: newVal } : tk));
+                            toast.success(newVal ? `Assigned to ${newVal}` : "Unassigned");
+                          }}
+                            className="text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
+                            style={{ backgroundColor: t.assigned_to === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: t.assigned_to === name ? "#F3D12A" : "#0E2646" }}>
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Priority */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Priority:</span>
+                        {["urgent", "high", "normal", "low"].map(p => (
+                          <button key={p} onClick={async () => {
+                            await supabase.from("tasks").update({ priority: p } as any).eq("id", t.id);
+                            setTasks(prev => prev.map(tk => tk.id === t.id ? { ...tk, priority: p } : tk));
+                          }}
+                            className={`text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${t.priority === p ? priorityColors[p] || "" : ""}`}
+                            style={t.priority !== p ? { backgroundColor: "rgba(113,113,130,0.08)", color: "#717182" } : {}}>
+                            {p}
+                          </button>
+                        ))}
+                      </div>
                       {t.order_id && (
-                        <button onClick={() => navigate(`/orders/${t.order_id}`)} className="text-[10px] font-medium ml-auto" style={{ color: "#55BAAA" }}>
+                        <button onClick={() => navigate(`/orders/${t.order_id}`)} className="text-[10px] font-medium" style={{ color: "#55BAAA" }}>
                           Go to order →
                         </button>
                       )}

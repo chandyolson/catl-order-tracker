@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ExternalLink, RefreshCw, Edit2, Check, X, Mail, ChevronDown } from "lucide-react";
+import { ExternalLink, RefreshCw, Edit2, Check, X, Mail, ChevronDown, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -406,6 +406,16 @@ export default function Settings() {
         <ManufacturersTable manufacturers={mfgQuery.data || []} queryClient={queryClient} />
       </SettingsCard>
 
+      {/* ═══ Quick Builds ═══ */}
+      <SettingsCard title="Quick Builds">
+        <QuickBuildsManager queryClient={queryClient} />
+      </SettingsCard>
+
+      {/* ═══ Orange Sheet Standards ═══ */}
+      <SettingsCard title="Orange Sheet Standards">
+        <OrangeSheetStandardsManager queryClient={queryClient} />
+      </SettingsCard>
+
       {/* ═══ About ═══ */}
       <SettingsCard title="About">
         <div className="space-y-2">
@@ -519,6 +529,209 @@ function ManufacturersTable({ manufacturers, queryClient }: { manufacturers: any
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Quick Builds Manager
+// ═══════════════════════════════════════════════════════════════
+function QuickBuildsManager({ queryClient }: { queryClient: any }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const { data: quickBuilds = [] } = useQuery({
+    queryKey: ["quick_builds_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quick_builds")
+        .select("id, name, base_model_id, base_models:base_model_id(name)")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  async function saveEdit(id: string) {
+    if (!editName.trim()) return;
+    const { error } = await supabase.from("quick_builds").update({ name: editName.trim() }).eq("id", id);
+    if (error) { toast.error("Failed to update"); return; }
+    toast.success("Quick build updated");
+    queryClient.invalidateQueries({ queryKey: ["quick_builds_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["quick_builds"] });
+    setEditingId(null);
+  }
+
+  async function deleteQuickBuild(id: string, name: string) {
+    if (!confirm(`Delete quick build "${name}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from("quick_builds").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Quick build deleted");
+    queryClient.invalidateQueries({ queryKey: ["quick_builds_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["quick_builds"] });
+  }
+
+  async function createQuickBuild() {
+    if (!newName.trim()) return;
+    const { error } = await supabase.from("quick_builds").insert({ name: newName.trim(), included_option_ids: [] });
+    if (error) { toast.error("Failed to create"); return; }
+    toast.success("Quick build created");
+    queryClient.invalidateQueries({ queryKey: ["quick_builds_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["quick_builds"] });
+    setNewName(""); setAddingNew(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px]" style={{ color: "#717182" }}>Quick builds are preset option combinations shown as one-tap pills on new orders. Option assignments require direct DB editing for now.</p>
+      {quickBuilds.map((qb: any) => (
+        <div key={qb.id} className="flex items-center gap-2 p-2.5 rounded-lg" style={{ border: "0.5px solid #D4D4D0" }}>
+          {editingId === qb.id ? (
+            <>
+              <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === "Enter" && saveEdit(qb.id)}
+                className="flex-1 text-[13px] px-2.5 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} autoFocus />
+              <button onClick={() => saveEdit(qb.id)} className="p-1.5 rounded-lg" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.08)" }}><Check size={13} /></button>
+              <button onClick={() => setEditingId(null)} className="p-1.5 rounded-lg" style={{ color: "#717182", backgroundColor: "rgba(113,113,130,0.08)" }}><X size={13} /></button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 min-w-0">
+                <span className="text-[13px] font-medium" style={{ color: "#0E2646" }}>{qb.name}</span>
+                {qb.base_models?.name && <span className="text-[11px] ml-2" style={{ color: "#717182" }}>{qb.base_models.name}</span>}
+              </div>
+              <button onClick={() => { setEditingId(qb.id); setEditName(qb.name); }} className="p-1.5 rounded-lg" style={{ color: "#55BAAA", backgroundColor: "rgba(85,186,170,0.08)" }}><Edit2 size={13} /></button>
+              <button onClick={() => deleteQuickBuild(qb.id, qb.name)} className="p-1.5 rounded-lg" style={{ color: "#E24B4A", backgroundColor: "rgba(226,75,74,0.08)" }}><Trash2 size={13} /></button>
+            </>
+          )}
+        </div>
+      ))}
+      {addingNew ? (
+        <div className="flex items-center gap-2">
+          <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && createQuickBuild()}
+            placeholder="Quick build name" autoFocus
+            className="flex-1 text-[13px] px-2.5 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} />
+          <button onClick={createQuickBuild} className="p-1.5 rounded-lg" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.08)" }}><Check size={13} /></button>
+          <button onClick={() => { setAddingNew(false); setNewName(""); }} className="p-1.5 rounded-lg" style={{ color: "#717182", backgroundColor: "rgba(113,113,130,0.08)" }}><X size={13} /></button>
+        </div>
+      ) : (
+        <button onClick={() => setAddingNew(true)} className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
+          <Plus size={13} /> Add quick build
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Orange Sheet Standards Manager
+// ═══════════════════════════════════════════════════════════════
+function OrangeSheetStandardsManager({ queryClient }: { queryClient: any }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [addingNew, setAddingNew] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [newCategory, setNewCategory] = useState("inspection");
+  const CATEGORIES = ["inspection", "setup", "delivery", "other"];
+  const CATEGORY_COLORS: Record<string, string> = { inspection: "#2e7e74", setup: "#9a7a00", delivery: "#0E2646", other: "#717182" };
+
+  const { data: standards = [] } = useQuery({
+    queryKey: ["orange_sheet_standards_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("orange_sheet_standards").select("*").order("sort_order").order("category");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  async function saveEdit(id: string) {
+    if (!editText.trim()) return;
+    const { error } = await supabase.from("orange_sheet_standards").update({ item_text: editText.trim(), category: editCategory }).eq("id", id);
+    if (error) { toast.error("Failed to update"); return; }
+    toast.success("Standard updated");
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards"] });
+    setEditingId(null);
+  }
+
+  async function deleteStandard(id: string, text: string) {
+    if (!confirm(`Delete "${text}"?`)) return;
+    const { error } = await supabase.from("orange_sheet_standards").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Standard deleted");
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards"] });
+  }
+
+  async function createStandard() {
+    if (!newText.trim()) return;
+    const maxSort = Math.max(0, ...standards.map((s: any) => s.sort_order || 0));
+    const { error } = await supabase.from("orange_sheet_standards").insert({ item_text: newText.trim(), category: newCategory, sort_order: maxSort + 1 });
+    if (error) { toast.error("Failed to create"); return; }
+    toast.success("Standard added");
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards_settings"] });
+    queryClient.invalidateQueries({ queryKey: ["orange_sheet_standards"] });
+    setNewText(""); setAddingNew(false);
+  }
+
+  const grouped = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = standards.filter((s: any) => s.category === cat);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px]" style={{ color: "#717182" }}>These are the quick-add pills shown on every Orange Sheet. Changes apply to new orders going forward.</p>
+      {CATEGORIES.map(cat => {
+        const items = grouped[cat] || [];
+        if (items.length === 0 && cat === "other") return null;
+        return (
+          <div key={cat}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5 px-1" style={{ color: CATEGORY_COLORS[cat] }}>{cat}</p>
+            <div className="space-y-1.5">
+              {items.map((s: any) => (
+                <div key={s.id} className="flex items-center gap-2 p-2.5 rounded-lg" style={{ border: "0.5px solid #D4D4D0" }}>
+                  {editingId === s.id ? (
+                    <>
+                      <input value={editText} onChange={e => setEditText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveEdit(s.id)}
+                        className="flex-1 text-[13px] px-2.5 py-1 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} autoFocus />
+                      <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="text-[12px] px-2 py-1 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }}>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <button onClick={() => saveEdit(s.id)} className="p-1.5 rounded-lg" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.08)" }}><Check size={13} /></button>
+                      <button onClick={() => setEditingId(null)} className="p-1.5 rounded-lg" style={{ color: "#717182", backgroundColor: "rgba(113,113,130,0.08)" }}><X size={13} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-[13px]" style={{ color: "#1A1A1A" }}>{s.item_text}</span>
+                      <button onClick={() => { setEditingId(s.id); setEditText(s.item_text); setEditCategory(s.category); }} className="p-1.5 rounded-lg" style={{ color: "#55BAAA", backgroundColor: "rgba(85,186,170,0.08)" }}><Edit2 size={13} /></button>
+                      <button onClick={() => deleteStandard(s.id, s.item_text)} className="p-1.5 rounded-lg" style={{ color: "#E24B4A", backgroundColor: "rgba(226,75,74,0.08)" }}><Trash2 size={13} /></button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {addingNew ? (
+        <div className="flex items-center gap-2">
+          <input value={newText} onChange={e => setNewText(e.target.value)} onKeyDown={e => e.key === "Enter" && createStandard()}
+            placeholder="Checklist item text" autoFocus
+            className="flex-1 text-[13px] px-2.5 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }} />
+          <select value={newCategory} onChange={e => setNewCategory(e.target.value)} className="text-[12px] px-2 py-1.5 rounded-lg outline-none" style={{ border: "0.5px solid #D4D4D0" }}>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button onClick={createStandard} className="p-1.5 rounded-lg" style={{ color: "#27AE60", backgroundColor: "rgba(39,174,96,0.08)" }}><Check size={13} /></button>
+          <button onClick={() => { setAddingNew(false); setNewText(""); }} className="p-1.5 rounded-lg" style={{ color: "#717182", backgroundColor: "rgba(113,113,130,0.08)" }}><X size={13} /></button>
+        </div>
+      ) : (
+        <button onClick={() => setAddingNew(true)} className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg" style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>
+          <Plus size={13} /> Add standard item
+        </button>
+      )}
     </div>
   );
 }
