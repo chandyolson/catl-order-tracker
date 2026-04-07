@@ -598,8 +598,8 @@ const MFG_ORDER = ["Moly Manufacturing", "Daniels", "Rawhide", "MJE", "LEM", "Li
 
 function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrder = "asc", onSortChange }: { orders: any[]; navigate: any; selectMode?: boolean; selectedIds?: Set<string>; onToggle?: (id: string) => void; sortOrder?: "asc" | "desc"; onSortChange?: () => void }) {
   const cols = selectMode
-    ? "grid-cols-[32px_1.6fr_1fr_1.4fr_90px_70px]"
-    : "grid-cols-[1.6fr_1fr_1.4fr_90px_70px]";
+    ? "grid-cols-[32px_1fr_0.8fr_0.9fr_1.4fr_80px_65px]"
+    : "grid-cols-[1fr_0.8fr_0.9fr_1.4fr_80px_65px]";
 
   // Group orders by manufacturer, sorted by preferred order
   const groups: { mfgName: string; shortName: string; orders: any[] }[] = [];
@@ -646,7 +646,7 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrd
                 </button>
               )}
             </div>
-            {["Location", "Build", "Status", "ETA"].map(h => (
+            {["Location", "Model", "Build", "Status", "ETA"].map(h => (
               <div key={h} className="hidden sm:block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "rgba(240,240,240,0.5)" }}>{h}</div>
             ))}
           </div>
@@ -704,6 +704,16 @@ function ListView({ orders, navigate, selectMode, selectedIds, onToggle, sortOrd
                   {customer?.name && (
                     <span className="text-[10px] truncate block" style={{ color: "#717182" }}>{customer.name}</span>
                   )}
+                </div>
+                {/* Base model */}
+                <div className="hidden sm:block min-w-0">
+                  {(() => {
+                    const bm = order.base_models as any;
+                    const name = bm?.short_name || bm?.name;
+                    return name
+                      ? <span className="text-[12px] font-semibold truncate block" style={{ color: "#0E2646" }}>{name}</span>
+                      : <span className="text-[11px]" style={{ color: "#717182" }}>—</span>;
+                  })()}
                 </div>
                 {/* Build specs — full option pills */}
                 <div className="hidden sm:block min-w-0 py-1.5">
