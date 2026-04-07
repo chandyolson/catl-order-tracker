@@ -641,12 +641,24 @@ export default function OverviewTab({
                       {isPending && <p className="text-[10px]" style={{ color: "#B8930A" }}>In QB — click Sync to download</p>}
                     </div>
                     {/* Clickable file icon */}
-                    {isComplete && fileUrl && (
-                      <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-white/80 transition-colors active:scale-[0.95]" style={{ backgroundColor: "rgba(85,186,170,0.1)" }}>
-                        <FileText size={14} style={{ color: "#55BAAA" }} />
-                        <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
-                      </a>
-                    )}
+                    {isComplete && fileUrl && (() => {
+                      const driveMatch = fileUrl.match(/\/file\/d\/([^/]+)\//);
+                      const fileId = driveMatch ? driveMatch[1] : null;
+                      const downloadUrl = fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : fileUrl;
+                      return (
+                        <div className="flex items-center gap-1">
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-white/80 transition-colors active:scale-[0.95]" style={{ backgroundColor: "rgba(85,186,170,0.1)" }}>
+                            <FileText size={14} style={{ color: "#55BAAA" }} />
+                            <span className="text-[10px] font-bold" style={{ color: "#55BAAA" }}>View</span>
+                          </a>
+                          {fileId && (
+                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-white/80 transition-colors active:scale-[0.95]" style={{ backgroundColor: "rgba(243,209,42,0.1)" }}>
+                              <span className="text-[10px] font-bold" style={{ color: "#9a7a00" }}>↓</span>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {isComplete && (
                       <button onClick={async () => {
                         if (!confirm(`Unlink ${cfg.label}? The file won't be deleted, just removed from this slot.`)) return;

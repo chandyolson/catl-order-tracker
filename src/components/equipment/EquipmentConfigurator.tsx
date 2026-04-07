@@ -921,7 +921,11 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               {renderRecommendedCheckmark("8ae10596-a7f2-4c78-9412-e6f1c43c876c", "Hyd lower squeeze")}
+              {renderRecommendedCheckmark("54277864-a9e6-4edc-a9fb-9362c16cc1a6", "Xtra Power squeeze")}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               {renderRecommendedCheckmark("781cc905-05f0-4537-b2e0-a550275d646e", "Dual controls")}
+              <div />
             </div>
             <div className="grid grid-cols-2 gap-2">
               {renderRecommendedCheckmark("99ca3ab9-eee2-484b-a8fa-8e24217e9f6b", "Walk-thru door L", "left")}
