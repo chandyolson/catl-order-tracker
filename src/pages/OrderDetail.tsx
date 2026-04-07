@@ -363,31 +363,7 @@ export default function OrderDetail() {
                 )}
               </div>
 
-              {/* Row 3: Spec pills */}
-              {Array.isArray(order.selected_options) && (order.selected_options as any[]).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {(order.selected_options as any[]).map((opt: any, i: number) => {
-                    const pillLabel = formatSavedOptionPill(opt);
-                    if (!pillLabel) return null;
-                    // Skip base model and extended (already shown above)
-                    if (opt.is_base_model) return null;
-                    const name = (opt.name || opt.display_name || "").toLowerCase();
-                    if (name.includes("extended") && (name.includes("length") || name.includes("chute"))) return null;
-                    return (
-                      <span key={i} className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
-                        {pillLabel}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Build shorthand if set */}
-              {order.build_shorthand && (
-                <p className="text-[12px] font-medium mt-1.5" style={{ color: "rgba(240,240,240,0.4)" }}>
-                  {order.build_shorthand}
-                </p>
-              )}
+              {/* Row 3: Spec pills — removed, shown in Overview tab */}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button

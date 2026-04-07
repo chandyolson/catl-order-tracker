@@ -293,11 +293,11 @@ export default function EditOrder() {
           <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
             <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Contract</span>
             <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)}
-              placeholder="#" style={{ width: 72, fontWeight: 700, color: "#0E2646" }}
-              className="border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold text-center shrink-0" />
+              placeholder="#####" style={{ width: 96, fontWeight: 700, color: "#0E2646" }}
+              className="border border-border rounded-lg px-2 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold text-center shrink-0" />
             <input value={contractName} onChange={(e) => setContractName(e.target.value)}
-              placeholder="Contract name"
-              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold" />
+              placeholder="Name"
+              className="flex-1 border border-border rounded-lg px-2 py-2 bg-card text-foreground outline-none text-[14px] focus:border-catl-gold" style={{ color: "#717182" }} />
           </div>
 
           {/* Customer row */}
