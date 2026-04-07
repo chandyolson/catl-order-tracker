@@ -6,7 +6,6 @@ import { ChevronLeft, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import EquipmentConfigurator, { ConfiguratorHandle } from "@/components/equipment/EquipmentConfigurator";
@@ -66,7 +65,6 @@ export default function EditOrder() {
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-  const [customerToggle, setCustomerToggle] = useState(false);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [equipmentStatus, setEquipmentStatus] = useState("ordered");
@@ -75,6 +73,7 @@ export default function EditOrder() {
   const [portalUrl, setPortalUrl] = useState("");
   const [initialValues, setInitialValues] = useState<ConfiguratorInitialValues | undefined>();
   const [pageReady, setPageReady] = useState(false);
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState("");
 
   /* ── Load existing order ───────────────────────────────── */
   const orderQuery = useQuery({
@@ -98,16 +97,16 @@ export default function EditOrder() {
     setMolyContractNumber(o.moly_contract_number || "");
     setContractName(o.contract_name || "");
     setCustomerId(o.customer_id || "");
-    setCustomerToggle(!!o.customer_id);
     setNotes(o.notes || o.build_description || "");
     setEquipmentStatus(o.equipment_status || "ordered");
     setCustomerStatus(o.customer_status || "");
 
-    // Manufacturer portal
+    // Manufacturer portal + controlled manufacturer state
     const mfr = o.manufacturers as any;
     const isMoly = mfr?.name?.toLowerCase().includes("moly") || mfr?.short_name?.toLowerCase().includes("moly");
     setShowMolyPortal(!!isMoly);
     setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
+    setSelectedManufacturerId(o.manufacturer_id || "");
 
     // Build custom line items from saved options
     const savedCustom = ((o.selected_options || []) as any[]).filter((opt: any) => opt.is_custom);
@@ -164,9 +163,12 @@ export default function EditOrder() {
   });
   const selectedCustomer = customerId ? selectedCustomerQuery.data ?? null : null;
 
-  const handleConfigChange = useCallback((state: ConfiguratorState) => {
-    // Could track live state changes if needed
-  }, []);
+  const manufacturersQuery = useQuery({
+    queryKey: ["manufacturers"],
+    queryFn: async () => { const { data, error } = await supabase.from("manufacturers").select("*").order("name"); if (error) throw error; return data; },
+  });
+
+  const handleConfigChange = useCallback((state: ConfiguratorState) => {}, []);
 
   /* ── Save ──────────────────────────────────────────────── */
   async function handleSave() {
@@ -252,77 +254,78 @@ export default function EditOrder() {
             </span>
           </div>
         </div>
-
-        {/* Equipment status pipeline */}
         <div className="mb-1.5">
           <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.6)" }}>Equipment</p>
-          <StatusPipeline
-            statuses={EQUIPMENT_STATUSES}
-            labels={EQUIPMENT_LABELS}
-            current={equipmentStatus}
-            onChange={setEquipmentStatus}
-            color="#55BAAA"
-          />
+          <StatusPipeline statuses={EQUIPMENT_STATUSES} labels={EQUIPMENT_LABELS} current={equipmentStatus} onChange={setEquipmentStatus} color="#55BAAA" />
         </div>
-
-        {/* Customer status pipeline (only when customer assigned) */}
-        {customerToggle && (
+        {customerId && (
           <div>
             <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(243,209,42,0.6)" }}>Customer</p>
-            <StatusPipeline
-              statuses={CUSTOMER_STATUSES}
-              labels={CUSTOMER_LABELS}
-              current={customerStatus || "estimate"}
-              onChange={setCustomerStatus}
-              color="#F3D12A"
-            />
+            <StatusPipeline statuses={CUSTOMER_STATUSES} labels={CUSTOMER_LABELS} current={customerStatus || "estimate"} onChange={setCustomerStatus} color="#F3D12A" />
           </div>
         )}
       </div>
 
       <div className="md:max-w-[680px] md:mx-auto px-4 mt-4 space-y-3">
-        {/* Contract # */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Contract #</p>
-          <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="Moly contract number"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-          <input value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="Contract name"
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25 mt-2" />
-        </div>
 
-        {/* Customer toggle */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>Assign customer</p>
-              <p className="text-[11px]" style={{ color: "#717182" }}>{customerToggle ? "Customer order" : "Inventory — no customer yet"}</p>
-            </div>
-            <Switch checked={customerToggle} onCheckedChange={(v) => {
-              setCustomerToggle(v);
-              if (!v) { setCustomerId(""); setCustomerSearch(""); setCustomerStatus(""); }
-              else if (!customerStatus) { setCustomerStatus("sold"); }
-            }} />
+        {/* ── Order info card: Mfg + Contract + Customer ── */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+
+          {/* Manufacturer row */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Mfg</span>
+            <select
+              value={selectedManufacturerId}
+              onChange={(e) => {
+                const mfr = manufacturersQuery.data?.find((m) => m.id === e.target.value);
+                const isMoly = mfr?.name?.toLowerCase().includes("moly");
+                setShowMolyPortal(!!isMoly);
+                setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
+                setSelectedManufacturerId(e.target.value);
+              }}
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold">
+              <option value="">Select manufacturer</option>
+              {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
           </div>
-          {customerToggle && (
-            <div className="mt-3">
-              <Popover open={customerPopoverOpen} onOpenChange={(open) => {
-                setCustomerPopoverOpen(open);
-                if (open) setCustomerSearch(""); // start fresh every time
-              }}>
+
+          {/* Contract # + Name on same line */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Contract</span>
+            <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)}
+              placeholder="#" style={{ width: 72, fontWeight: 700, color: "#0E2646" }}
+              className="border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold text-center shrink-0" />
+            <input value={contractName} onChange={(e) => setContractName(e.target.value)}
+              placeholder="Contract name"
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold" />
+          </div>
+
+          {/* Customer row */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: customerId ? "0.5px solid #EBEBEB" : "none" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Customer</span>
+            {customerId && selectedCustomer ? (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <div className="min-w-0">
+                  <span className="text-[14px] font-medium truncate block" style={{ color: "#0E2646" }}>{selectedCustomer.name}</span>
+                </div>
+                <button onClick={() => { setCustomerId(""); setCustomerSearch(""); setCustomerStatus(""); }}
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2"
+                  style={{ backgroundColor: "rgba(212,24,61,0.08)", color: "#D4183D" }}>✕ Clear</button>
+              </div>
+            ) : (
+              <Popover open={customerPopoverOpen} onOpenChange={(open) => { setCustomerPopoverOpen(open); if (open) setCustomerSearch(""); }}>
                 <PopoverTrigger asChild>
-                  <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 text-left text-[16px] bg-card"
-                    style={{ color: selectedCustomer ? "#0E2646" : "#717182" }}>
-                    {selectedCustomer ? selectedCustomer.name : "Search customers..."}
-                  </button>
+                  <button type="button" className="flex-1 border border-border rounded-lg px-3 py-2 text-left text-[15px] bg-card"
+                    style={{ color: "#717182" }}>Search customers…</button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[340px] p-0" align="start">
+                <PopoverContent className="w-[320px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput placeholder="Type a name..." value={customerSearch} onValueChange={setCustomerSearch} />
                     <CommandList>
                       <CommandEmpty>{debouncedSearch.length < 2 ? "Type at least 2 characters..." : "No customers found"}</CommandEmpty>
                       <CommandGroup>
                         {(customerSearchQuery.data || []).map((c) => (
-                          <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerPopoverOpen(false); if (!contractName && c.name) setContractName(c.name); }}>
+                          <CommandItem key={c.id} value={c.id} onSelect={() => { setCustomerId(c.id); setCustomerPopoverOpen(false); if (!customerStatus) setCustomerStatus("sold"); if (!contractName && c.name) setContractName(c.name); }}>
                             <div className="flex-1 min-w-0">
                               <p className="text-[13px] font-medium truncate">{c.name}</p>
                               <p className="text-[11px] text-muted-foreground">{[c.address_city, c.address_state].filter(Boolean).join(", ")}</p>
@@ -334,38 +337,46 @@ export default function EditOrder() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              {selectedCustomer && (
-                <div className="mt-2 px-1 text-[11px]" style={{ color: "#717182" }}>
-                  {[selectedCustomer.address_city, selectedCustomer.address_state].filter(Boolean).join(", ")}
-                  {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
-                </div>
-              )}
+            )}
+          </div>
+
+          {/* Customer detail line */}
+          {customerId && selectedCustomer && (
+            <div className="px-4 pb-2.5" style={{ paddingLeft: "calc(1rem + 80px + 0.75rem)" }}>
+              <span className="text-[11px]" style={{ color: "#717182" }}>
+                {[selectedCustomer.address_city, selectedCustomer.address_state].filter(Boolean).join(", ")}
+                {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Equipment Configurator */}
+        {/* ── Equipment Configurator ── */}
         {pageReady && initialValues && (
           <EquipmentConfigurator
             ref={configuratorRef}
             initialValues={initialValues}
+            manufacturerId={selectedManufacturerId}
             onChange={handleConfigChange}
           />
         )}
 
-        {/* Notes */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Notes</p>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes about this order..." rows={3}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] resize-none focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        {/* ── Notes ── */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="flex items-start gap-3 px-4 py-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0 pt-2" style={{ color: "#717182" }}>Notes</span>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any notes about this order..." rows={2}
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] resize-none focus:border-catl-gold" />
+          </div>
         </div>
 
-        {/* Buttons */}
+        {/* ── Buttons ── */}
         <div className="mt-4 space-y-2">
           <button onClick={handleSave} disabled={submitting}
             className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"
-            style={{ background: "#55BAAA", color: "#0E2646" }}>
-            {submitting ? "Saving..." : "Save"}
+            style={{ background: "#F3D12A", color: "#0E2646" }}>
+            {submitting ? "Saving..." : "Save order"}
           </button>
           {showMolyPortal && (
             <a href={portalUrl} target="_blank" rel="noopener noreferrer"
@@ -375,6 +386,11 @@ export default function EditOrder() {
             </a>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
       </div>
     </div>
   );

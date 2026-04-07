@@ -6,7 +6,6 @@ import { ChevronLeft, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import EquipmentConfigurator, { ConfiguratorHandle } from "@/components/equipment/EquipmentConfigurator";
 import { ConfiguratorState } from "@/components/equipment/shared";
@@ -23,12 +22,12 @@ export default function NewOrder() {
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
-  const [customerToggle, setCustomerToggle] = useState(false);
   const [notes, setNotes] = useState("");
   const [estimateNumber, setEstimateNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showMolyPortal, setShowMolyPortal] = useState(false);
   const [portalUrl, setPortalUrl] = useState("");
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState("");
 
   /* ── Auto-fill estimate number ─────────────────────────── */
   useEffect(() => {
@@ -75,11 +74,8 @@ export default function NewOrder() {
   });
 
   const handleConfigChange = useCallback((state: ConfiguratorState) => {
-    const mfr = manufacturersQuery.data?.find((m) => m.id === state.manufacturerId);
-    const isMoly = mfr?.name?.toLowerCase().includes("moly") || mfr?.short_name?.toLowerCase().includes("moly");
-    setShowMolyPortal(!!isMoly);
-    setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
-  }, [manufacturersQuery.data]);
+    // Portal URL is now managed via the manufacturer select in the page
+  }, []);
 
   /* ── Submit ────────────────────────────────────────────── */
   async function handleSubmit() {
@@ -174,42 +170,70 @@ export default function NewOrder() {
       </div>
 
       <div className="md:max-w-[680px] md:mx-auto px-4 mt-4 space-y-3">
-        {/* Contract / Estimate # */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>{isDirectOrder ? "Contract #" : "Estimate #"}</p>
-          {isDirectOrder ? (
-            <>
-              <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)} placeholder="Moly contract number"
-                className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
-              <input value={contractName} onChange={(e) => setContractName(e.target.value)} placeholder="Contract name (e.g. Smith Ranch)"
-                className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25 mt-2" />
-            </>
-          ) : (
-            <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} placeholder="Auto-generated"
-              className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25"
-              style={{ fontWeight: 500, color: "#55BAAA" }} />
-          )}
-        </div>
 
-        {/* Customer toggle */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>Assign customer</p>
-              <p className="text-[11px]" style={{ color: "#717182" }}>{customerToggle ? "Customer order" : "Inventory — no customer yet"}</p>
-            </div>
-            <Switch checked={customerToggle} onCheckedChange={(v) => { setCustomerToggle(v); if (!v) { setCustomerId(""); setCustomerSearch(""); } }} />
+        {/* ── Order info card: Mfg + Contract + Customer ── */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+
+          {/* Manufacturer row */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Mfg</span>
+            <select
+              value={configuratorRef.current?.getState()?.manufacturerId || ""}
+              onChange={(e) => {
+                const mfr = manufacturersQuery.data?.find((m) => m.id === e.target.value);
+                const isMoly = mfr?.name?.toLowerCase().includes("moly");
+                setShowMolyPortal(!!isMoly);
+                setPortalUrl(mfr?.ordering_portal_url || "https://ordering.molymfg.com/login.php");
+                // Trigger re-render via a page-level state
+                setSelectedManufacturerId(e.target.value);
+              }}
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold">
+              <option value="">Select manufacturer</option>
+              {manufacturersQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
           </div>
-          {customerToggle && (
-            <div className="mt-3">
+
+          {/* Contract # + Name on same line */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>
+              {isDirectOrder ? "Contract" : "Estimate"}
+            </span>
+            {isDirectOrder ? (
+              <>
+                <input value={molyContractNumber} onChange={(e) => setMolyContractNumber(e.target.value)}
+                  placeholder="#" style={{ width: 72, fontWeight: 700, color: "#0E2646" }}
+                  className="border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold text-center shrink-0" />
+                <input value={contractName} onChange={(e) => setContractName(e.target.value)}
+                  placeholder="Contract name"
+                  className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold" />
+              </>
+            ) : (
+              <input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)}
+                placeholder="Auto-generated"
+                className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold"
+                style={{ fontWeight: 500, color: "#55BAAA" }} />
+            )}
+          </div>
+
+          {/* Customer row — inline search, no toggle */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: customerId ? "0.5px solid #EBEBEB" : "none" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Customer</span>
+            {customerId && selectedCustomer ? (
+              <div className="flex-1 flex items-center justify-between min-w-0">
+                <div className="min-w-0">
+                  <span className="text-[14px] font-medium truncate block" style={{ color: "#0E2646" }}>{selectedCustomer.name}</span>
+                </div>
+                <button onClick={() => { setCustomerId(""); setCustomerSearch(""); }}
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2"
+                  style={{ backgroundColor: "rgba(212,24,61,0.08)", color: "#D4183D" }}>✕ Clear</button>
+              </div>
+            ) : (
               <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <button type="button" className="w-full border border-border rounded-lg px-3 py-2.5 text-left text-[16px] bg-card"
-                    style={{ color: selectedCustomer ? "#0E2646" : "#717182" }}>
-                    {selectedCustomer ? selectedCustomer.name : "Search customers..."}
-                  </button>
+                  <button type="button" className="flex-1 border border-border rounded-lg px-3 py-2 text-left text-[15px] bg-card"
+                    style={{ color: "#717182" }}>Search customers…</button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[340px] p-0" align="start">
+                <PopoverContent className="w-[320px] p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Type a name..." value={customerSearch} onValueChange={setCustomerSearch} />
                     <CommandList>
@@ -228,27 +252,38 @@ export default function NewOrder() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              {selectedCustomer && (
-                <div className="mt-2 px-1 text-[11px]" style={{ color: "#717182" }}>
-                  {[selectedCustomer.address_city, selectedCustomer.address_state].filter(Boolean).join(", ")}
-                  {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
-                </div>
-              )}
+            )}
+          </div>
+
+          {/* Customer detail line */}
+          {customerId && selectedCustomer && (
+            <div className="px-4 pb-2.5" style={{ paddingLeft: "calc(1rem + 80px + 0.75rem)" }}>
+              <span className="text-[11px]" style={{ color: "#717182" }}>
+                {[selectedCustomer.address_city, selectedCustomer.address_state].filter(Boolean).join(", ")}
+                {selectedCustomer.phone && ` · ${selectedCustomer.phone}`}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Equipment Configurator */}
-        <EquipmentConfigurator ref={configuratorRef} onChange={handleConfigChange} />
+        {/* ── Equipment Configurator (manufacturer controlled above) ── */}
+        <EquipmentConfigurator
+          ref={configuratorRef}
+          manufacturerId={selectedManufacturerId}
+          onChange={handleConfigChange}
+        />
 
-        {/* Notes */}
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Notes</p>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any notes about this order..." rows={3}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] resize-none focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25" />
+        {/* ── Notes ── */}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          <div className="flex items-start gap-3 px-4 py-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0 pt-2" style={{ color: "#717182" }}>Notes</span>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any notes about this order..." rows={2}
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] resize-none focus:border-catl-gold" />
+          </div>
         </div>
 
-        {/* Buttons */}
+        {/* ── Buttons ── */}
         <div className="mt-4 space-y-2">
           <button onClick={handleSubmit} disabled={submitting}
             className="w-full rounded-full py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform disabled:opacity-50"

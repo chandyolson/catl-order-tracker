@@ -34,13 +34,16 @@ export type ConfiguratorHandle = {
 type Props = {
   initialValues?: ConfiguratorInitialValues;
   onChange?: (state: ConfiguratorState) => void;
+  /** Parent controls the manufacturer — configurator uses this and does not render its own selector */
+  manufacturerId?: string;
+  /** Legacy override — kept for backward compat */
   manufacturerIdOverride?: string;
 };
 
 /* ─── Component ──────────────────────────────────────────── */
 
 const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function EquipmentConfigurator(
-  { initialValues, onChange, manufacturerIdOverride },
+  { initialValues, onChange, manufacturerId: manufacturerIdProp, manufacturerIdOverride },
   ref
 ) {
   /* ── State ──────────────────────────────────────────────── */
@@ -65,7 +68,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
   const [initialized, setInitialized] = useState(!initialValues?.selectedOptions);
 
   /* ── Queries ────────────────────────────────────────────── */
-  const effectiveManufacturerId = manufacturerIdOverride || manufacturerId;
+  const effectiveManufacturerId = manufacturerIdProp || manufacturerIdOverride || manufacturerId;
 
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
@@ -744,8 +747,8 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
      ══════════════════════════════════════════════════════════ */
   return (
     <div className="space-y-3">
-      {/* Manufacturer */}
-      {!manufacturerIdOverride && (
+      {/* Manufacturer — only shown when no parent is controlling it */}
+      {!manufacturerIdProp && !manufacturerIdOverride && (
         <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
           <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Manufacturer</p>
           <select value={effectiveManufacturerId} onChange={(e) => handleManufacturerChange(e.target.value)}
@@ -756,35 +759,36 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
         </div>
       )}
 
-      {/* Model */}
+      {/* Model + Length + Quick Build — one card */}
       {effectiveManufacturerId && (
-        <div className="bg-white border rounded-xl p-4" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Model</p>
-          <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-3 py-2.5 bg-card text-foreground outline-none text-[16px] focus:border-catl-gold focus:ring-2 focus:ring-catl-gold/25">
-            <option value="">Select model</option>
-            {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${fmtCurrency(m.retail_price)}</option>)}
-          </select>
-        </div>
-      )}
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
 
-      {/* Length + Quick builds (Moly only) */}
-      {selectedBaseModel && isMoly && (
-        <div className="bg-white border rounded-xl p-4 space-y-3" style={{ borderColor: "#D4D4D0" }}>
-          {extendedChuteOption && (
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer"
-              style={{ borderColor: isExtendedSelected ? "#55BAAA" : "#D4D4D0", background: isExtendedSelected ? "rgba(85,186,170,0.06)" : "#FFFFFF" }}
-              onClick={() => toggleSimpleOption(extendedChuteOption.id)}>
-              <input type="checkbox" checked={isExtendedSelected} readOnly className="w-[18px] h-[18px] accent-catl-teal rounded flex-shrink-0" />
-              <div className="flex-1">
-                <span className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>Extended length</span>
-                <p className="text-[11px]" style={{ color: "#717182" }}>+${fmtCurrency(extendedChuteOption.retail_price)}</p>
+          {/* Model row */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Model</span>
+            <select value={baseModelId} onChange={(e) => handleBaseModelChange(e.target.value)}
+              className="flex-1 border border-border rounded-lg px-3 py-2 bg-card text-foreground outline-none text-[15px] focus:border-catl-gold">
+              <option value="">Select model</option>
+              {baseModelsQuery.data?.map((m) => <option key={m.id} value={m.id}>{m.name} — ${fmtCurrency(m.retail_price)}</option>)}
+            </select>
+          </div>
+
+          {/* Extended length (Moly only) */}
+          {selectedBaseModel && isMoly && extendedChuteOption && (
+            <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+              <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Length</span>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleSimpleOption(extendedChuteOption.id)}>
+                <input type="checkbox" checked={isExtendedSelected} readOnly className="w-[16px] h-[16px] accent-catl-teal rounded shrink-0" />
+                <span className="text-[13px] font-medium" style={{ color: "#0E2646" }}>Extended</span>
+                <span className="text-[11px]" style={{ color: "#717182" }}>+${fmtCurrency(extendedChuteOption.retail_price)}</span>
               </div>
             </div>
           )}
-          {quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.05em] mb-2" style={{ color: "#0E2646" }}>Quick build</p>
+
+          {/* Quick build pills (Moly only) */}
+          {selectedBaseModel && isMoly && quickBuildsQuery.data && quickBuildsQuery.data.length > 0 && (
+            <div className="flex items-start gap-3 px-4 py-2.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0 pt-1" style={{ color: "#717182" }}>Quick build</span>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => handleQuickBuildChange("")}
                   className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors", !quickBuildId ? "border-catl-teal text-catl-teal" : "border-border text-muted-foreground")}
@@ -802,26 +806,33 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
 
       {/* Pricing adjustments */}
       {selectedBaseModel && (
-        <div className="bg-white border rounded-xl p-4 space-y-3" style={{ borderColor: "#D4D4D0" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "#0E2646" }}>Pricing adjustments</p>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "#0E2646", width: 80 }}>Discount</span>
-            <div className="flex items-center border border-border rounded-lg overflow-hidden">
+        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "0.5px solid #D4D4D0" }}>
+          <p className="text-[10px] font-semibold uppercase tracking-wider px-4 py-2" style={{ color: "#717182", borderBottom: "0.5px solid #EBEBEB" }}>Pricing adjustments</p>
+
+          {/* Discount */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Discount</span>
+            <div className="flex items-center border border-border rounded-lg overflow-hidden shrink-0">
               <button type="button" onClick={() => setDiscountType("$")} className={cn("px-2.5 py-1.5 text-xs font-semibold", discountType === "$" ? "bg-catl-navy text-white" : "text-muted-foreground")}>$</button>
               <button type="button" onClick={() => setDiscountType("%")} className={cn("px-2.5 py-1.5 text-xs font-semibold", discountType === "%" ? "bg-catl-navy text-white" : "text-muted-foreground")}>%</button>
             </div>
             <input type="text" inputMode="decimal" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              placeholder="0" className="w-20 border border-border rounded-lg px-3 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
+              placeholder="0" className="w-24 border border-border rounded-lg px-3 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "#0E2646", width: 80 }}>Tax</span>
-            <input type="text" value={taxState} onChange={(e) => setTaxState(e.target.value)} placeholder="State" className="w-16 border border-border rounded-lg px-2 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
+
+          {/* Tax */}
+          <div className="flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "0.5px solid #EBEBEB" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Tax</span>
+            <input type="text" value={taxState} onChange={(e) => setTaxState(e.target.value)} placeholder="State"
+              className="w-16 border border-border rounded-lg px-2 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
             <input type="text" inputMode="decimal" value={taxRate ? String(taxRate) : ""} onChange={(e) => setTaxRate(parseFloat(e.target.value.replace(/[^0-9.]/g, "")) || 0)}
-              placeholder="%" className="w-16 border border-border rounded-lg px-2 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
+              placeholder="0" className="w-16 border border-border rounded-lg px-2 py-1.5 text-[14px] outline-none focus:border-catl-gold" />
             <span className="text-[11px]" style={{ color: "#717182" }}>%</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "#0E2646", width: 80 }}>Freight</span>
+
+          {/* Freight */}
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide w-20 shrink-0" style={{ color: "#717182" }}>Freight</span>
             <CurrencyInput value={freightEstimate} onChange={setFreightEstimate} placeholder="0" />
           </div>
         </div>
