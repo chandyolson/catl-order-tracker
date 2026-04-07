@@ -312,22 +312,19 @@ export default function OverviewTab({
 
       {/* ━━━ 1. CUSTOMER BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-2" style={{ backgroundColor: "#F5F5F0" }}>
+        <div className="px-4 py-2.5 flex items-center justify-between gap-2" style={{ backgroundColor: "#F5F5F0" }}>
           {customer ? (
             <>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[14px] font-bold text-white" style={{ backgroundColor: "#0E2646" }}>
-                  {(customer.name || "?").charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-[14px] font-semibold" style={{ color: "#0E2646" }}>{customer.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{[customer.company, customer.address_city, customer.address_state].filter(Boolean).join(", ") || "Customer"}</p>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(39,174,96,0.15)" }}>
+                  <span style={{ color: "#27AE60", fontSize: 11, fontWeight: 700 }}>✓</span>
+                </span>
+                <span className="text-[13px] font-semibold" style={{ color: "#0E2646" }}>{customer.name}</span>
+                {(customer.address_city || customer.address_state) && (
+                  <span className="text-[11px]" style={{ color: "#717182" }}>{[customer.address_city, customer.address_state].filter(Boolean).join(", ")}</span>
+                )}
               </div>
-              <div className="flex gap-2">
-                {customer.phone && <a href={`tel:${customer.phone}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Phone size={12} /> {customer.phone}</a>}
-                {customer.email && <a href={`mailto:${customer.email}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium" style={{ border: "1px solid #55BAAA", color: "#55BAAA" }}><Mail size={12} /> {customer.email}</a>}
-              </div>
+              <button onClick={() => setShowCustomerSearch(true)} className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ color: "#717182", backgroundColor: "rgba(113,113,130,0.1)" }}>Change</button>
             </>
           ) : (
             <div className="w-full">
@@ -355,6 +352,26 @@ export default function OverviewTab({
             </div>
           )}
         </div>
+        {/* Show search when changing customer on assigned orders */}
+        {customer && showCustomerSearch && (
+          <div className="px-4 pb-3 space-y-2" style={{ borderTop: "0.5px solid #EBEBEB" }}>
+            <div className="relative mt-2">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input value={custSearch} onChange={(e) => setCustSearch(e.target.value)} placeholder="Search customers..." className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-[14px] outline-none text-[16px] bg-white" autoFocus />
+            </div>
+            {custSearchQuery.data && custSearchQuery.data.length > 0 && (
+              <div className="border border-border rounded-lg overflow-hidden bg-white">
+                {custSearchQuery.data.map((c: any) => (
+                  <div key={c.id} className="px-3 py-2 cursor-pointer hover:bg-muted/50 border-b border-border last:border-b-0" onClick={() => { assignCustomerMutation.mutate(c.id); setShowCustomerSearch(false); setCustSearch(""); }}>
+                    <p className="text-[13px] font-medium text-foreground">{c.name}</p>
+                    {(c.address_city || c.company) && <p className="text-[11px] text-muted-foreground">{[c.company, c.address_city, c.address_state].filter(Boolean).join(", ")}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => { setShowCustomerSearch(false); setCustSearch(""); }} className="text-[12px] text-muted-foreground">Cancel</button>
+          </div>
+        )}
       </div>
 
       {/* ━━━ 2. ORDER DETAILS + TASKS ━━━━━━━━━━━━━━━━━━━ */}
@@ -429,7 +446,23 @@ export default function OverviewTab({
               <div>
                 <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Est. Completion</span>
                 <p className="text-[13px] font-medium mt-0.5" style={{ color: order.est_completion_date ? "#0E2646" : "#B4B2A9" }}>
-                  {order.est_completion_date ? new Date(order.est_completion_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                  {order.est_completion_date ? (() => {
+                    const eta = new Date(order.est_completion_date + "T12:00:00");
+                    const today = new Date();
+                    today.setHours(12, 0, 0, 0);
+                    const days = Math.round((eta.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const dateStr = eta.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    const relStr = days === 0 ? "today" : days > 0 ? `in ${days}d` : `${Math.abs(days)}d ago`;
+                    const relColor = days < 0 ? "#D4183D" : days <= 7 ? "#F3D12A" : "#27AE60";
+                    return (
+                      <span>
+                        {dateStr}{" "}
+                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: days < 0 ? "rgba(212,24,61,0.1)" : days <= 7 ? "rgba(243,209,42,0.15)" : "rgba(39,174,96,0.1)", color: relColor }}>
+                          {relStr}
+                        </span>
+                      </span>
+                    );
+                  })() : "—"}
                 </p>
               </div>
             </div>
