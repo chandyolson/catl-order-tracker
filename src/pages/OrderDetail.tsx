@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle, ExternalLink, ClipboardList, Copy,
+  ChevronLeft, ChevronRight, Edit2, MoreVertical, Trash2, AlertTriangle, ExternalLink, ClipboardList, Copy, Phone, Mail,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -363,7 +363,35 @@ export default function OrderDetail() {
                 )}
               </div>
 
-              {/* Row 3: Spec pills — removed, shown in Overview tab */}
+              {/* Row 3: Phone + Email — big and tappable */}
+              {(customer?.phone || customer?.email) && (
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  {customer.phone && (
+                    <a href={`tel:${customer.phone}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg active:scale-[0.97] transition-transform"
+                      style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
+                      <Phone size={14} />
+                      <span className="text-[13px] font-semibold">{customer.phone}</span>
+                    </a>
+                  )}
+                  {customer.email && (
+                    <a href={`mailto:${customer.email}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg active:scale-[0.97] transition-transform"
+                      style={{ backgroundColor: "rgba(243,209,42,0.12)", color: "#F3D12A" }}>
+                      <Mail size={14} />
+                      <span className="text-[13px] font-semibold">{customer.email}</span>
+                    </a>
+                  )}
+                  {!customer.phone && (
+                    <span className="text-[11px]" style={{ color: "rgba(245,245,240,0.3)" }}>No phone on file</span>
+                  )}
+                  {!customer.email && (
+                    <span className="text-[11px]" style={{ color: "rgba(245,245,240,0.3)" }}>No email on file</span>
+                  )}
+                </div>
+              )}
+
+              {/* Row 4: Spec pills — removed, shown in Overview tab */}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
