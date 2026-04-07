@@ -425,7 +425,7 @@ export default function OverviewTab({
               </div>
             </div>
 
-            {options.length > 0 && <div><span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Options</span><div className="flex flex-wrap gap-1 mt-1">{options.map((opt: any, i: number) => { const label = formatSavedOptionPill(opt); if (!label) return null; return <span key={i} className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium" style={!opt.is_included ? { backgroundColor: "rgba(243,209,42,0.15)", color: "#8B7A0A" } : { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>{label}</span>; })}</div></div>}
+            {options.length > 0 && <div><span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "#717182" }}>Options</span><div className="flex flex-wrap gap-1 mt-1">{options.map((opt: any, i: number) => { const label = formatSavedOptionPill(opt); if (!label) return null; return <span key={i} className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-medium" style={!opt.is_included ? { backgroundColor: "rgba(243,209,42,0.15)", color: "#8B7A0A" } : { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>{label}</span>; })}</div></div>}
 
             {/* Freight, Discount, Dates */}
             <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
@@ -491,7 +491,7 @@ export default function OverviewTab({
                   <span className="text-[10px] font-semibold" style={{ color: "#717182" }}>Assign:</span>
                   {TEAM.map(name => (
                     <button key={name} onClick={() => setNewTaskAssignee(newTaskAssignee === name ? "" : name)}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                       style={{ backgroundColor: newTaskAssignee === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: newTaskAssignee === name ? "#F3D12A" : "#0E2646" }}>
                       {name}
                     </button>
@@ -499,7 +499,7 @@ export default function OverviewTab({
                   <span className="text-[10px] font-semibold ml-2" style={{ color: "#717182" }}>Priority:</span>
                   {["urgent", "high", "normal"].map(p => (
                     <button key={p} onClick={() => setNewTaskPriority(p)}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                       style={{ backgroundColor: newTaskPriority === p ? (p === "urgent" ? "#E8503A" : p === "high" ? "#F3D12A" : "#55BAAA") : "rgba(113,113,130,0.08)", color: newTaskPriority === p ? (p === "urgent" ? "#fff" : "#0E2646") : "#717182" }}>
                       {p}
                     </button>
@@ -532,7 +532,7 @@ export default function OverviewTab({
                           const { error } = await supabase.from("tasks").update({ assigned_to: newVal }).eq("id", task.id);
                           if (!error) { queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] }); toast.success(newVal ? `Assigned to ${newVal}` : "Unassigned"); }
                         }}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                           style={{ backgroundColor: task.assigned_to === name ? "#0E2646" : "rgba(14,38,70,0.08)", color: task.assigned_to === name ? "#F3D12A" : "#0E2646" }}>
                           {name}
                         </button>
@@ -543,7 +543,7 @@ export default function OverviewTab({
                           const { error } = await supabase.from("tasks").update({ priority: p }).eq("id", task.id);
                           if (!error) queryClient.invalidateQueries({ queryKey: ["order_tasks", order.id] });
                         }}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
                           style={{ backgroundColor: task.priority === p ? (p === "urgent" ? "#E8503A" : p === "high" ? "#F3D12A" : "#55BAAA") : "rgba(113,113,130,0.08)", color: task.priority === p ? (p === "urgent" ? "#fff" : "#0E2646") : "#717182" }}>
                           {p}
                         </button>

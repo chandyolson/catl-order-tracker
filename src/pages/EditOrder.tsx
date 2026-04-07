@@ -11,6 +11,19 @@ import { cn } from "@/lib/utils";
 import EquipmentConfigurator, { ConfiguratorHandle } from "@/components/equipment/EquipmentConfigurator";
 import { ConfiguratorState, ConfiguratorInitialValues, CustomLineItem } from "@/components/equipment/shared";
 
+const STATE_TAX_RATES: Record<string, { rate: number }> = {
+  SD: { rate: 4.2 },
+  ND: { rate: 3.0 },
+  MN: { rate: 6.875 },
+  MT: { rate: 0 },
+  WY: { rate: 4.0 },
+  NE: { rate: 5.5 },
+  CO: { rate: 2.9 },
+  KS: { rate: 6.5 },
+  IA: { rate: 6.0 },
+  MO: { rate: 4.225 },
+};
+
 /* ─── Two-track status definitions ───────────────────────── */
 
 const EQUIPMENT_STATUSES = ["ordered", "building", "ready", "in_transit", "at_catl", "delivered"];
@@ -37,7 +50,7 @@ function StatusPipeline({ statuses, labels, current, onChange, color }: {
         const isCurrent = s === current;
         return (
           <button key={s} type="button" onClick={() => onChange(s)}
-            className={cn("px-2 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap transition-all",
+            className={cn("px-2.5 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap transition-all",
               isCurrent ? "ring-2 ring-offset-1 ring-offset-[#0E2646]" : "")}
             style={{
               background: isActive ? color : "rgba(245,245,240,0.12)",
@@ -253,6 +266,11 @@ export default function EditOrder() {
               Edit: {molyContractNumber || contractName || "Order"}
             </span>
           </div>
+          {selectedCustomer && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.18)", border: "1px solid rgba(243,209,42,0.4)" }}>
+              <span className="text-[11px] font-bold" style={{ color: "#F3D12A" }}>{selectedCustomer.name}</span>
+            </div>
+          )}
         </div>
         <div className="mb-1.5">
           <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(85,186,170,0.6)" }}>Equipment</p>
@@ -309,7 +327,7 @@ export default function EditOrder() {
                   <span className="text-[14px] font-medium truncate block" style={{ color: "#0E2646" }}>{selectedCustomer.name}</span>
                 </div>
                 <button onClick={() => { setCustomerId(""); setCustomerSearch(""); setCustomerStatus(""); }}
-                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2"
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ml-2"
                   style={{ backgroundColor: "rgba(212,24,61,0.08)", color: "#D4183D" }}>✕ Clear</button>
               </div>
             ) : (

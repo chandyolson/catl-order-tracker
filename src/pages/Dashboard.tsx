@@ -405,11 +405,11 @@ export default function Dashboard() {
           style={{ background: "linear-gradient(180deg, #153566 0%, #081020 100%)" }}>
           <div>
             <p className="text-[10px] font-semibold tracking-widest mb-0.5" style={{ color: "#55BAAA" }}>CATL RESOURCES</p>
-            <h1 className="text-[17px] font-bold text-white leading-tight">Equipment Manager</h1>
+            <h1 className="text-[17px] font-bold text-white leading-tight">CattleHQ</h1>
           </div>
           <div className="text-right">
             <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{dateStr}</p>
-            <p className="text-[11px] font-bold tracking-widest mt-0.5" style={{ color: "#F3D12A" }}>CATL</p>
+            <p className="text-[11px] font-bold tracking-widest mt-0.5" style={{ color: "#F3D12A" }}>CattleHQ</p>
           </div>
         </div>
 
@@ -729,7 +729,7 @@ export default function Dashboard() {
               </svg>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
+              <p className="text-[13px] font-semibold text-white">CattleHQ Assistant</p>
               <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
             </div>
           </div>
@@ -875,7 +875,7 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div className="flex-1">
-                <p className="text-[13px] font-semibold text-white">CATL Assistant</p>
+                <p className="text-[13px] font-semibold text-white">CattleHQ Assistant</p>
                 <p className="text-[11px]" style={{ color: "#55BAAA" }}>Online</p>
               </div>
               <button onClick={() => setMobileChatOpen(false)}

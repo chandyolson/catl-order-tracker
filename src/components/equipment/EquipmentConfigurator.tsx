@@ -38,12 +38,15 @@ type Props = {
   manufacturerId?: string;
   /** Legacy override — kept for backward compat */
   manufacturerIdOverride?: string;
+  /** Optional controlled tax values set by parent when customer is selected */
+  taxStateOverride?: string;
+  taxRateOverride?: number;
 };
 
 /* ─── Component ──────────────────────────────────────────── */
 
 const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function EquipmentConfigurator(
-  { initialValues, onChange, manufacturerId: manufacturerIdProp, manufacturerIdOverride },
+  { initialValues, onChange, manufacturerId: manufacturerIdProp, manufacturerIdOverride, taxStateOverride, taxRateOverride },
   ref
 ) {
   /* ── State ──────────────────────────────────────────────── */
@@ -74,6 +77,14 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
 
   /* ── Queries ────────────────────────────────────────────── */
   const effectiveManufacturerId = manufacturerIdProp || manufacturerIdOverride || manufacturerId;
+
+  /* Sync tax override from parent (e.g. when customer state changes) */
+  useEffect(() => {
+    if (taxStateOverride !== undefined) setTaxState(taxStateOverride);
+  }, [taxStateOverride]);
+  useEffect(() => {
+    if (taxRateOverride !== undefined) setTaxRate(taxRateOverride);
+  }, [taxRateOverride]);
 
   const manufacturersQuery = useQuery({
     queryKey: ["manufacturers"],
@@ -955,7 +966,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
               <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>Recommended options</span>
               <div className="flex items-center gap-2">
                 {selectedCount > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{selectedCount} selected</span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{selectedCount} selected</span>
                 )}
                 <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
               </div>
@@ -1009,7 +1020,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
               <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>All options</span>
               <div className="flex items-center gap-2">
                 {totalSelected > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{totalSelected} selected</span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#2e7e74" }}>{totalSelected} selected</span>
                 )}
                 <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
               </div>
@@ -1045,7 +1056,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
               <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "#0E2646" }}>Custom items</span>
               <div className="flex items-center gap-2">
                 {hasItems && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#9a7a00" }}>{customLineItems.filter(c => c.name.trim()).length} added</span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.15)", color: "#9a7a00" }}>{customLineItems.filter(c => c.name.trim()).length} added</span>
                 )}
                 <span className="text-[16px]" style={{ color: "#717182", transform: isOpen ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 0.15s" }}>›</span>
               </div>
@@ -1055,7 +1066,7 @@ const EquipmentConfigurator = forwardRef<ConfiguratorHandle, Props>(function Equ
                 <div className="flex items-center justify-between mt-3 mb-2">
                   <p className="text-[11px] text-muted-foreground">Spool valves, bottle holders, or any custom-priced item.</p>
                   <button type="button" onClick={() => setCustomLineItems(prev => [...prev, { name: "", retail: "", cost: "" }])}
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-full active:scale-[0.95] transition-transform shrink-0 ml-2"
+                    className="text-[11px] font-medium px-2.5 py-0.5 rounded-full active:scale-[0.95] transition-transform shrink-0 ml-2"
                     style={{ backgroundColor: "rgba(85,186,170,0.1)", color: "#55BAAA" }}>+ Add</button>
                 </div>
                 {customLineItems.map((item, idx) => (

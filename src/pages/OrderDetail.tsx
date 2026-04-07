@@ -352,7 +352,7 @@ export default function OrderDetail() {
                   const name = (opt.name || opt.display_name || "").toLowerCase();
                   return name.includes("extended") || (opt.short_code || "").toLowerCase() === "ext";
                 }) && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.2)", color: "#F3D12A" }}>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(243,209,42,0.2)", color: "#F3D12A" }}>
                     Extended
                   </span>
                 )}

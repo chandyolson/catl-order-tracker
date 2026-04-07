@@ -535,7 +535,7 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
             {custName || "Unassigned"}
           </p>
           {mfg && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
+            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>
               {mfg.short_name || mfg.name}
             </span>
           )}
@@ -544,7 +544,7 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
         {pills.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {pills.map((p: any, i: number) => (
-              <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+              <span key={i} className="text-[11px] font-medium px-2.5 py-0.5 rounded-full"
                 style={p.included
                   ? { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }
                   : { backgroundColor: "rgba(243,209,42,0.15)", color: "#8B7A0A" }}>
@@ -574,7 +574,7 @@ function EquipmentCard({ order, tab, navigate, selectMode, selected, onToggle }:
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
             style={order.source_type === "estimate"
               ? { backgroundColor: "rgba(85,186,170,0.15)", color: "#55BAAA" }
               : { backgroundColor: "rgba(243,209,42,0.2)", color: "#8B7A0A" }}>

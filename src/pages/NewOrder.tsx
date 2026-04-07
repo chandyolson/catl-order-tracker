@@ -10,6 +10,19 @@ import { toast } from "sonner";
 import EquipmentConfigurator, { ConfiguratorHandle } from "@/components/equipment/EquipmentConfigurator";
 import { ConfiguratorState } from "@/components/equipment/shared";
 
+const STATE_TAX_RATES: Record<string, { rate: number }> = {
+  SD: { rate: 4.2 },
+  ND: { rate: 3.0 },
+  MN: { rate: 6.875 },
+  MT: { rate: 0 },
+  WY: { rate: 4.0 },
+  NE: { rate: 5.5 },
+  CO: { rate: 2.9 },
+  KS: { rate: 6.5 },
+  IA: { rate: 6.0 },
+  MO: { rate: 4.225 },
+};
+
 export default function NewOrder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -28,6 +41,8 @@ export default function NewOrder() {
   const [showMolyPortal, setShowMolyPortal] = useState(false);
   const [portalUrl, setPortalUrl] = useState("");
   const [selectedManufacturerId, setSelectedManufacturerId] = useState("");
+  const [taxState, setTaxState] = useState("");
+  const [taxRate, setTaxRate] = useState(0);
 
   /* ── Auto-fill estimate number ─────────────────────────── */
   useEffect(() => {
@@ -223,7 +238,7 @@ export default function NewOrder() {
                   <span className="text-[14px] font-medium truncate block" style={{ color: "#0E2646" }}>{selectedCustomer.name}</span>
                 </div>
                 <button onClick={() => { setCustomerId(""); setCustomerSearch(""); }}
-                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2"
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ml-2"
                   style={{ backgroundColor: "rgba(212,24,61,0.08)", color: "#D4183D" }}>✕ Clear</button>
               </div>
             ) : (
@@ -232,14 +247,23 @@ export default function NewOrder() {
                   <button type="button" className="flex-1 border border-border rounded-lg px-3 py-2 text-left text-[15px] bg-card"
                     style={{ color: "#717182" }}>Search customers…</button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0" align="start">
-                  <Command>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command shouldFilter={false}>
                     <CommandInput placeholder="Type a name..." value={customerSearch} onValueChange={setCustomerSearch} />
                     <CommandList>
-                      <CommandEmpty>No customers found</CommandEmpty>
+                      <CommandEmpty>{debouncedSearch.length < 2 ? "Type at least 2 characters..." : "No customers found"}</CommandEmpty>
                       <CommandGroup>
                         {(customerSearchQuery.data || []).map((c) => (
-                          <CommandItem key={c.id} onSelect={() => { setCustomerId(c.id); setCustomerSearch(c.name); setCustomerPopoverOpen(false); if (!contractName && c.name) setContractName(c.name); }}>
+                          <CommandItem key={c.id} onSelect={() => {
+                            setCustomerId(c.id);
+                            setCustomerSearch(c.name);
+                            setCustomerPopoverOpen(false);
+                            if (!contractName && c.name) setContractName(c.name);
+                            if (c.address_state && STATE_TAX_RATES[c.address_state]) {
+                              setTaxState(c.address_state);
+                              setTaxRate(STATE_TAX_RATES[c.address_state].rate);
+                            }
+                          }}>
                             <div className="flex-1 min-w-0">
                               <p className="text-[13px] font-medium truncate">{c.name}</p>
                               <p className="text-[11px] text-muted-foreground">{[c.address_city, c.address_state].filter(Boolean).join(", ")}</p>
@@ -269,6 +293,8 @@ export default function NewOrder() {
         <EquipmentConfigurator
           ref={configuratorRef}
           manufacturerId={selectedManufacturerId}
+          taxStateOverride={taxState}
+          taxRateOverride={taxRate}
           onChange={handleConfigChange}
         />
 
