@@ -308,22 +308,33 @@ export default function ConvertEstimate() {
         {onOrderItems.length === 0 ? (
           <p className="text-[13px] text-muted-foreground italic py-2">No unassigned on-order equipment</p>
         ) : (
-          <div className="space-y-1.5 mb-3 max-h-60 overflow-y-auto">
-            {[...matchingOnOrder, ...otherOnOrder].map((o) => {
+          <div className="space-y-1.5 mb-3">
+            {matchingOnOrder.length > 0 && (
+              <p className="text-[10px] font-semibold uppercase tracking-wider px-1 pb-0.5" style={{ color: "#55BAAA" }}>Matching model</p>
+            )}
+            {[...matchingOnOrder, ...otherOnOrder].map((o, idx) => {
               const isMatch = o.base_model_id === estimate.base_model_id;
+              const showDivider = idx === matchingOnOrder.length && matchingOnOrder.length > 0 && otherOnOrder.length > 0;
               return (
-                <label key={o.id} className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${selectedOrderId === o.id ? "border-2" : "border-border"}`}
-                  style={selectedOrderId === o.id ? { borderColor: "#55BAAA" } : undefined}
-                >
-                  <input type="radio" name="matchOrder" checked={selectedOrderId === o.id} onChange={() => setSelectedOrderId(o.id)} className="shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {isMatch && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(85,186,170,0.15)", color: "#0F6E56" }}>Match</span>}
-                      <span className="text-[12px] font-medium truncate" style={{ color: "#0E2646" }}>{o.contract_name || o.moly_contract_number || "Unnamed"}</span>
+                <div key={o.id}>
+                  {showDivider && <p className="text-[10px] font-semibold uppercase tracking-wider px-1 pt-2 pb-0.5" style={{ color: "#717182" }}>Other models</p>}
+                  <label className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${selectedOrderId === o.id ? "border-2" : "border-border"}`}
+                    style={selectedOrderId === o.id ? { borderColor: "#55BAAA", backgroundColor: "rgba(85,186,170,0.04)" } : undefined}
+                  >
+                    <input type="radio" name="matchOrder" checked={selectedOrderId === o.id} onChange={() => setSelectedOrderId(o.id)} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {o.moly_contract_number && (
+                          <span className="text-[13px] font-bold shrink-0" style={{ color: "#55BAAA" }}>{o.moly_contract_number}</span>
+                        )}
+                        <span className="text-[12px] font-medium truncate" style={{ color: "#0E2646" }}>
+                          {o.contract_name && o.contract_name !== `Production Slot` ? o.contract_name : (o.base_model || "—")}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{o.build_shorthand || o.base_model}</p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{o.build_shorthand || o.base_model} · {fmtCurrency(o.our_cost)}</p>
-                  </div>
-                </label>
+                  </label>
+                </div>
               );
             })}
           </div>
@@ -352,7 +363,7 @@ export default function ConvertEstimate() {
         {inventoryItems.length === 0 ? (
           <p className="text-[13px] text-muted-foreground italic py-2">No inventory available</p>
         ) : (
-          <div className="space-y-1.5 mb-3 max-h-60 overflow-y-auto">
+          <div className="space-y-1.5 mb-3">
             {[...matchingInventory, ...otherInventory].map((o) => {
               const isMatch = o.base_model_id === estimate.base_model_id;
               return (
