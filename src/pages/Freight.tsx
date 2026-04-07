@@ -119,6 +119,7 @@ export default function Freight() {
   const updateStop = useMutation({ mutationFn:async({id,...d}:any)=>{ const{error}=await supabase.from("freight_run_stops").update(d).eq("id",id); if(error)throw error; }, onSuccess:()=>inv(), onError:(e:any)=>toast.error(e.message) });
   const removeStop = useMutation({ mutationFn:async(id:string)=>{ const{error}=await supabase.from("freight_run_stops").delete().eq("id",id); if(error)throw error; }, onSuccess:()=>{inv();toast.success("Stop removed");}, onError:(e:any)=>toast.error(e.message) });
   const createCarrier = useMutation({ mutationFn:async(d:any)=>{ const{error}=await supabase.from("carriers").insert(d); if(error)throw error; }, onSuccess:()=>{qc.invalidateQueries({queryKey:["carriers"]});toast.success("Carrier added");}, onError:(e:any)=>toast.error(e.message) });
+  const updateCarrier = useMutation({ mutationFn:async({id,...d}:any)=>{ const{error}=await supabase.from("carriers").update(d).eq("id",id); if(error)throw error; }, onSuccess:()=>{qc.invalidateQueries({queryKey:["carriers"]});toast.success("Carrier updated");}, onError:(e:any)=>toast.error(e.message) });
   const deleteCarrier = useMutation({ mutationFn:async(id:string)=>{ const{error}=await supabase.from("carriers").update({is_active:false}).eq("id",id); if(error)throw error; }, onSuccess:()=>{qc.invalidateQueries({queryKey:["carriers"]});toast.success("Carrier removed");} });
 
   const reorderItems = useCallback(async(from:number,to:number)=>{
@@ -215,7 +216,7 @@ export default function Freight() {
           </button>);})}
       </div>
       {showNewRun&&<NewRunModal carriers={carriers} onCreate={d=>createRun.mutate(d)} onClose={()=>setShowNewRun(false)}/>}
-      {showCarriers&&<CarriersModal carriers={carriers} onAdd={d=>createCarrier.mutate(d)} onDelete={id=>deleteCarrier.mutate(id)} onClose={()=>setShowCarriers(false)}/>}
+      {showCarriers&&<CarriersModal carriers={carriers} onAdd={d=>createCarrier.mutate(d)} onEdit={d=>updateCarrier.mutate(d)} onDelete={id=>deleteCarrier.mutate(id)} onClose={()=>setShowCarriers(false)}/>}
     </div>
   );
 }
@@ -495,14 +496,65 @@ function NewRunModal({carriers,onCreate,onClose}:{carriers:Carrier[];onCreate:(d
   );
 }
 
-function CarriersModal({carriers,onAdd,onDelete,onClose}:{carriers:Carrier[];onAdd:(d:any)=>void;onDelete:(id:string)=>void;onClose:()=>void;}) {
+function CarriersModal({carriers,onAdd,onEdit,onDelete,onClose}:{carriers:Carrier[];onAdd:(d:any)=>void;onEdit:(d:any)=>void;onDelete:(id:string)=>void;onClose:()=>void;}) {
   const [n,setN]=useState("");const[t,setT]=useState<"external_trucker"|"catl_vehicle">("external_trucker");const[p,setP]=useState("");const[em,setEm]=useState("");const[v,setV]=useState("");
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [en,setEn]=useState("");const[et,setEt]=useState<"external_trucker"|"catl_vehicle">("external_trucker");const[ep,setEp]=useState("");const[eem,setEem]=useState("");const[ev,setEv]=useState("");
+
+  function startEdit(c:Carrier) {
+    setEditingId(c.id);setEn(c.name);setEt(c.type as any);setEp(c.phone||"");setEem(c.email||"");setEv(c.vehicle_description||"");
+  }
+  function saveEdit() {
+    if(!en.trim())return;
+    onEdit({id:editingId,name:en.trim(),type:et,phone:ep||null,email:eem||null,vehicle_description:ev||null});
+    setEditingId(null);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{backgroundColor:"rgba(0,0,0,0.4)"}}>
       <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl" style={{backgroundColor:"#fff"}}>
         <div className="sticky top-0 flex items-center justify-between p-4 border-b" style={{borderColor:"#F0F0EC",backgroundColor:"#fff"}}><h3 className="text-[15px] font-medium" style={{color:"#0E2646"}}>Carriers & vehicles</h3><button onClick={onClose}><X size={18} style={{color:"#717182"}}/></button></div>
         <div className="p-4">
-          <div className="space-y-2 mb-4">{carriers.map(c=><div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg" style={{border:"0.5px solid #D4D4D0"}}><div><div className="flex items-center gap-2"><span className="text-[13px] font-medium" style={{color:"#0E2646"}}>{c.name}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full" style={c.type==="catl_vehicle"?{backgroundColor:"#E1F5EE",color:"#085041"}:{backgroundColor:"#E6F1FB",color:"#0C447C"}}>{c.type==="catl_vehicle"?"CATL":"Trucker"}</span></div><p className="text-[11px]" style={{color:"#717182"}}>{[c.phone,c.email,c.vehicle_description].filter(Boolean).join(" · ")||"No details"}</p></div><button onClick={()=>{if(confirm(`Remove ${c.name}?`))onDelete(c.id);}} className="p-1" style={{color:"#E24B4A"}}><Trash2 size={14}/></button></div>)}</div>
+          <div className="space-y-2 mb-4">
+            {carriers.map(c=>(
+              <div key={c.id} className="rounded-lg p-2.5" style={{border:"0.5px solid #D4D4D0"}}>
+                {editingId===c.id ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={en} onChange={e=>setEn(e.target.value)} placeholder="Name" className="text-[13px] rounded-lg px-3 py-2" style={{border:"0.5px solid #D4D4D0"}}/>
+                      <select value={et} onChange={e=>setEt(e.target.value as any)} className="text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}>
+                        <option value="external_trucker">Trucker</option><option value="catl_vehicle">CATL Vehicle</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={ep} onChange={e=>setEp(e.target.value)} placeholder="Phone" className="text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/>
+                      <input value={eem} onChange={e=>setEem(e.target.value)} placeholder="Email" className="text-[13px] rounded-lg px-2 py-2" style={{border:"0.5px solid #D4D4D0"}}/>
+                    </div>
+                    <input value={ev} onChange={e=>setEv(e.target.value)} placeholder="Vehicle description" className="w-full text-[13px] rounded-lg px-3 py-2" style={{border:"0.5px solid #D4D4D0"}}/>
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} className="flex-1 text-[12px] font-medium py-1.5 rounded-lg" style={{backgroundColor:"#55BAAA",color:"#fff"}}>Save</button>
+                      <button onClick={()=>setEditingId(null)} className="flex-1 text-[12px] font-medium py-1.5 rounded-lg" style={{backgroundColor:"#F5F5F0",color:"#717182"}}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-medium" style={{color:"#0E2646"}}>{c.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={c.type==="catl_vehicle"?{backgroundColor:"#E1F5EE",color:"#085041"}:{backgroundColor:"#E6F1FB",color:"#0C447C"}}>{c.type==="catl_vehicle"?"CATL":"Trucker"}</span>
+                      </div>
+                      <p className="text-[11px]" style={{color:"#717182"}}>{[c.phone,c.email,c.vehicle_description].filter(Boolean).join(" · ")||"No details"}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={()=>startEdit(c)} className="p-1.5 rounded-lg" style={{color:"#55BAAA",backgroundColor:"rgba(85,186,170,0.08)"}}><Edit2 size={13}/></button>
+                      <button onClick={()=>{if(confirm(`Remove ${c.name}?`))onDelete(c.id);}} className="p-1.5 rounded-lg" style={{color:"#E24B4A",backgroundColor:"rgba(226,75,74,0.08)"}}><Trash2 size={13}/></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {carriers.length===0&&<p className="text-[12px] text-center py-2" style={{color:"#717182"}}>No carriers yet</p>}
+          </div>
           <div className="border-t pt-3" style={{borderColor:"#F0F0EC"}}>
             <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{color:"#717182"}}>Add carrier or vehicle</p>
             <div className="space-y-2">
