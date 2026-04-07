@@ -537,7 +537,63 @@ export default function OverviewTab({
         </div>
       </div>
 
-      {/* ━━━ 3. TIMELINE + DOCUMENT CHAIN ━━━━━━━━━━━━━━━ */}
+      {/* ━━━ 3. CONTACT HISTORY (emails linked to this customer) ━━━ */}
+      {(order as any).customer_id && (() => {
+        const emails = contactHistoryQuery.data || [];
+        const isLoading = contactHistoryQuery.isLoading;
+        const TIM_EMAIL = "timselect@gmail.com";
+        return (
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="px-4 h-12 flex items-center gap-2" style={{ backgroundColor: "#0E2646" }}>
+              <Mail size={12} style={{ color: "#55BAAA" }} />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Contact History</h3>
+              {emails.length > 0 && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>{emails.length}</span>
+              )}
+            </div>
+            <div className="p-3 space-y-1.5">
+              {isLoading && <p className="text-[12px] text-muted-foreground py-2 text-center">Loading emails…</p>}
+              {!isLoading && emails.length === 0 && (
+                <p className="text-[12px] py-2 text-center" style={{ color: "#717182" }}>
+                  No emails on file for this customer yet.<br />
+                  <span className="text-[11px]">Emails will appear here as Gmail syncs.</span>
+                </p>
+              )}
+              {emails.map((email: any) => {
+                const isInbound = email.from_email?.toLowerCase() !== TIM_EMAIL.toLowerCase();
+                const displayName = isInbound ? (email.from_name || email.from_email) : `To: ${email.to_email}`;
+                const date = email.received_at ? format(new Date(email.received_at), "MMM d, yyyy") : "";
+                const summary = email.ai_summary || email.snippet || "";
+                return (
+                  <div key={email.id} className="rounded-lg p-3" style={{ backgroundColor: "#FAFAF8", border: "0.5px solid #EBEBEB" }}>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                          style={isInbound
+                            ? { backgroundColor: "rgba(85,186,170,0.12)", color: "#2e7e74" }
+                            : { backgroundColor: "rgba(243,209,42,0.15)", color: "#9a7a00" }}>
+                          {isInbound ? "↓ In" : "↑ Out"}
+                        </span>
+                        <span className="text-[11px] font-semibold truncate" style={{ color: "#0E2646" }}>{email.subject || "(no subject)"}</span>
+                      </div>
+                      <span className="text-[10px] shrink-0" style={{ color: "#717182" }}>{date}</span>
+                    </div>
+                    <p className="text-[11px]" style={{ color: "#717182" }}>{displayName}</p>
+                    {summary && (
+                      <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "#333" }}>{summary.slice(0, 200)}{summary.length > 200 ? "…" : ""}</p>
+                    )}
+                    {email.matched_order_id && email.matched_order_id !== order.id && (
+                      <p className="text-[10px] mt-1" style={{ color: "#55BAAA" }}>Also linked to another order</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ━━━ 4. TIMELINE + DOCUMENT CHAIN ━━━━━━━━━━━━━━━ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* LEFT: Timeline */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -848,62 +904,6 @@ export default function OverviewTab({
           </div>
         </div>
       )}
-
-      {/* ━━━ 5. CONTACT HISTORY (emails linked to this customer) ━━━ */}
-      {(order as any).customer_id && (() => {
-        const emails = contactHistoryQuery.data || [];
-        const isLoading = contactHistoryQuery.isLoading;
-        const TIM_EMAIL = "timselect@gmail.com";
-        return (
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="px-4 h-12 flex items-center gap-2" style={{ backgroundColor: "#0E2646" }}>
-              <Mail size={12} style={{ color: "#55BAAA" }} />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFF" }}>Contact History</h3>
-              {emails.length > 0 && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(85,186,170,0.15)", color: "#55BAAA" }}>{emails.length}</span>
-              )}
-            </div>
-            <div className="p-3 space-y-1.5">
-              {isLoading && <p className="text-[12px] text-muted-foreground py-2 text-center">Loading emails…</p>}
-              {!isLoading && emails.length === 0 && (
-                <p className="text-[12px] py-2 text-center" style={{ color: "#717182" }}>
-                  No emails on file for this customer yet.<br />
-                  <span className="text-[11px]">Emails will appear here as Gmail syncs.</span>
-                </p>
-              )}
-              {emails.map((email: any) => {
-                const isInbound = email.from_email?.toLowerCase() !== TIM_EMAIL.toLowerCase();
-                const displayName = isInbound ? (email.from_name || email.from_email) : `To: ${email.to_email}`;
-                const date = email.received_at ? format(new Date(email.received_at), "MMM d, yyyy") : "";
-                const summary = email.ai_summary || email.snippet || "";
-                return (
-                  <div key={email.id} className="rounded-lg p-3" style={{ backgroundColor: "#FAFAF8", border: "0.5px solid #EBEBEB" }}>
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                          style={isInbound
-                            ? { backgroundColor: "rgba(85,186,170,0.12)", color: "#2e7e74" }
-                            : { backgroundColor: "rgba(243,209,42,0.15)", color: "#9a7a00" }}>
-                          {isInbound ? "↓ In" : "↑ Out"}
-                        </span>
-                        <span className="text-[11px] font-semibold truncate" style={{ color: "#0E2646" }}>{email.subject || "(no subject)"}</span>
-                      </div>
-                      <span className="text-[10px] shrink-0" style={{ color: "#717182" }}>{date}</span>
-                    </div>
-                    <p className="text-[11px]" style={{ color: "#717182" }}>{displayName}</p>
-                    {summary && (
-                      <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "#333" }}>{summary.slice(0, 200)}{summary.length > 200 ? "…" : ""}</p>
-                    )}
-                    {email.matched_order_id && email.matched_order_id !== order.id && (
-                      <p className="text-[10px] mt-1" style={{ color: "#55BAAA" }}>Also linked to another order</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
 
     </div>
   );
