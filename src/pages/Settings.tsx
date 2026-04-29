@@ -61,12 +61,31 @@ export default function Settings() {
   async function handleConnectGoogle() {
     setConnectingGoogle(true);
     try {
-      const resp = await fetch(`${supabaseUrl}/functions/v1/google-oauth-callback?action=auth_url`);
+      // Note: edge function reads action from query string (?action=auth_url),
+      // so we hit it via raw fetch with auth headers (apikey + Authorization)
+      // rather than supabase.functions.invoke which strips query params.
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+      const resp = await fetch(
+        `${supabaseUrl}/functions/v1/google-oauth-callback?action=auth_url`,
+        {
+          headers: {
+            "apikey": anonKey,
+            "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || anonKey}`,
+          },
+        }
+      );
+      if (!resp.ok) {
+        toast.error(`Auth URL fetch failed: ${resp.status} ${resp.statusText}`);
+        return;
+      }
       const data = await resp.json();
       if (data.authUrl) window.open(data.authUrl, "_blank");
       else toast.error("Failed to get Google auth URL");
-    } catch (err: any) { toast.error(err.message); }
-    finally { setConnectingGoogle(false); }
+    } catch (err: any) {
+      toast.error(`Connect Google failed: ${err.message}`);
+    } finally {
+      setConnectingGoogle(false);
+    }
   }
 
   // ─── Email Log Stats ───────────────────────────────────
